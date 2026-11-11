@@ -1,0 +1,21 @@
+.venv/
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+*.pyc
+node_modules/
+dist/
+dev-dist/
+.vite/
+.env
+.DS_Store
+*.log
+.api.pid
+benchmarks/out/
+.ledger-data/
+
+# Playwright output
+web/test-results/
+web/playwright-report/
+

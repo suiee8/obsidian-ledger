@@ -1,0 +1,20 @@
+{
+  "currency": "USD",
+  "fee_per_trade": 1.0,
+  "model_expectancy_r_before_fees": {
+    "breakout": 0.344,
+    "fomo": -0.265,
+    "mean_revert": 0.045
+  },
+  "net_pnl_sum": 5083.08,
+  "risk_fraction": 0.005,
+  "rows": 1000,
+  "seed": 42,
+  "setup_weights": {
+    "breakout": 0.45,
+    "mean_revert": 0.4,
+    "fomo": 0.15
+  },
+  "sha256": "5104b4282a9464ca4852879e403a0078c4b189a8fee35cfe14921a98dfa8f9ed",
+  "wins": 485
+}

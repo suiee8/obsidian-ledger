@@ -1,0 +1,96 @@
+import type { ReactNode } from "react";
+
+import { ROUTE_LABELS, type Route } from "../routes";
+import {
+  IconAnalytics,
+  IconBehavior,
+  IconImport,
+  IconOverview,
+  IconSamples,
+  IconSettings,
+  IconSimulator,
+  IconTrades,
+} from "./icons";
+
+type ShellProps = {
+  route: Route;
+  busy: boolean;
+  onNavigate: (route: Route) => void;
+  onOpenPalette: () => void;
+  coachOpen: boolean;
+  onToggleCoach: () => void;
+  filters: ReactNode;
+  status: ReactNode;
+  children: ReactNode;
+};
+
+const NAV: readonly { id: Route; icon: ReactNode }[] = [
+  { id: "dashboard", icon: <IconOverview /> },
+  { id: "analytics", icon: <IconAnalytics /> },
+  { id: "behavior", icon: <IconBehavior /> },
+  { id: "simulator", icon: <IconSimulator /> },
+  { id: "trades", icon: <IconTrades /> },
+  { id: "import", icon: <IconImport /> },
+  { id: "samples", icon: <IconSamples /> },
+  { id: "settings", icon: <IconSettings /> },
+];
+
+export function Shell({
+  route,
+  busy,
+  onNavigate,
+  onOpenPalette,
+  coachOpen,
+  onToggleCoach,
+  filters,
+  status,
+  children,
+}: ShellProps) {
+  return (
+    <div className="shell">
+      <a className="skip-link" href="#content">
+        Skip to content
+      </a>
+      <div className={`pulse-bar${busy ? " is-busy" : ""}`} data-busy={busy ? "true" : "false"} />
+      <header className="topbar">
+        <p className="brand">
+          <span className="mark" aria-hidden="true" />
+          Obsidian Ledger
+        </p>
+        <div className="topbar-center">{filters}</div>
+        <div className="topbar-end">
+          {status}
+          <button
+            type="button"
+            className={`coach-toggle${coachOpen ? " is-open" : ""}`}
+            aria-pressed={coachOpen}
+            onClick={onToggleCoach}
+          >
+            Coach
+          </button>
+          <button type="button" className="kbd-hint" onClick={onOpenPalette} title="Open command palette">
+            Ctrl K
+          </button>
+        </div>
+      </header>
+      <nav className="rail" aria-label="Primary">
+        {NAV.map((item) => (
+          <button
+            key={item.id}
+            type="button"
+            className="rail-button"
+            aria-label={ROUTE_LABELS[item.id]}
+            title={ROUTE_LABELS[item.id]}
+            aria-current={route === item.id ? "page" : undefined}
+            onClick={() => onNavigate(item.id)}
+          >
+            {item.icon}
+          </button>
+        ))}
+      </nav>
+      <main className="main" id="content">
+        {children}
+      </main>
+    </div>
+  );
+}

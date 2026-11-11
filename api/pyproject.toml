@@ -1,0 +1,62 @@
+[project]
+name = "obsidian-ledger-api"
+version = "0.1.0"
+description = "Local-first trading journal API. Reviews past trades. Not financial advice."
+requires-python = ">=3.12,<3.13"
+dependencies = [
+  "charset-normalizer>=3",
+  "duckdb>=1.1",
+  "fastapi>=0.115",
+  "numpy>=2",
+  "openpyxl>=3.1",
+  "orjson>=3.13.0",
+  "polars>=1.0",
+  "pyarrow>=18",
+  "pydantic>=2",
+  "pydantic-settings>=2",
+  "python-calamine>=0.2",
+  "scipy>=1.14",
+  "tzdata>=2025.2",
+  "uvicorn[standard]>=0.32",
+]
+
+[dependency-groups]
+dev = [
+  "httpx>=0.27",
+  "httpx2>=2.16.0",
+  "hypothesis>=6.100",
+  "pyright>=1.1.390",
+  "pytest>=8",
+  "ruff>=0.8",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/obsidian_ledger"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src", "../benchmarks"]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["src", "../benchmarks"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["obsidian_ledger", "ledger_samples"]
+
+[tool.pyright]
+pythonVersion = "3.12"
+typeCheckingMode = "strict"
+include = ["src", "tests", "../benchmarks"]
+extraPaths = ["src", "../benchmarks"]
+venvPath = "."
+venv = ".venv"

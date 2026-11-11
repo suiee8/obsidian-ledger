@@ -1,0 +1,25 @@
+{
+  "name": "obsidian-ledger",
+  "private": true,
+  "packageManager": "pnpm@12.18.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "bootstrap": "pnpm install && uv sync --directory api",
+    "dev": "node scripts/dev.mjs",
+    "dev:web": "pnpm -C web dev",
+    "dev:api": "uv run --directory api uvicorn obsidian_ledger.main:app --host 127.0.0.1 --port 8000",
+    "seed": "uv run --directory api python ../scripts/seed.py",
+    "reset:data": "node scripts/reset-data.mjs",
+    "check": "pnpm -C web lint && pnpm -C web typecheck && pnpm -C web test && pnpm lint:api && pnpm typecheck:api && uv run --directory api pytest -q",
+    "test": "pnpm test:web && pnpm test:api",
+    "test:web": "pnpm -C web lint && pnpm -C web typecheck && pnpm -C web test && pnpm -C web build",
+    "test:api": "pnpm lint:api && pnpm typecheck:api && uv run --directory api pytest",
+    "test:e2e": "pnpm -C web test:e2e",
+    "lint:api": "uv run --directory api ruff check src tests ../benchmarks",
+    "typecheck:api": "uv run --directory api pyright",
+    "format:api": "uv run --directory api ruff format src tests ../benchmarks",
+    "bench": "pnpm -C web build && uv run --directory api python ../benchmarks/bench.py --label latest --ui"
+  }
+}
