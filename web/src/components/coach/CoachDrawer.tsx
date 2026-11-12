@@ -1,4 +1,4 @@
-import { useEffect, type KeyboardEvent, type PointerEvent, type ReactNode } from "react";
+import { useEffect, useState, type KeyboardEvent, type PointerEvent, type ReactNode } from "react";
 
 import { apiBase } from "../../lib/api";
 import { useCoachRun, type CoachRun } from "../../lib/coach";
@@ -7,6 +7,9 @@ import { useSelectFinding } from "../../lib/phase4";
 import { useDebouncedValue } from "../../lib/useDebouncedValue";
 import { FILTER_DEBOUNCE_MS, filterParams, useFilters } from "../../state/filters";
 import { COACH_MIN_WIDTH, useUi } from "../../state/ui";
+import { useLlmStatus, type AnswerChip } from "../../lib/llm";
+import { AiSummary } from "./AiSummary";
+import { AskCoach } from "./AskCoach";
 import { FindingCard } from "./FindingCard";
 import { Timeline } from "./Timeline";
 
@@ -267,6 +270,8 @@ export function CoachDrawer() {
   const liveParams = useFilters((state) => filterParams(state));
   const params = useDebouncedValue(liveParams, FILTER_DEBOUNCE_MS);
   const run: CoachRun = useCoachRun(params, runToken, open);
+  const [tab, setTab] = useState<"report" | "ask">("report");
+  const llm = useLlmStatus();
 
   // The rest of the layout makes room for the drawer through this variable.
   useEffect(() => {
@@ -284,9 +289,17 @@ export function CoachDrawer() {
 
   if (!open) return null;
 
-  const showTrade = (trade: Evidence) => {
+  const showTrade = (trade: Evidence | AnswerChip) => {
     setRoute("trades");
     highlightTrade(trade.trade_key);
+  };
+  const hasTrades = run.report ? run.report.status !== "empty" : true;
+  const onTabKey = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+    event.preventDefault();
+    const next = tab === "report" ? "ask" : "report";
+    setTab(next);
+    document.getElementById(`coach-tab-${next}`)?.focus();
   };
   const applyFilter = (finding: CoachFinding) => {
     const hint = finding.filter;
@@ -360,6 +373,52 @@ export function CoachDrawer() {
         </div>
       </header>
       <div className={`pulse-bar coach-pulse`} data-busy={run.phase === "running" ? "true" : "false"} aria-hidden="true" />
+      <div className="coach-tabs" role="tablist" aria-label="Coach views" onKeyDown={onTabKey}>
+        <button
+          type="button"
+          role="tab"
+          id="coach-tab-report"
+          aria-selected={tab === "report"}
+          aria-controls="coach-panel-report"
+          tabIndex={tab === "report" ? 0 : -1}
+          onClick={() => setTab("report")}
+        >
+          Report
+        </button>
+        <button
+          type="button"
+          role="tab"
+          id="coach-tab-ask"
+          aria-selected={tab === "ask"}
+          aria-controls="coach-panel-ask"
+          tabIndex={tab === "ask" ? 0 : -1}
+          onClick={() => setTab("ask")}
+        >
+          Ask the Coach
+        </button>
+      </div>
+      <div
+        id="coach-panel-ask"
+        role="tabpanel"
+        aria-labelledby="coach-tab-ask"
+        className="coach-panel"
+        hidden={tab !== "ask"}
+      >
+        <AskCoach
+          status={llm.data}
+          statusError={llm.isError ? llm.error.message : null}
+          hasTrades={hasTrades}
+          onChip={showTrade}
+          onOpenSettings={() => setRoute("settings")}
+        />
+      </div>
+      <div
+        id="coach-panel-report"
+        role="tabpanel"
+        aria-labelledby="coach-tab-report"
+        className="coach-panel"
+        hidden={tab !== "report"}
+      >
       <Timeline steps={run.steps} />
       {run.phase === "error" && (
         <div className="coach-state" role="alert">
@@ -376,9 +435,13 @@ export function CoachDrawer() {
             {run.report.sample_trades.display} trades. Built in {run.report.seconds_to_build.toFixed(2)} s. The
             report follows the filters above. Past performance review only, not financial advice.
           </p>
+          {run.report.status === "ok" && (
+            <AiSummary reportId={run.report.report_id} status={llm.data} statusPending={llm.isPending} />
+          )}
           <Body report={run.report} onChip={showTrade} onApplyFilter={applyFilter} />
         </div>
       )}
+      </div>
     </aside>
   );
 }

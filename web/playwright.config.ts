@@ -30,8 +30,21 @@ export default defineConfig({
       command: "uv run --directory ../api uvicorn obsidian_ledger.main:app --host 127.0.0.1 --port 8000",
       url: "http://127.0.0.1:8000/health",
       reuseExistingServer: false,
-      env: { LEDGER_DATA_DIR: dataDir },
+      // Keys live in memory for the run, never in your Windows Credential Manager. The mock below
+      // is offered as an extra "Test model" provider; no real AI provider is ever contacted.
+      env: {
+        LEDGER_DATA_DIR: dataDir,
+        LEDGER_LLM_SECRET_STORE: "memory",
+        LEDGER_LLM_TEST_PROVIDER_URL: "http://127.0.0.1:11435/v1",
+      },
       timeout: 120_000,
+    },
+    {
+      // A scripted OpenAI-compatible model (api/tests/llm/mock_server.py). Standard library only.
+      command: "uv run --directory ../api python tests/llm/mock_server.py --port 11435",
+      url: "http://127.0.0.1:11435/v1/models",
+      reuseExistingServer: false,
+      timeout: 60_000,
     },
     {
       command: "pnpm exec vite preview --host 127.0.0.1 --port 5173 --strictPort",

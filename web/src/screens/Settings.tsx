@@ -4,6 +4,7 @@ import { Panel } from "../components/Panel";
 import { DISCLAIMER, ScreenError, ScreenSkeleton } from "../components/ScreenStates";
 import { apiBase } from "../lib/api";
 import { fmtInt } from "../lib/format";
+import { useDeleteKey, useLlmStatus, useSaveKey, useSaveLlm, useTestLlm } from "../lib/llm";
 import {
   useDeleteTemplate,
   useRenameTemplate,
@@ -36,8 +37,8 @@ function Privacy({ settings }: { settings: SettingsData }) {
   return (
     <Panel title="Privacy" className="span-6">
       <p className="card-note">
-        These choices control what may be shared with a language model once one is connected in a later phase.
-        No model is connected now, so nothing leaves this computer.
+        These choices control what the AI provider may read, if you turn one on below. Trade rows and notes
+        are only sent when you turn them on here.
       </p>
       <fieldset className="check-group">
         <legend>What a language model may see</legend>
@@ -255,17 +256,213 @@ function Templates() {
 }
 
 function LanguageModel({ settings }: { settings: SettingsData }) {
+  const status = useLlmStatus();
+  const save = useSaveLlm();
+  const saveKey = useSaveKey();
+  const deleteKey = useDeleteKey();
+  const test = useTestLlm();
+  const current = status.data;
+  const [keyDraft, setKeyDraft] = useState("");
+  const [limit, setLimit] = useState<string | null>(null);
+  // The box changes inside the click; the saved value replaces it once the server answers.
+  const [consentShown, setConsentShown] = useState<boolean | null>(null);
+
+  if (status.isPending) {
+    return (
+      <Panel title="AI provider" className="span-6">
+        <p className="muted">Loading…</p>
+      </Panel>
+    );
+  }
+  if (status.isError || !current) {
+    return (
+      <Panel title="AI provider" className="span-6">
+        <p role="alert" className="muted">
+          The AI settings could not be read: {status.error?.message}
+        </p>
+      </Panel>
+    );
+  }
+
+  const chosen = current.providers.find((item) => item.id === current.provider) ?? null;
+  const tested = test.data;
+  const models = Array.from(new Set([...(tested?.models ?? []), ...current.models]));
+  const savedLimit = current.answer_seconds;
+  const shownLimit = limit ?? String(savedLimit);
+  const limitValue = Number(shownLimit);
+  const limitValid = Number.isInteger(limitValue) && limitValue >= 10 && limitValue <= 600;
+  const busy = save.isPending || saveKey.isPending || deleteKey.isPending;
+  const failure = save.error ?? saveKey.error ?? deleteKey.error ?? test.error;
+
   return (
-    <Panel title="Language model" className="span-6">
+    <Panel title="AI provider" className="span-6">
+      <p className="card-note">{settings.llm.note}</p>
+      <p className={current.ready ? "llm-status is-ready" : "llm-status"} role="status">
+        {current.ready
+          ? `Ready: ${current.provider_name ?? ""}, ${current.model ?? ""}.`
+          : `Off. ${current.message ?? ""}`}
+      </p>
+
       <label className="field">
-        <span>Model provider</span>
-        <select disabled value="none" aria-describedby="llm-note">
-          <option value="none">None, computed on this computer</option>
+        <span>Provider</span>
+        <select
+          value={current.provider}
+          disabled={busy}
+          onChange={(event) => {
+            setKeyDraft("");
+            test.reset();
+            save.mutate({ provider: event.target.value });
+          }}
+        >
+          <option value="none">None (AI off)</option>
+          {current.providers.map((item) => (
+            <option key={item.id} value={item.id}>
+              {item.name}
+            </option>
+          ))}
         </select>
       </label>
-      <p id="llm-note" className="card-note">
-        {settings.llm.note}
-      </p>
+
+      {chosen && (
+        <>
+          <p className="card-note">
+            {chosen.note}{" "}
+            {chosen.key_page && (
+              <a href={chosen.key_page} target="_blank" rel="noreferrer">
+                Get an API key
+              </a>
+            )}
+          </p>
+
+          {current.key_saved ? (
+            <div className="control-row">
+              <p className="muted">API key saved in Windows Credential Manager ({current.key_hint}).</p>
+              <button
+                type="button"
+                className="btn"
+                disabled={busy}
+                onClick={() => {
+                  test.reset();
+                  deleteKey.mutate(chosen.id);
+                }}
+              >
+                Remove key
+              </button>
+            </div>
+          ) : (
+            <form
+              className="control-row"
+              onSubmit={(event) => {
+                event.preventDefault();
+                const key = keyDraft.trim();
+                if (key) saveKey.mutate({ provider: chosen.id, api_key: key }, { onSuccess: () => setKeyDraft("") });
+              }}
+            >
+              <label className="field">
+                <span>API key for {chosen.name}</span>
+                <input
+                  type="password"
+                  value={keyDraft}
+                  autoComplete="off"
+                  spellCheck={false}
+                  onChange={(event) => setKeyDraft(event.target.value)}
+                />
+              </label>
+              <button type="submit" className="btn btn-primary" disabled={busy || keyDraft.trim().length < 8}>
+                Save key
+              </button>
+            </form>
+          )}
+
+          <div className="control-row">
+            <button
+              type="button"
+              className="btn"
+              disabled={test.isPending || (!current.key_saved && keyDraft.trim().length < 8)}
+              onClick={() =>
+                test.mutate({
+                  provider: chosen.id,
+                  model: current.model,
+                  api_key: current.key_saved ? undefined : keyDraft.trim(),
+                })
+              }
+            >
+              {test.isPending ? "Testing…" : "Test connection"}
+            </button>
+            <span className="muted" aria-live="polite">
+              {tested
+                ? `${tested.message}${tested.milliseconds !== undefined ? ` (${tested.milliseconds} ms)` : ""}`
+                : "Sends one short test message. No journal data."}
+            </span>
+          </div>
+
+          <label className="field">
+            <span>Model</span>
+            <select
+              value={current.model ?? ""}
+              disabled={busy || models.length === 0}
+              onChange={(event) => save.mutate({ model: event.target.value || null })}
+            >
+              <option value="">Choose a model</option>
+              {models.map((name) => (
+                <option key={name} value={name}>
+                  {name}
+                  {current.free_models.includes(name) ? " (free)" : ""}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <fieldset className="check-group">
+            <legend>What leaves this computer</legend>
+            <label className="column-option">
+              <input
+                type="checkbox"
+                checked={consentShown ?? current.consented}
+                disabled={busy}
+                onChange={(event) => {
+                  const next = event.target.checked;
+                  setConsentShown(next);
+                  save.mutate({ consent: next }, { onSettled: () => setConsentShown(null) });
+                }}
+              />
+              Send computed results to {chosen.name} ({chosen.host})
+            </label>
+            <p className="card-note">
+              With the privacy default this is totals, rates, ranges, and finding descriptions, never single
+              trades or notes. Trade rows and notes are only sent if you turn them on under Privacy.
+            </p>
+          </fieldset>
+        </>
+      )}
+
+      <form
+        className="control-row"
+        onSubmit={(event) => {
+          event.preventDefault();
+          if (limitValid) save.mutate({ answer_seconds: limitValue }, { onSuccess: () => setLimit(null) });
+        }}
+      >
+        <label className="field">
+          <span>Time limit per answer (seconds)</span>
+          <input
+            type="number"
+            min={10}
+            max={600}
+            step={10}
+            value={shownLimit}
+            onChange={(event) => setLimit(event.target.value)}
+          />
+        </label>
+        <button type="submit" className="btn" disabled={!limitValid || busy || limitValue === savedLimit}>
+          Save limit
+        </button>
+      </form>
+      {failure && (
+        <p role="alert" className="muted">
+          {failure.message}
+        </p>
+      )}
     </Panel>
   );
 }

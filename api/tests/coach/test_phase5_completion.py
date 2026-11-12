@@ -7,7 +7,6 @@ behind each finding.
 
 from __future__ import annotations
 
-import re
 import shutil
 import time
 from collections.abc import Iterator
@@ -19,6 +18,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from obsidian_ledger.coach.models import CoachReport, Figure, Finding
+from obsidian_ledger.coach.numbers import numbers
 from obsidian_ledger.coach.service import CoachService
 from obsidian_ledger.coach.sources import Resolver
 from obsidian_ledger.main import create_app
@@ -177,11 +177,8 @@ def test_figure_counts_by_kind(planted: Dataset) -> None:
     assert len(figures) > 100
 
 
-NUMBER = re.compile(r"\d[\d,]*(?:\.\d+)?")
-
-
-def _numbers(text: str) -> set[float]:
-    return {float(token.replace(",", "")) for token in NUMBER.findall(text)}
+# The same tokenizer checks language-model answers (obsidian_ledger.llm.check).
+_numbers = numbers
 
 
 def _allowed_numbers(report: CoachReport, figures: list[Figure]) -> set[float]:

@@ -23,8 +23,9 @@ WIPE_PHRASE = "delete all my data"
 STARTING_EQUITY_KEY = "starting_equity"
 PRIVACY_KEY = "privacy"
 LLM_NOTE = (
-    "No language model is connected. The Coach report is computed on this computer with "
-    "fixed rules. A model picker arrives in a later phase."
+    "The Coach report is always computed on this computer with fixed rules. An AI provider you "
+    "choose (GLM or Kimi) can add a plain-language summary and answer questions. It only "
+    "rewords computed results, and every number it writes is checked."
 )
 
 
@@ -73,7 +74,7 @@ def _settings_out(store: Store) -> dict[str, Any]:
     return {
         "starting_equity": float(raw) if raw is not None else None,
         "privacy": _privacy(store),
-        "llm": {"provider": "none", "available": [], "note": LLM_NOTE},
+        "llm": {"provider": "cloud", "note": LLM_NOTE},
         "data": {
             "trades": store.count_trades(),
             "imports": len(store.list_imports()),
@@ -151,4 +152,15 @@ def wipe_everything(request: Request, body: WipeBody) -> dict[str, Any]:
     engine.reset()
     selections: SelectionStore = request.app.state.selections
     selections.clear()
+    # Saved AI provider keys live in the system keychain, outside the data folder. Remove them too.
+    llm: Any = request.app.state.llm
+    keys = 0
+    for provider in llm.providers:
+        try:
+            if llm.secrets.get(provider):
+                llm.secrets.delete(provider)
+                keys += 1
+        except Exception:  # noqa: BLE001 - a keychain problem must not undo the wipe
+            continue
+    removed["api_keys"] = keys
     return {"wiped": True, "removed": removed}

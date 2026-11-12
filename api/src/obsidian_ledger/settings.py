@@ -20,6 +20,11 @@ class Settings(BaseSettings):
     data_dir: Path = Path(".ledger-data")
     max_upload_mb: int = 200
     default_timezone: str = "UTC"
+    # Where provider API keys are kept: "keyring" (Windows Credential Manager) or "memory"
+    # (tests only, so they never touch the real keychain).
+    llm_secret_store: str = "keyring"
+    # Tests only: an OpenAI-compatible mock on this computer, offered as an extra provider.
+    llm_test_provider_url: str | None = None
 
     @property
     def cors_origin_list(self) -> list[str]:

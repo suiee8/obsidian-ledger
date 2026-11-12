@@ -13,6 +13,9 @@ from obsidian_ledger.coach.tools import ToolBox
 from obsidian_ledger.ingest.errors import IngestError
 from obsidian_ledger.ingest.routes import router as imports_router
 from obsidian_ledger.ingest.service import ImportService
+from obsidian_ledger.llm.coach import LLMCoach
+from obsidian_ledger.llm.routes import router as llm_router
+from obsidian_ledger.llm.secrets import make_secrets
 from obsidian_ledger.metrics.engine import AnalysisEngine
 from obsidian_ledger.metrics.routes import router as analysis_router
 from obsidian_ledger.settings import Settings, get_settings
@@ -70,10 +73,19 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.selections = SelectionStore()
     app.state.coach = CoachService(store, app.state.analysis)
     app.state.tools = ToolBox(store, app.state.analysis, app.state.coach)
+    app.state.llm = LLMCoach(
+        store,
+        app.state.analysis,
+        app.state.coach,
+        app.state.tools,
+        make_secrets(resolved.llm_secret_store),
+        test_provider_url=resolved.llm_test_provider_url,
+    )
     app.include_router(analysis_router)
     app.include_router(coach_router)
     app.include_router(workspace_router)
     app.include_router(data_router)
+    app.include_router(llm_router)
     app.state.imports = ImportService(
         store,
         default_timezone=resolved.default_timezone,

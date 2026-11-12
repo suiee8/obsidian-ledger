@@ -278,7 +278,7 @@ export const SettingsSchema = z.object({
     include_notes: z.boolean(),
     include_trade_rows: z.boolean(),
   }),
-  llm: z.object({ provider: z.string(), available: z.array(z.string()), note: z.string() }),
+  llm: z.object({ provider: z.string(), note: z.string() }),
   data: z.object({ trades: z.number(), imports: z.number(), templates: z.number() }),
   wipe_phrase: z.string(),
 });
