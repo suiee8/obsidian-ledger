@@ -6,9 +6,10 @@ import math
 from datetime import date, datetime
 from typing import Annotated, Any, Literal
 
-from fastapi import APIRouter, HTTPException, Path, Query, Request
+from fastapi import APIRouter, HTTPException, Path, Query, Request, Response
 from pydantic import BaseModel, ConfigDict, Field
 
+from obsidian_ledger.csvsafe import neutralize_frame
 from obsidian_ledger.metrics.data import Filters
 from obsidian_ledger.store.db import Store
 from obsidian_ledger.store.queries import EDITABLE, order_clause, where_clause
@@ -111,6 +112,19 @@ def trade_page(
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     total, rows = _store(request).query_page(where, params, order, limit, offset)
     return {"total": total, "offset": offset, "rows": [_jsonable(row) for row in rows]}
+
+
+@router.get("/trades/export")
+def export_trades(request: Request) -> Response:
+    """Export all trades as CSV with formula cells neutralized."""
+    trades = _store(request).load_frame()
+    safe_csv = neutralize_frame(trades).write_csv()
+    return Response(
+        safe_csv,
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": 'attachment; filename="trades.csv"'},
+    )
+
 
 
 @router.get("/trades/{trade_key}/position")

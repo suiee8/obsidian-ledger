@@ -7,6 +7,7 @@ import zipfile
 from pathlib import Path
 from typing import Any
 
+from obsidian_ledger.csvsafe import neutralize_frame
 from obsidian_ledger.store.db import Store
 
 COACH_REPORT_LIMIT = 100_000
@@ -24,7 +25,8 @@ def write_export(store: Store, destination: Path) -> dict[str, int]:
     counts: dict[str, int] = {}
     with zipfile.ZipFile(destination, "w", compression=zipfile.ZIP_DEFLATED) as archive:
         trades = store.load_frame()
-        archive.writestr("trades.csv", trades.write_csv())
+        # Journal notes and symbols are other people's text, so formula cells are neutralized.
+        archive.writestr("trades.csv", neutralize_frame(trades).write_csv())
         counts["trades"] = trades.height
 
         imports = [

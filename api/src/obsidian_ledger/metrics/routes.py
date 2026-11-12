@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import csv
+import io
 from datetime import date
 from typing import Annotated, Any, Literal
 
@@ -9,6 +11,7 @@ import orjson
 from fastapi import APIRouter, HTTPException, Query, Request, Response
 from pydantic import BaseModel, ConfigDict, Field
 
+from obsidian_ledger.csvsafe import neutralize_cell
 from obsidian_ledger.metrics.data import Filters
 from obsidian_ledger.metrics.engine import AnalysisEngine, Params
 from obsidian_ledger.metrics.segments import DIMENSIONS
@@ -146,6 +149,61 @@ def segments(
         tag=tag,
     )
     return _engine(request).segments(filters, by, min_n)
+
+
+@router.get("/segments/export")
+def export_segments(
+    request: Request,
+    by: str,
+    min_n: Annotated[int, Query(ge=1, le=10000)] = 30,
+    date_from: date | None = None,
+    date_to: date | None = None,
+    account: Annotated[list[str] | None, Query()] = None,
+    symbol: Annotated[list[str] | None, Query()] = None,
+    setup: Annotated[list[str] | None, Query()] = None,
+    side: Annotated[list[str] | None, Query()] = None,
+    tag: str | None = None,
+) -> Response:
+    """Export segments as CSV with formula cells neutralized."""
+    if by not in DIMENSIONS:
+        raise HTTPException(status_code=422, detail=f"by must be one of {', '.join(DIMENSIONS)}.")
+    filters = Filters(
+        date_from=date_from,
+        date_to=date_to,
+        accounts=tuple(account or []),
+        symbols=tuple(symbol or []),
+        setups=tuple(setup or []),
+        sides=tuple(side or []),
+        tag=tag,
+    )
+    result = _engine(request).segments(filters, by, min_n)
+    buffer = io.StringIO()
+    writer = csv.writer(buffer, lineterminator="\n")
+    writer.writerow([
+        neutralize_cell("dimension"),
+        neutralize_cell("key"),
+        neutralize_cell("trades"),
+        neutralize_cell("win_rate"),
+        neutralize_cell("net_pnl"),
+        neutralize_cell("profit_factor"),
+        neutralize_cell("expectancy"),
+    ])
+    for item in result.get("segments", []):
+        writer.writerow([
+            neutralize_cell(by),
+            neutralize_cell(str(item.get("key", ""))),
+            str(item.get("trades", 0)),
+            str(item.get("win_rate", 0.0)),
+            str(item.get("net_pnl", 0.0)),
+            str(item.get("profit_factor", 0.0)),
+            str(item.get("expectancy", 0.0)),
+        ])
+    return Response(
+        buffer.getvalue(),
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="segments-{by}.csv"'},
+    )
+
 
 
 @router.post("/simulate")

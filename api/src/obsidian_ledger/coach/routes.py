@@ -136,18 +136,25 @@ def get_report(request: Request, report_id: Annotated[str, Path(pattern=REPORT_I
 def export_report(
     request: Request,
     report_id: Annotated[str, Path(pattern=REPORT_ID)],
-    format: Annotated[str, Query(pattern="^(md|html)$")] = "md",  # noqa: A002 - query name
+    format: Annotated[str, Query(pattern="^(md|html|csv)$")] = "md",  # noqa: A002 - query name
 ) -> Response:
     report = _coach(request).stored(report_id)
     if report is None:
         raise HTTPException(status_code=404, detail="No report with that id.")
     if format == "html":
         return Response(export.to_html(report), media_type="text/html; charset=utf-8")
+    if format == "csv":
+        return Response(
+            export.to_csv(report),
+            media_type="text/csv; charset=utf-8",
+            headers={"Content-Disposition": f'attachment; filename="coach-report-{report_id[:8]}.csv"'},
+        )
     return Response(
         export.to_markdown(report),
         media_type="text/markdown; charset=utf-8",
         headers={"Content-Disposition": f'attachment; filename="coach-report-{report_id[:8]}.md"'},
     )
+
 
 
 @router.get("/tools")

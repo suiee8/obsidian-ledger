@@ -1,30 +1,24 @@
-"""CSV export of rejected rows. Cells are neutralized so spreadsheets never run them as formulas."""
+"""CSV export of rejected rows. Every cell, including the file's own header names, is neutralized so
+spreadsheets never run them as formulas (see obsidian_ledger.csvsafe)."""
 
 from __future__ import annotations
 
 import csv
 import io
-import re
 from collections.abc import Sequence
-from typing import Final
 
+from obsidian_ledger.csvsafe import neutralize_cell
 from obsidian_ledger.ingest.trade import Rejected
 
-_NUMERIC: Final = re.compile(r"^[+-]?\d+([.,]\d+)?$")
-_RISKY_START: Final = ("=", "+", "-", "@", "\t", "\r")
-
-
-def neutralize_cell(value: str) -> str:
-    """Prefix risky text with an apostrophe. Plain numbers such as -0.70 are left alone."""
-    if value.startswith(_RISKY_START) and not _NUMERIC.match(value.strip()):
-        return "'" + value
-    return value
+__all__ = ["neutralize_cell", "rejected_csv"]
 
 
 def rejected_csv(headers: Sequence[str], rejected: Sequence[Rejected]) -> bytes:
     buffer = io.StringIO()
     writer = csv.writer(buffer, lineterminator="\n")
-    writer.writerow(["source_row", "reason_codes", "reasons", *headers])
+    writer.writerow(
+        ["source_row", "reason_codes", "reasons", *(neutralize_cell(name) for name in headers)]
+    )
     for item in rejected:
         codes = ";".join(reason.code for reason in item.reasons)
         messages = " | ".join(reason.message for reason in item.reasons)

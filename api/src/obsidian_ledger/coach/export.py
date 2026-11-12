@@ -6,9 +6,12 @@ every value, has no scripts, and uses only plain black-on-white styling so it pr
 
 from __future__ import annotations
 
+import csv
 import html
+import io
 
 from obsidian_ledger.coach.models import CoachReport, Finding
+from obsidian_ledger.csvsafe import neutralize_cell
 
 DISCLAIMER = (
     "Past performance review only. Obsidian Ledger does not give financial advice or trade signals."
@@ -139,3 +142,39 @@ def to_html(report: CoachReport) -> str:
         "<title>Coach report</title>"
         f"<style>{style}</style></head><body>{''.join(parts)}</body></html>"
     )
+
+
+def to_csv(report: CoachReport) -> str:
+    """Export the Coach report findings and metrics as CSV with neutralized cells."""
+    buffer = io.StringIO()
+    writer = csv.writer(buffer, lineterminator="\n")
+    writer.writerow([
+        neutralize_cell("section"),
+        neutralize_cell("title"),
+        neutralize_cell("confidence"),
+        neutralize_cell("trades_count"),
+        neutralize_cell("mean_value"),
+        neutralize_cell("effect_value"),
+        neutralize_cell("rule"),
+        neutralize_cell("description"),
+    ])
+    sections = (
+        ("Top leaks", report.top_leaks),
+        ("Top strengths", report.top_strengths),
+        ("Behavior patterns", report.behavior_patterns),
+        ("Low-confidence leads", report.low_confidence_leads),
+    )
+    for section_name, findings in sections:
+        for f in findings:
+            writer.writerow([
+                neutralize_cell(section_name),
+                neutralize_cell(f.title),
+                neutralize_cell(f.confidence),
+                str(f.n.value),
+                str(f.mean_currency.value),
+                str(f.effect_currency.value),
+                neutralize_cell(f.rule),
+                neutralize_cell(f.what_if.description),
+            ])
+    return buffer.getvalue()
+

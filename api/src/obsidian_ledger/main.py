@@ -56,6 +56,18 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     # Dashboard and table payloads are large JSON. Compress anything above about 1 KB.
     app.add_middleware(GZipMiddleware, minimum_size=1024)
 
+    allowed_origins = set(resolved.cors_origin_list)
+
+    @app.middleware("http")
+    async def enforce_origin(
+        request: Request,
+        call_next: Callable[[Request], Awaitable[Response]],
+    ) -> Response:
+        origin = request.headers.get("origin")
+        if origin is not None and origin not in allowed_origins:
+            return Response("Disallowed origin", status_code=403)
+        return await call_next(request)
+
     @app.middleware("http")
     async def security_headers(
         request: Request,

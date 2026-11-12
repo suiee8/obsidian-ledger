@@ -25,7 +25,7 @@ MAX_ARCHIVE_MEMBERS: Final = 5000
 
 
 def _check_archive(path: Path) -> None:
-    """Refuse zip files that expand too much or are not XLSX workbooks."""
+    """Refuse zip files that expand too much, contain path traversal, or are not XLSX workbooks."""
     try:
         with zipfile.ZipFile(path) as archive:
             infos = archive.infolist()
@@ -39,6 +39,9 @@ def _check_archive(path: Path) -> None:
     if sum(info.file_size for info in infos) > MAX_ARCHIVE_UNCOMPRESSED:
         raise IngestError("archive_too_large", "The archive would expand beyond 500 MB.")
     for info in infos:
+        p = Path(info.filename)
+        if p.is_absolute() or ".." in p.parts or info.filename.startswith(("/", "\\")):
+            raise IngestError("archive_path_traversal", "The archive contains illegal member paths.")
         if info.file_size and (
             info.compress_size == 0 or info.file_size / info.compress_size > MAX_COMPRESSION_RATIO
         ):
@@ -47,6 +50,54 @@ def _check_archive(path: Path) -> None:
             )
     if "xl/workbook.xml" not in names:
         raise IngestError("unsupported_archive", "Zip files are accepted only as XLSX workbooks.")
+
+
+SUPPORTED_EXTENSIONS: Final = {".csv", ".tsv", ".txt", ".xlsx", ".xls", ".json"}
+BINARY_SIGNATURES: Final = (b"MZ", b"\x7fELF", b"\x89PNG", b"\xff\xd8\xff", b"%PDF")
+
+
+def validate_extension_and_content(path: Path, filename: str) -> None:
+    """Ensure the file extension is supported and matches the actual file content."""
+    ext = Path(filename).suffix.lower()
+    if ext not in SUPPORTED_EXTENSIONS:
+        raise IngestError("unsupported_extension", f"Unsupported file extension '{ext}'.")
+
+    with path.open("rb") as handle:
+        head = handle.read(512)
+
+    if ext == ".xlsx":
+        if not head.startswith(ZIP_MAGIC):
+            raise IngestError("extension_mismatch", "File content does not match .xlsx extension.")
+        _check_archive(path)
+    elif ext == ".xls":
+        if not head.startswith(OLE_MAGIC):
+            raise IngestError("extension_mismatch", "File content does not match .xls extension.")
+    elif ext == ".json":
+        if head.startswith(ZIP_MAGIC) or head.startswith(OLE_MAGIC):
+            raise IngestError("extension_mismatch", "File content does not match .json extension.")
+        encoding = sniff_encoding(head)
+        try:
+            decoded = head.decode(encoding, errors="replace").lstrip()
+        except Exception as exc:
+            raise IngestError("extension_mismatch", "File content does not match .json extension.") from exc
+        if not decoded or decoded[0] not in ("[", "{"):
+            raise IngestError("extension_mismatch", "File content does not match .json extension.")
+    elif ext in (".csv", ".tsv", ".txt"):
+        if head.startswith(ZIP_MAGIC) or head.startswith(OLE_MAGIC):
+            raise IngestError("extension_mismatch", "Archive file uploaded with text extension.")
+        for sig in BINARY_SIGNATURES:
+            if head.startswith(sig):
+                raise IngestError("extension_mismatch", "Binary file detected with text extension.")
+        if b"\x00" in head:
+            raise IngestError("extension_mismatch", "Binary null bytes detected in text file.")
+        encoding = sniff_encoding(head)
+        try:
+            decoded = head.decode(encoding, errors="replace").lstrip()
+            if decoded and decoded[0] in ("[", "{"):
+                raise IngestError("extension_mismatch", "JSON content uploaded with CSV extension.")
+        except UnicodeDecodeError as exc:
+            raise IngestError("extension_mismatch", "Text file decoding failed.") from exc
+
 
 
 def detect_kind(path: Path) -> Kind:

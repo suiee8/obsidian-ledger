@@ -11,6 +11,7 @@ from typing import Any
 from obsidian_ledger.ingest.analysis import Analysis, analyze
 from obsidian_ledger.ingest.errors import IngestError
 from obsidian_ledger.ingest.export import rejected_csv
+from obsidian_ledger.ingest.fileio import validate_extension_and_content
 from obsidian_ledger.ingest.options import ImportOptions
 from obsidian_ledger.ingest.quality import build_issues
 from obsidian_ledger.ingest.run import run_import
@@ -60,6 +61,7 @@ class ImportService:
     def preview(
         self, preview_id: str, path: Path, filename: str, sha256: str, size: int
     ) -> PreviewOut:
+        validate_extension_and_content(path, filename)
         analysis = self._analyze(path, ImportOptions())
         meta = {"filename": filename, "sha256": sha256, "size_bytes": size}
         path.with_suffix(".json").write_text(json.dumps(meta), encoding="utf-8")
