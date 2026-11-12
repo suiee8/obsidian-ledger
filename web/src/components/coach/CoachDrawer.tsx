@@ -12,6 +12,7 @@ import { AiSummary } from "./AiSummary";
 import { AskCoach } from "./AskCoach";
 import { FindingCard } from "./FindingCard";
 import { Timeline } from "./Timeline";
+import type { AgentSignal } from "../AgentPresence";
 
 const KEY_STEP = 24;
 
@@ -258,7 +259,7 @@ function Resizer() {
 }
 
 /** The Coach, docked on the right. It runs when opened, when filters change, and after an import. */
-export function CoachDrawer() {
+export function CoachDrawer({ onAgentSignal }: { onAgentSignal?: AgentSignal }) {
   const open = useUi((state) => state.coachOpen);
   const width = useUi((state) => state.coachWidth);
   const setOpen = useUi((state) => state.setCoachOpen);
@@ -272,11 +273,24 @@ export function CoachDrawer() {
   const run: CoachRun = useCoachRun(params, runToken, open);
   const [tab, setTab] = useState<"report" | "ask">("report");
   const llm = useLlmStatus();
+  const reportActivity =
+    !open || run.phase === "idle" || run.phase === "ready"
+      ? "idle"
+      : run.phase === "error"
+        ? "error"
+        : run.steps.some((step) => step.status === "running")
+          ? "streaming"
+          : "thinking";
 
   // The rest of the layout makes room for the drawer through this variable.
   useEffect(() => {
     document.documentElement.style.setProperty("--coach-offset", open ? `${width}px` : "0px");
   }, [open, width]);
+
+  useEffect(() => {
+    onAgentSignal?.("report", reportActivity);
+    if (!open) onAgentSignal?.("ask", "idle");
+  }, [onAgentSignal, open, reportActivity]);
 
   useEffect(() => {
     if (!open) return undefined;
@@ -408,6 +422,7 @@ export function CoachDrawer() {
           status={llm.data}
           statusError={llm.isError ? llm.error.message : null}
           hasTrades={hasTrades}
+          onAgentSignal={onAgentSignal}
           onChip={showTrade}
           onOpenSettings={() => setRoute("settings")}
         />

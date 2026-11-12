@@ -26,7 +26,7 @@ describe("palette", () => {
     expect(palette.ice).toBe("#C9D6FF");
     expect(palette.profit).toBe("#3DDC97");
     expect(palette.loss).toBe("#FF5C6C");
-    expect(palette.warning).toBe("#F5B84B");
+    expect(palette.warning).toBe("#6384EE");
   });
 
   it("is written into the stylesheet", () => {

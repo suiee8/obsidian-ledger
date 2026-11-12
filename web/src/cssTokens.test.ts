@@ -30,4 +30,13 @@ describe("index.css colors", () => {
       expect(selector).toMatch(/tone-|pnl|profit|loss|gain|calendar|heat|chart|legend|bar|cell/i);
     }
   });
+
+  it("preserves the original global focus-visible outline", () => {
+    expect(css).toContain(
+      ":focus-visible {\n  outline: 2px solid var(--palette-royal400);\n  outline-offset: 2px;\n}",
+    );
+    expect(css).not.toMatch(
+      /(?:input|select|textarea|button|a):focus-visible\s*,[\s\S]*?\{\s*outline-color:/,
+    );
+  });
 });

@@ -1,8 +1,13 @@
+import { palette } from "../tokens";
+
 export interface ChartPalette {
   profit: string;
   loss: string;
   royal: string;
   royalSoft: string;
+  royal400: string;
+  royal600: string;
+  royal700: string;
   ice: string;
   ink: string;
   muted: string;
@@ -12,24 +17,26 @@ export interface ChartPalette {
 }
 
 const FALLBACK: ChartPalette = {
-  profit: "#3DDC97",
-  loss: "#FF5C6C",
-  royal: "#4169E1",
-  royalSoft: "#94ADF6",
-  ice: "#C9D6FF",
-  ink: "#E8ECF4",
-  muted: "#9AA4B8",
-  dim: "#6B7488",
-  line: "#262C38",
-  surface: "#11141A",
+  profit: palette.profit,
+  loss: palette.loss,
+  royal: palette.royal500,
+  royalSoft: palette.royal300,
+  royal400: palette.royal400,
+  royal600: palette.royal600,
+  royal700: palette.royal700,
+  ice: palette.ice,
+  ink: palette.ink,
+  muted: palette.muted,
+  dim: palette.muted,
+  line: palette.border,
+  surface: palette.surface1,
 };
 
 /**
  * Chart colors come from the CSS variables on the document, so the color-blind setting and any
  * future theme change apply to charts without a rebuild.
  */
-// Color-blind mode: profit becomes royal blue and loss becomes amber (master prompt, Section 7).
-const FALLBACK_COLOR_BLIND: Partial<ChartPalette> = { profit: "#4169E1", loss: "#F5B84B" };
+const FALLBACK_COLOR_BLIND: Partial<ChartPalette> = { profit: palette.royal500, loss: "#F5B84B" };
 
 export function readChartPalette(colorBlind = false): ChartPalette {
   const base: ChartPalette = colorBlind ? { ...FALLBACK, ...FALLBACK_COLOR_BLIND } : FALLBACK;
@@ -44,10 +51,13 @@ export function readChartPalette(colorBlind = false): ChartPalette {
     loss: read("--pnl-loss", base.loss),
     royal: read("--royal-500", base.royal),
     royalSoft: read("--royal-300", base.royalSoft),
+    royal400: read("--palette-royal400", base.royal400),
+    royal600: read("--palette-royal600", base.royal600),
+    royal700: read("--palette-royal700", base.royal700),
     ice: read("--ice", base.ice),
     ink: read("--ink", base.ink),
     muted: read("--muted", base.muted),
-    dim: read("--dim", base.dim),
+    dim: read("--muted", base.dim),
     line: read("--line", base.line),
     surface: read("--surface-1", base.surface),
   };

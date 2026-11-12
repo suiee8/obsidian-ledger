@@ -44,6 +44,7 @@ export function MonteCarloFan({ fan, label }: { fan: Fan; label: string }) {
         backgroundColor: palette.surface,
         borderColor: palette.line,
         textStyle: { color: palette.ink },
+        extraCssText: "backdrop-filter: blur(12px); border-radius: 12px; box-shadow: 0 12px 32px rgba(0, 0, 0, 0.3);",
         formatter: (params: unknown) => {
           const index = (params as { dataIndex?: number }[])[0]?.dataIndex ?? 0;
           const row = fan[index];
@@ -72,7 +73,7 @@ export function MonteCarloFan({ fan, label }: { fan: Fan; label: string }) {
         type: "value",
         scale: true,
         axisLabel: { color: palette.dim, formatter: (value: number) => fmtMoney(value) },
-        splitLine: { lineStyle: { color: palette.line } },
+        splitLine: { lineStyle: { color: palette.line, opacity: 0.06 } },
       },
       series: [
         ...band("Middle 90%", fan.map((r) => r.p5), fan.map((r) => r.p95), "wide", `${palette.royal}26`),
@@ -111,6 +112,7 @@ export function SimulatorOverlay({ x, baseline, simulated, label }: OverlayProps
         backgroundColor: palette.surface,
         borderColor: palette.line,
         textStyle: { color: palette.ink },
+        extraCssText: "backdrop-filter: blur(12px); border-radius: 12px; box-shadow: 0 12px 32px rgba(0, 0, 0, 0.3);",
         valueFormatter: (value: unknown) => (typeof value === "number" ? fmtMoney(value) : ""),
       },
       xAxis: {
@@ -127,7 +129,7 @@ export function SimulatorOverlay({ x, baseline, simulated, label }: OverlayProps
         type: "value",
         scale: true,
         axisLabel: { color: palette.dim, formatter: (value: number) => fmtMoney(value) },
-        splitLine: { lineStyle: { color: palette.line } },
+        splitLine: { lineStyle: { color: palette.line, opacity: 0.06 } },
       },
       series: [
         {

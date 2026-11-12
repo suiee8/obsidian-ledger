@@ -25,10 +25,16 @@ export function EdgeRadar({ radar }: EdgeRadarProps) {
   const palette = useChartPalette();
   const setups = useMemo(() => radar.setups.slice(0, MAX_SETUPS), [radar.setups]);
   const option = useMemo<EChartsOption>(() => {
-    const colors = [palette.royal, palette.profit, palette.royalSoft, palette.loss, palette.ice];
+    const colors = [palette.royal, palette.royalSoft, palette.ice, palette.royal400, palette.royal600];
     return {
       animation: !prefersReducedMotion(),
-      tooltip: { trigger: "item" },
+      tooltip: {
+        trigger: "item",
+        backgroundColor: palette.surface,
+        borderColor: palette.line,
+        textStyle: { color: palette.ink },
+        extraCssText: "backdrop-filter: blur(12px); border-radius: 12px; box-shadow: 0 12px 32px rgba(0, 0, 0, 0.3);",
+      },
       legend: {
         bottom: 0,
         textStyle: { color: palette.muted },
@@ -39,7 +45,7 @@ export function EdgeRadar({ radar }: EdgeRadarProps) {
         indicator: radar.axes.map((axis) => ({ name: AXIS_LABELS[axis] ?? axis, max: 100 })),
         axisName: { color: palette.muted },
         axisLine: { lineStyle: { color: palette.line } },
-        splitLine: { lineStyle: { color: palette.line } },
+        splitLine: { lineStyle: { color: palette.line, opacity: 0.06 } },
         splitArea: { show: false },
       },
       series: [

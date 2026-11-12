@@ -43,6 +43,12 @@ test.afterAll(async ({ request }) => {
   await aiOff(request);
 });
 
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => {
+    document.documentElement.dataset.shader = "off";
+  });
+});
+
 const coach = (page: Page) => page.getByRole("complementary", { name: "Coach" });
 
 async function openCoach(page: Page, account?: string) {
@@ -125,6 +131,7 @@ test("with a mock model, the summary appears and the chat answers, cites trades,
   await expect(summary).toContainText("mock-coach");
 
   await ask(page, "What is my biggest leak?");
+  await expect(page.locator(".agent-presence")).toHaveAttribute("data-state", "streaming");
   const answers = drawer.getByRole("list", { name: "Questions and answers" });
   await expect(answers.getByText(/Revenge-style re-entries/).first()).toBeVisible();
   await expect(answers.getByText("Tool results used: 1")).toBeVisible();

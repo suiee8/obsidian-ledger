@@ -1,4 +1,4 @@
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 
 import { useFilters } from "../state/filters";
 import { useDashboard } from "../lib/queries";
@@ -129,10 +129,24 @@ function Headline({ data }: { data: DashboardData }) {
 }
 
 export default function Dashboard() {
+  const [chartsReady, setChartsReady] = useState(false);
   const liveParams = useFilters((state) => state.toParams());
   const params = useDebouncedValue(liveParams, FILTER_DEBOUNCE_MS);
   const query = useDashboard(params);
   const data = query.data;
+  const hasTrades = data !== undefined && data.report.sample.trades > 0;
+
+  useEffect(() => {
+    if (!hasTrades || chartsReady) return;
+    let secondFrame = 0;
+    const firstFrame = requestAnimationFrame(() => {
+      secondFrame = requestAnimationFrame(() => setChartsReady(true));
+    });
+    return () => {
+      cancelAnimationFrame(firstFrame);
+      cancelAnimationFrame(secondFrame);
+    };
+  }, [chartsReady, hasTrades]);
 
   if (query.isError) {
     return (
@@ -169,7 +183,7 @@ export default function Dashboard() {
       <div className="bento">
         <Panel title="Equity" className="span-8 panel-fill">
           <Suspense fallback={<ChartFallback sizeClass="chart-equity" />}>
-            <EquityAurora equity={data.equity} />
+            {chartsReady ? <EquityAurora equity={data.equity} /> : <ChartFallback sizeClass="chart-equity" />}
           </Suspense>
         </Panel>
         <Findings findings={data.findings} />
@@ -178,12 +192,12 @@ export default function Dashboard() {
         </Panel>
         <Panel title="Edge radar by setup" className="span-5">
           <Suspense fallback={<ChartFallback sizeClass="chart-radar" />}>
-            <EdgeRadar radar={data.radar} />
+            {chartsReady ? <EdgeRadar radar={data.radar} /> : <ChartFallback sizeClass="chart-radar" />}
           </Suspense>
         </Panel>
         <Panel title="R distribution" className="span-6">
           <Suspense fallback={<ChartFallback sizeClass="chart-r" />}>
-            <RHistogram histogram={data.r_histogram} />
+            {chartsReady ? <RHistogram histogram={data.r_histogram} /> : <ChartFallback sizeClass="chart-r" />}
           </Suspense>
         </Panel>
         <Panel title="Weekday and hour" className="span-6 panel-hug">

@@ -36,7 +36,7 @@ export function EquityAurora({ equity }: EquityAuroraProps) {
           type: "value",
           gridIndex: 0,
           axisLabel: { color: palette.dim, formatter: (value: number) => fmtMoney(value).replace(/\.00$/, "") },
-          splitLine: { lineStyle: { color: palette.line, opacity: 0.35 } },
+          splitLine: { lineStyle: { color: palette.line, opacity: 0.06 } },
         },
         {
           type: "value",
@@ -47,6 +47,10 @@ export function EquityAurora({ equity }: EquityAuroraProps) {
       ],
       tooltip: {
         trigger: "axis",
+        backgroundColor: palette.surface,
+        borderColor: palette.line,
+        textStyle: { color: palette.ink },
+        extraCssText: "backdrop-filter: blur(12px); border-radius: 12px; box-shadow: 0 12px 32px rgba(0, 0, 0, 0.3);",
         valueFormatter: (value: unknown) => fmtMoney(Number(value)),
       },
       series: [

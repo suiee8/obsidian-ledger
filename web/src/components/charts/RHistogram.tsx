@@ -37,9 +37,15 @@ export function RHistogram({ histogram }: RHistogramProps) {
         name: "Trades",
         nameTextStyle: { color: palette.dim },
         axisLabel: { color: palette.dim },
-        splitLine: { lineStyle: { color: palette.line, opacity: 0.35 } },
+        splitLine: { lineStyle: { color: palette.line, opacity: 0.06 } },
       },
-      tooltip: { trigger: "axis" },
+      tooltip: {
+        trigger: "axis",
+        backgroundColor: palette.surface,
+        borderColor: palette.line,
+        textStyle: { color: palette.ink },
+        extraCssText: "backdrop-filter: blur(12px); border-radius: 12px; box-shadow: 0 12px 32px rgba(0, 0, 0, 0.3);",
+      },
       series: [{ type: "bar", data, barCategoryGap: "10%" }],
     };
   }, [histogram, palette]);

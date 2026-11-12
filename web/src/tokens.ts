@@ -16,7 +16,7 @@ export const palette = {
   ice: "#C9D6FF",
   profit: "#3DDC97",
   loss: "#FF5C6C",
-  warning: "#F5B84B",
+  warning: "#6384EE",
 } as const;
 
 export const glow = "rgba(65,105,225,0.35)";

@@ -83,6 +83,7 @@ export function BrushScatter({
         backgroundColor: palette.surface,
         borderColor: palette.line,
         textStyle: { color: palette.ink },
+        extraCssText: "backdrop-filter: blur(12px); border-radius: 12px; box-shadow: 0 12px 32px rgba(0, 0, 0, 0.3);",
         formatter: (params: unknown) => {
           const value = (params as { value?: [number, number] }).value;
           return value ? `${xName}: ${formatX(value[0])}<br/>${yName}: ${formatY(value[1])}` : "";
@@ -104,7 +105,7 @@ export function BrushScatter({
         name: yName,
         nameTextStyle: { color: palette.muted },
         axisLabel: { color: palette.dim, formatter: (value: number) => formatY(value) },
-        splitLine: { lineStyle: { color: palette.line } },
+        splitLine: { lineStyle: { color: palette.line, opacity: 0.06 } },
         scale: true,
       },
       brush: {

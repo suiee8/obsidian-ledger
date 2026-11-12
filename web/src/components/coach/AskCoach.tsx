@@ -1,11 +1,13 @@
-import { useState, type FormEvent, type KeyboardEvent } from "react";
+import { useEffect, useState, type FormEvent, type KeyboardEvent } from "react";
 
 import { UNAVAILABLE, useAskCoach, type AnswerChip, type AskTurn, type LlmStatus } from "../../lib/llm";
+import type { AgentSignal } from "../AgentPresence";
 
 interface AskCoachProps {
   status: LlmStatus | undefined;
   statusError: string | null;
   hasTrades: boolean;
+  onAgentSignal?: AgentSignal;
   onChip: (chip: AnswerChip) => void;
   onOpenSettings: () => void;
 }
@@ -94,11 +96,24 @@ function Turn({ turn, onChip }: { turn: AskTurn; onChip: (chip: AnswerChip) => v
 }
 
 /** "Ask the Coach": questions answered by the chosen AI provider from tool results only. */
-export function AskCoach({ status, statusError, hasTrades, onChip, onOpenSettings }: AskCoachProps) {
+export function AskCoach({ status, statusError, hasTrades, onAgentSignal, onChip, onOpenSettings }: AskCoachProps) {
   const { turns, ask, stop, running } = useAskCoach();
   const [draft, setDraft] = useState("");
   const ready = status?.ready === true;
   const canAsk = ready && hasTrades && !running;
+  const lastTurn = turns[turns.length - 1];
+  const askActivity =
+    running
+      ? "streaming"
+      : lastTurn?.phase === "error" && lastTurn.error?.reason !== "stopped"
+        ? lastTurn.error?.reason === "unreachable"
+          ? "offline"
+          : "error"
+        : "idle";
+
+  useEffect(() => {
+    onAgentSignal?.("ask", askActivity);
+  }, [askActivity, onAgentSignal]);
 
   const submit = (event?: FormEvent) => {
     event?.preventDefault();

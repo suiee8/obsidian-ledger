@@ -1,5 +1,6 @@
-import type { ReactNode } from "react";
+import { lazy, Suspense, useEffect, useState, type ReactNode } from "react";
 
+import { AgentPresence, type AgentActivity } from "./AgentPresence";
 import { ROUTE_LABELS, type Route } from "../routes";
 import {
   IconAnalytics,
@@ -12,9 +13,12 @@ import {
   IconTrades,
 } from "./icons";
 
+const SapphireAurora = lazy(() => import("../shader/SapphireAurora"));
+
 type ShellProps = {
   route: Route;
   busy: boolean;
+  agentState: AgentActivity;
   onNavigate: (route: Route) => void;
   onOpenPalette: () => void;
   coachOpen: boolean;
@@ -38,6 +42,7 @@ const NAV: readonly { id: Route; icon: ReactNode }[] = [
 export function Shell({
   route,
   busy,
+  agentState,
   onNavigate,
   onOpenPalette,
   coachOpen,
@@ -46,8 +51,20 @@ export function Shell({
   status,
   children,
 }: ShellProps) {
+  const [shaderReady, setShaderReady] = useState(false);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setShaderReady(true), 0);
+    return () => window.clearTimeout(timer);
+  }, []);
+
   return (
-    <div className="shell">
+    <div className="shell" data-route={route} data-coach-open={coachOpen ? "true" : "false"}>
+      {shaderReady && (
+        <Suspense fallback={<div className="aurora-layer" aria-hidden="true" />}>
+          <SapphireAurora />
+        </Suspense>
+      )}
       <a className="skip-link" href="#content">
         Skip to content
       </a>
@@ -60,6 +77,7 @@ export function Shell({
         <div className="topbar-center">{filters}</div>
         <div className="topbar-end">
           {status}
+          <AgentPresence state={agentState} />
           <button
             type="button"
             className={`coach-toggle${coachOpen ? " is-open" : ""}`}

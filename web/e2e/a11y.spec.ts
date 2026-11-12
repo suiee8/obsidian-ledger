@@ -77,6 +77,12 @@ const SCREENS: Screen[] = [
   },
 ];
 
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => {
+    document.documentElement.dataset.shader = "off";
+  });
+});
+
 async function expectNoViolations(page: Page, include?: string) {
   let builder = new AxeBuilder({ page }).withTags(WCAG_TAGS);
   if (include) builder = builder.include(include);

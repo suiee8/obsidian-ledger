@@ -27,12 +27,13 @@ export function BarSeries({ label, labels, values, format, signed }: BarSeriesPr
         backgroundColor: palette.surface,
         borderColor: palette.line,
         textStyle: { color: palette.ink },
+        extraCssText: "backdrop-filter: blur(12px); border-radius: 12px; box-shadow: 0 12px 32px rgba(0, 0, 0, 0.3);",
         valueFormatter: (value: unknown) => (typeof value === "number" ? format(value) : "no data"),
       },
       xAxis: {
         type: "value",
         axisLabel: { color: palette.dim, formatter: (value: number) => format(value) },
-        splitLine: { lineStyle: { color: palette.line } },
+        splitLine: { lineStyle: { color: palette.line, opacity: 0.06 } },
       },
       yAxis: {
         type: "category",
@@ -92,6 +93,7 @@ export function GroupedBars({ label, categories, wins, losses, xName, yName }: G
         backgroundColor: palette.surface,
         borderColor: palette.line,
         textStyle: { color: palette.ink },
+        extraCssText: "backdrop-filter: blur(12px); border-radius: 12px; box-shadow: 0 12px 32px rgba(0, 0, 0, 0.3);",
       },
       xAxis: {
         type: "category",
@@ -109,7 +111,7 @@ export function GroupedBars({ label, categories, wins, losses, xName, yName }: G
         minInterval: 1,
         nameTextStyle: { color: palette.muted },
         axisLabel: { color: palette.dim },
-        splitLine: { lineStyle: { color: palette.line } },
+        splitLine: { lineStyle: { color: palette.line, opacity: 0.06 } },
       },
       series: [
         { name: "Winning runs", type: "bar", data: [...wins], itemStyle: { color: palette.profit, borderRadius: 3 } },
@@ -145,6 +147,7 @@ export function DayBars({ label, days, values, flagged, name, threshold }: DayBa
         backgroundColor: palette.surface,
         borderColor: palette.line,
         textStyle: { color: palette.ink },
+        extraCssText: "backdrop-filter: blur(12px); border-radius: 12px; box-shadow: 0 12px 32px rgba(0, 0, 0, 0.3);",
       },
       xAxis: {
         type: "category",
@@ -156,7 +159,7 @@ export function DayBars({ label, days, values, flagged, name, threshold }: DayBa
         type: "value",
         minInterval: 1,
         axisLabel: { color: palette.dim },
-        splitLine: { lineStyle: { color: palette.line } },
+        splitLine: { lineStyle: { color: palette.line, opacity: 0.06 } },
       },
       series: [
         {
@@ -165,7 +168,7 @@ export function DayBars({ label, days, values, flagged, name, threshold }: DayBa
           barMaxWidth: 14,
           data: values.map((value, index) => ({
             value,
-            itemStyle: { color: flagged[index] ? palette.loss : palette.royal, borderRadius: 2 },
+            itemStyle: { color: flagged[index] ? palette.royal400 : palette.royal, borderRadius: 2 },
           })),
           markLine: threshold
             ? {

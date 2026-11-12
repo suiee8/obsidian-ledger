@@ -21,6 +21,12 @@ test.beforeAll(async ({ request }) => {
   await request.post(`${API}/api/imports/${id}/commit`, { data: {} });
 });
 
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => {
+    document.documentElement.dataset.shader = "off";
+  });
+});
+
 const coach = (page: Page) => page.getByRole("complementary", { name: "Coach" });
 
 // Below 640 px the filters live in the Filters sheet, so they are changed through it. Wider

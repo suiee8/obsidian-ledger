@@ -14,6 +14,12 @@ test.beforeAll(() => {
   mkdirSync(OUT, { recursive: true });
 });
 
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => {
+    document.documentElement.dataset.shader = "off";
+  });
+});
+
 for (const width of WIDTHS) {
   test.describe(`${width} px`, () => {
     test.use({ viewport: { width, height: width >= 1024 ? 1000 : 844 } });

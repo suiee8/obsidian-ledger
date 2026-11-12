@@ -27,7 +27,7 @@ export default function FindingChart({ finding }: FindingChartProps) {
       xAxis: {
         type: "value",
         axisLabel: { color: palette.dim },
-        splitLine: { lineStyle: { color: palette.line, opacity: 0.35 } },
+        splitLine: { lineStyle: { color: palette.line, opacity: 0.06 } },
       },
       yAxis: {
         type: "category",
@@ -35,7 +35,13 @@ export default function FindingChart({ finding }: FindingChartProps) {
         axisLabel: { color: palette.muted },
         axisLine: { lineStyle: { color: palette.line } },
       },
-      tooltip: { trigger: "item" },
+      tooltip: {
+        trigger: "item",
+        backgroundColor: palette.surface,
+        borderColor: palette.line,
+        textStyle: { color: palette.ink },
+        extraCssText: "backdrop-filter: blur(12px); border-radius: 12px; box-shadow: 0 12px 32px rgba(0, 0, 0, 0.3);",
+      },
       series: [
         {
           type: "bar",

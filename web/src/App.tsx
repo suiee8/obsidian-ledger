@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect } from "react";
+import { lazy, Suspense, useCallback, useEffect, useState } from "react";
 import { useIsFetching } from "@tanstack/react-query";
 
 import { CoachDrawer } from "./components/coach/CoachDrawer";
@@ -7,6 +7,7 @@ import { FilterBar } from "./components/FilterBar";
 import { FilterSlot } from "./components/FilterSheet";
 import { HealthBadge } from "./components/HealthBadge";
 import { Shell } from "./components/Shell";
+import type { AgentActivity, AgentSignal } from "./components/AgentPresence";
 import { useFilterOptions } from "./lib/queries";
 import { useHealth } from "./lib/useHealth";
 import { useUi, applyColorBlind } from "./state/ui";
@@ -32,6 +33,10 @@ function ScreenFallback() {
 }
 
 export function App() {
+  const [agentSignals, setAgentSignals] = useState<Record<"report" | "ask", AgentActivity>>({
+    report: "idle",
+    ask: "idle",
+  });
   const route = useUi((state) => state.route);
   const setRoute = useUi((state) => state.setRoute);
   const paletteOpen = useUi((state) => state.paletteOpen);
@@ -44,6 +49,19 @@ export function App() {
   const health = useHealth();
   const options = useFilterOptions();
   const fetching = useIsFetching() > 0;
+  const onAgentSignal = useCallback<AgentSignal>((source, activity) => {
+    setAgentSignals((current) => (current[source] === activity ? current : { ...current, [source]: activity }));
+  }, []);
+  const agentState: AgentActivity =
+    health.state.status === "offline" || agentSignals.ask === "offline"
+      ? "offline"
+      : agentSignals.report === "error" || agentSignals.ask === "error"
+        ? "error"
+        : agentSignals.ask === "streaming" || agentSignals.report === "streaming"
+          ? "streaming"
+          : agentSignals.report === "thinking"
+            ? "thinking"
+            : "idle";
 
   useEffect(() => {
     applyColorBlind(colorBlind);
@@ -84,6 +102,7 @@ export function App() {
       <Shell
         route={route}
         busy={fetching || health.state.status === "loading"}
+        agentState={agentState}
         onNavigate={setRoute}
         onOpenPalette={() => setPaletteOpen(true)}
         coachOpen={coachOpen}
@@ -97,7 +116,7 @@ export function App() {
       >
         <Suspense fallback={<ScreenFallback />}>{screen}</Suspense>
       </Shell>
-      <CoachDrawer />
+      <CoachDrawer onAgentSignal={onAgentSignal} />
       <CommandPalette
         open={paletteOpen}
         onOpenChange={setPaletteOpen}
