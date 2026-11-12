@@ -147,14 +147,15 @@ def export_report(
         return Response(
             export.to_csv(report),
             media_type="text/csv; charset=utf-8",
-            headers={"Content-Disposition": f'attachment; filename="coach-report-{report_id[:8]}.csv"'},
+            headers={
+                "Content-Disposition": (f'attachment; filename="coach-report-{report_id[:8]}.csv"')
+            },
         )
     return Response(
         export.to_markdown(report),
         media_type="text/markdown; charset=utf-8",
         headers={"Content-Disposition": f'attachment; filename="coach-report-{report_id[:8]}.md"'},
     )
-
 
 
 @router.get("/tools")

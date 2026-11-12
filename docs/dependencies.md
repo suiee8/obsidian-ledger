@@ -58,7 +58,7 @@ Two transitive build-time packages have non-MIT licenses. Neither is shipped in 
 | polars | 2.1.0 | MIT | ETL and metrics |
 | duckdb | 2.0.0 | MIT | Embedded database, trade views, and Parquet writer for raw rows |
 | pyarrow | 26.0.1 | Apache-2.0 | Arrow bridge DuckDB uses to read Polars frames during bulk inserts |
-| polars | 2.1.0 | MIT | DataFrames for bulk writes and ETL |
+| keyring | 25.7.0 | MIT | Stores provider credentials in the operating-system keychain |
 | tzdata | 2026.6 | Apache-2.0 | IANA timezone database, needed on Windows |
 | numpy | 2.5.4 | BSD-3-Clause and others | Numerical arrays |
 | scipy | 1.18.1 | BSD-3-Clause | Statistics |
@@ -75,7 +75,7 @@ Two transitive build-time packages have non-MIT licenses. Neither is shipped in 
 | pytest | 9.2.0 | MIT |
 | ruff | 0.17.4 | MIT |
 | pyright | 1.1.414 | MIT |
-| httpx | 0.28.1 | BSD-3-Clause |
+| httpx | 0.28.1 | BSD-3-Clause | HTTP client used by API tests and provider adapters |
 | httpx2 | 2.16.0 | BSD-3-Clause |
 
 `certifi` (MPL-2.0) is installed as a transitive dependency of the HTTP client. MPL-2.0 is file-level copyleft, so it does not change the license of this project.
@@ -117,9 +117,22 @@ Phase 3 also uses `@resvg/resvg-js` 2.6.2 (MPL-2.0) for the PNG icon build, list
 
 Two libraries were considered and not added. TanStack Table v9 was rejected because its API is unfamiliar for this codebase, so the Trades table uses TanStack Virtual with plain column definitions. Motion (animation) was deferred.
 
-## Planned, not yet installed
+## Transitive security override
 
-The product specification names these packages for later phases. Each one needs its license checked before it is added: Tailwind-based shadcn/ui (MIT), TradingView Lightweight Charts (Apache-2.0, attribution required), LiteLLM, and PydanticAI.
+| Package | Version | License | Purpose |
+| --- | --- | --- | --- |
+| tinypool | 2.1.2 | MIT | Vitest worker pool; pinned through `pnpm-workspace.yaml` to the patched release |
+
+Phase 6 does not add a model client or paid provider package. Ollama is installed separately by users and is not yet integrated with the app.
+
+## Audit and browser tools (not application dependencies)
+
+| Tool | Version | License | Use |
+| --- | --- | --- | --- |
+| pip-audit | 2.10.1 | Apache-2.0 | Ephemeral API dependency audit via `uv run --with pip-audit pip-audit --local`; not added to a project manifest or lockfile |
+| Lighthouse CLI | 13.6.0 | Apache-2.0 | Ephemeral desktop performance audit in Microsoft Edge; not added to a package manifest or lockfile |
+
+`pip-audit` is invoked ephemerally for the API dependency audit, so it is not added to `api/pyproject.toml` or `api/uv.lock`. Lighthouse is likewise invoked with `npx` and is not a shipped dependency.
 
 ## Regenerate this inventory
 

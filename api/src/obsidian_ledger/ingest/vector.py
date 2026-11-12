@@ -296,7 +296,7 @@ def run_round_trip(
     symbol_raw = text("symbol")
     mult_value, mult_bad = number_expr(text("multiplier"), ctx.decimal)
     formula = pl.any_horizontal([_formula_like(pl.col(name)) for name in names])
-    step1 = raw.with_columns(
+    step1 = raw.lazy().with_columns(
         *parsed_numbers,
         symbol=pl.when(symbol_raw != "")
         .then(symbol_raw)
@@ -321,7 +321,15 @@ def run_round_trip(
     )
 
     # Step 2: resolve the multiplier and the cross-field values, as finalize does.
-    symbols = [s for s in step1.get_column("symbol").unique().to_list() if s]
+    symbol_index = field_index.get("symbol")
+    symbols = list(
+        dict.fromkeys(
+            (row[symbol_index].strip() if symbol_index is not None else "")
+            or (ctx.default_symbol or "")
+            for row in cells
+        )
+    )
+    symbols = [symbol for symbol in symbols if symbol]
     contract_sizes = {symbol: float(size) for symbol, size in ctx.contract_sizes.items()}
     adapter_sizes: dict[str, float] = {}
     for symbol in symbols:
@@ -449,7 +457,7 @@ def run_round_trip(
     # Step 4: keep rows with no errors. Keys and duplicates are computed on those rows only.
     all_rows = step3.with_columns(
         keep=~pl.col("draft_error") & ~pl.col("finalize_error"),
-    )
+    ).collect()
     formula_rows = all_rows.filter(pl.col("formula")).get_column("source_row").to_list()
     row_cells = dict(zip(numbers, cells, strict=True))
     error_rows = all_rows.filter(~pl.col("keep")).get_column("source_row").to_list()

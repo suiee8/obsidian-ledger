@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import io
 import zipfile
 from pathlib import Path
 
@@ -10,10 +9,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from obsidian_ledger.ingest.errors import IngestError
-from obsidian_ledger.ingest.fileio import (
-    _check_archive,
-    validate_extension_and_content,
-)
+from obsidian_ledger.ingest.fileio import validate_extension_and_content
 from obsidian_ledger.main import create_app
 from obsidian_ledger.settings import Settings
 
@@ -38,7 +34,7 @@ def test_zip_bomb_compression_ratio_rejected(tmp_path: Path) -> None:
         archive.writestr("xl/workbook.xml", b"0" * (20 * 1024 * 1024))
 
     with pytest.raises(IngestError) as exc_info:
-        _check_archive(path)
+        validate_extension_and_content(path, path.name)
     assert exc_info.value.code == "archive_compression_ratio"
 
 
@@ -49,7 +45,7 @@ def test_zip_bomb_too_many_members_rejected(tmp_path: Path) -> None:
             archive.writestr(f"file_{i}.txt", b"x")
 
     with pytest.raises(IngestError) as exc_info:
-        _check_archive(path)
+        validate_extension_and_content(path, path.name)
     assert exc_info.value.code == "archive_too_many_members"
 
 
@@ -60,7 +56,7 @@ def test_archive_path_traversal_rejected(tmp_path: Path) -> None:
         archive.writestr("../evil.txt", b"malicious content")
 
     with pytest.raises(IngestError) as exc_info:
-        _check_archive(path)
+        validate_extension_and_content(path, path.name)
     assert exc_info.value.code == "archive_path_traversal"
 
 
@@ -71,7 +67,7 @@ def test_archive_absolute_path_traversal_rejected(tmp_path: Path) -> None:
         archive.writestr("/etc/passwd", b"root:x:0:0")
 
     with pytest.raises(IngestError) as exc_info:
-        _check_archive(path)
+        validate_extension_and_content(path, path.name)
     assert exc_info.value.code == "archive_path_traversal"
 
 
@@ -82,7 +78,7 @@ def test_archive_windows_path_traversal_rejected(tmp_path: Path) -> None:
         archive.writestr("\\windows\\system32\\cmd.exe", b"malicious")
 
     with pytest.raises(IngestError) as exc_info:
-        _check_archive(path)
+        validate_extension_and_content(path, path.name)
     assert exc_info.value.code == "archive_path_traversal"
 
 

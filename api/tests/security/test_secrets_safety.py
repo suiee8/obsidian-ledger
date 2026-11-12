@@ -5,7 +5,7 @@ and never written to the database, logs, exports, or zip archive.
 from __future__ import annotations
 
 import io
-import json
+import logging
 import zipfile
 from pathlib import Path
 
@@ -18,7 +18,11 @@ from obsidian_ledger.settings import Settings
 CANARY_KEY = "sk-antigravity-canary-secret-key-9876543210"
 
 
-def test_secret_key_never_leaks_to_db_exports_or_zip(tmp_path: Path) -> None:
+def test_secret_key_never_leaks_to_db_exports_or_zip(
+    tmp_path: Path,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    caplog.set_level(logging.DEBUG)
     settings = Settings(data_dir=tmp_path, llm_secret_store="memory")
     app = create_app(settings)
     client = TestClient(app)
@@ -68,13 +72,11 @@ def test_secret_key_never_leaks_to_db_exports_or_zip(tmp_path: Path) -> None:
                 f"Secret key found in zip archive member: {info.filename}"
             )
 
-    # 7. Search all files in data_dir (database files, raw files, rejected files, staging)
+    # 7. Search captured logs and all files in data_dir (database, raw, rejected, staging).
+    assert CANARY_KEY not in caplog.text
     app.state.store.close()
     canary_bytes = CANARY_KEY.encode()
     for file_path in tmp_path.rglob("*"):
         if file_path.is_file():
             data = file_path.read_bytes()
-            assert canary_bytes not in data, (
-                f"Secret key found in stored file on disk: {file_path}"
-            )
-
+            assert canary_bytes not in data, f"Secret key found in stored file on disk: {file_path}"

@@ -7,7 +7,7 @@ import csv
 import io
 from collections.abc import Sequence
 
-from obsidian_ledger.csvsafe import neutralize_cell
+from obsidian_ledger.csvsafe import neutralize_cell, neutralize_csv
 from obsidian_ledger.ingest.trade import Rejected
 
 __all__ = ["neutralize_cell", "rejected_csv"]
@@ -30,4 +30,4 @@ def rejected_csv(headers: Sequence[str], rejected: Sequence[Rejected]) -> bytes:
                 *(neutralize_cell(cell) for cell in item.cells),
             ]
         )
-    return buffer.getvalue().encode("utf-8")
+    return neutralize_csv(buffer.getvalue()).encode("utf-8")

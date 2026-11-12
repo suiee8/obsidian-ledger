@@ -114,7 +114,7 @@ def test_formula_cells_are_flagged_and_stored_as_text(tmp_path: Path) -> None:
 
 def test_rejected_export_neutralizes_formula_cells() -> None:
     assert neutralize_cell("=CMD|'/c calc'") == "'=CMD|'/c calc'"
-    assert neutralize_cell("-0.70") == "-0.70"
+    assert neutralize_cell("-0.70") == "'-0.70"
     assert neutralize_cell("@SUM(A1)") == "'@SUM(A1)"
 
 

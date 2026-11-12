@@ -41,7 +41,10 @@ def _check_archive(path: Path) -> None:
     for info in infos:
         p = Path(info.filename)
         if p.is_absolute() or ".." in p.parts or info.filename.startswith(("/", "\\")):
-            raise IngestError("archive_path_traversal", "The archive contains illegal member paths.")
+            raise IngestError(
+                "archive_path_traversal",
+                "The archive contains illegal member paths.",
+            )
         if info.file_size and (
             info.compress_size == 0 or info.file_size / info.compress_size > MAX_COMPRESSION_RATIO
         ):
@@ -79,7 +82,10 @@ def validate_extension_and_content(path: Path, filename: str) -> None:
         try:
             decoded = head.decode(encoding, errors="replace").lstrip()
         except Exception as exc:
-            raise IngestError("extension_mismatch", "File content does not match .json extension.") from exc
+            raise IngestError(
+                "extension_mismatch",
+                "File content does not match .json extension.",
+            ) from exc
         if not decoded or decoded[0] not in ("[", "{"):
             raise IngestError("extension_mismatch", "File content does not match .json extension.")
     elif ext in (".csv", ".tsv", ".txt"):
@@ -97,7 +103,6 @@ def validate_extension_and_content(path: Path, filename: str) -> None:
                 raise IngestError("extension_mismatch", "JSON content uploaded with CSV extension.")
         except UnicodeDecodeError as exc:
             raise IngestError("extension_mismatch", "Text file decoding failed.") from exc
-
 
 
 def detect_kind(path: Path) -> Kind:

@@ -24,7 +24,11 @@ uv run --directory api python ../benchmarks/generate_trades.py --rows 100000 --o
 uv run --directory api python ../benchmarks/generate_trades.py --rows 1000000 --out benchmarks/out/synthetic_1m.csv
 ```
 
-The 100k file is committed under `samples/` with its manifest, which records the SHA-256, the net P&L sum, and the win count. The 1M file is generated into `benchmarks/out/`, which git ignores. Timing results for the 100k and 1M paths are recorded when the performance pass runs.
+The 100k file is committed under `samples/` with its manifest, which records the SHA-256, the net P&L sum, and the win count. A 1M file can be generated into `benchmarks/out/`, which git ignores. The timings below are historical Phase 1/2 context; the Phase 6 performance run is limited to 10k trades.
+
+## Phase 6 performance run
+
+`pnpm bench` measures only 1k, 5k, and 10k trades, with ten runs per size. `benchmarks/RESULTS.md` records medians and min–max ranges, machine details, payload and JavaScript bundle sizes, and the optional 10k browser measurement. Historical Phase 1 and Phase 2 timings above are retained for context; they are not rerun by the Phase 6 command.
 
 ## Ingestion timings (Phase 1)
 

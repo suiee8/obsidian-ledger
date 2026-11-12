@@ -1,0 +1,281 @@
+pnpm : $ pnpm -C web lint && pnpm -C web typecheck && pnpm -C web test && pnpm lint:api && pnpm typecheck:api && uv
+run --directory api pytest -q
+At line:2 char:1
++ pnpm check 2>&1 | Tee-Object -FilePath docs/test-report.txt; $checkEx ...
++ ~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: ($ pnpm -C web l...y api pytest -q:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+
+$ eslint .
+$ tsc --noEmit
+$ vitest run
+
+ RUN  v3.2.7 C:/Users/MADHVIK PANCHAL/obsidian-ledger/web
+
+ ✓ src/cssTokens.test.ts (3 tests) 33ms
+ ✓ src/sampleCatalog.test.ts (1 test) 18ms
+ ✓ src/tokens.test.ts (2 tests) 12ms
+ ✓ src/lib/format.test.ts (6 tests) 126ms
+ ✓ src/lib/lib.test.ts (3 tests) 45ms
+ ✓ src/state/filters.test.ts (3 tests) 11ms
+ ✓ src/components/DisciplineRing.test.tsx (2 tests) 257ms
+ ✓ src/components/FilterBar.test.tsx (2 tests) 447ms
+   ✓ FilterBar > adds a symbol from the menu and shows it as a removable chip  372ms
+ ✓ src/components/TradeDrawer.test.tsx (2 tests) 696ms
+   ✓ TradeDrawer > saves edited notes with a PATCH that carries only the changed journal fields  606ms
+ ✓ src/components/coach/AskCoach.test.tsx (6 tests) 698ms
+   ✓ AskCoach > streams an answer with trade chips, its sources, and the tools it used  519ms
+ ✓ src/screens/Dashboard.test.tsx (2 tests) 679ms
+   ✓ Dashboard > shows the headline numbers and the low-confidence caveat from the API  620ms
+ ✓ src/components/coach/CoachDrawer.test.tsx (11 tests) 1581ms
+   ✓ CoachDrawer > shows the six steps and marks them as the stream reports them  447ms
+
+ Test Files  12 passed (12)
+      Tests  43 passed (43)
+   Start at  20:39:29
+   Duration  10.55s (transform 2.92s, setup 0ms, collect 13.06s, tests 4.60s, environment 30.66s, prepare 9.67s)
+
+$ uv run --directory api ruff check src tests ../benchmarks
+All checks passed!
+$ uv run --directory api pyright
+0 errors, 0 warnings, 0 informations
+........................................................................ [ 21%]
+........................................................................ [ 43%]
+........................................................................ [ 65%]
+........................................................................ [ 86%]
+............................................                             [100%]
+pnpm : $ pnpm -C web test:e2e
+At line:2 char:133
++ ... if ($checkExit -ne 0) { exit $checkExit }; pnpm test:e2e 2>&1 | Tee-O ...
++                                                ~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: ($ pnpm -C web test:e2e:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+
+$ node scripts/e2e-run.mjs
+[20:41:45] build: start
+(node:19188) [DEP0190] DeprecationWarning: Passing args to a child process with shell option true can lead to security
+vulnerabilities, as the arguments are not escaped, only concatenated.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+[20:41:45] $ tsc --noEmit && vite build
+[20:41:54] vite v6.4.6 building for production...
+[20:41:54] transforming...
+[20:42:00] heartbeat: build running, 15s elapsed, last output 5s ago
+[20:42:03] ✓ 801 modules transformed.
+[20:42:03] rendering chunks...
+[20:42:05] computing gzip size...
+[20:42:05] dist/registerSW.js                                                0.13 kB
+[20:42:05] dist/manifest.webmanifest                                         0.36 kB
+[20:42:05] dist/index.html                                                   0.85 kB │ gzip:   0.45 kB
+[20:42:05] dist/assets/jetbrains-mono-greek-400-normal-C190GLew.woff2        4.23 kB
+[20:42:05] dist/assets/jetbrains-mono-greek-500-normal-JpySY46c.woff2        4.28 kB
+[20:42:05] dist/assets/manrope-vietnamese-500-normal-DCXiE_xi.woff2          4.32 kB
+[20:42:05] dist/assets/manrope-vietnamese-400-normal-DHb3EETF.woff2          4.46 kB
+[20:42:05] dist/assets/manrope-vietnamese-600-normal-C1J5PCl_.woff2          4.47 kB
+[20:42:05] dist/assets/manrope-greek-600-normal-BoRV6lzK.woff2               5.23 kB
+[20:42:05] dist/assets/manrope-greek-500-normal-GeMIHyWm.woff2               5.25 kB
+[20:42:05] dist/assets/manrope-greek-400-normal-CM4qok81.woff2               5.28 kB
+[20:42:05] dist/assets/jetbrains-mono-cyrillic-400-normal-BEIGL1Tu.woff2     5.33 kB
+[20:42:05] dist/assets/jetbrains-mono-cyrillic-500-normal-DmUKJPL_.woff2     5.36 kB
+[20:42:05] dist/assets/jetbrains-mono-vietnamese-400-normal-CqNFfHCs.woff    5.37 kB
+[20:42:05] dist/assets/jetbrains-mono-vietnamese-500-normal-DNRqzVM1.woff    5.48 kB
+[20:42:05] dist/assets/jetbrains-mono-greek-400-normal-B9oWc5Lo.woff         5.66 kB
+[20:42:05] dist/assets/jetbrains-mono-greek-500-normal-D7SFKleX.woff         5.72 kB
+[20:42:05] dist/assets/manrope-vietnamese-500-normal-DaZ8i3XM.woff           6.06 kB
+[20:42:05] dist/assets/manrope-vietnamese-400-normal-D7E_mLGF.woff           6.11 kB
+[20:42:05] dist/assets/manrope-vietnamese-600-normal-lA7a_7Ok.woff           6.14 kB
+[20:42:05] dist/assets/manrope-greek-600-normal-CF2i9ZRY.woff                6.74 kB
+[20:42:05] dist/assets/manrope-greek-500-normal-DyxYGEtJ.woff                6.76 kB
+[20:42:05] dist/assets/manrope-greek-400-normal-DuX9RsAR.woff                6.77 kB
+[20:42:05] dist/assets/jetbrains-mono-cyrillic-400-normal-ugxPyKxw.woff      6.98 kB
+[20:42:05] dist/assets/jetbrains-mono-cyrillic-500-normal-DJqRU3vO.woff      7.02 kB
+[20:42:05] dist/assets/jetbrains-mono-latin-ext-400-normal-Bc8Ftmh3.woff2    7.34 kB
+[20:42:05] dist/assets/jetbrains-mono-latin-ext-500-normal-Cut-4mMH.woff2    7.53 kB
+[20:42:05] dist/assets/sora-latin-ext-600-normal-Cue1zdhl.woff2              7.54 kB
+[20:42:05] dist/assets/manrope-cyrillic-400-normal-BMzJvInZ.woff2            7.84 kB
+[20:42:05] dist/assets/manrope-cyrillic-500-normal-B1OEZity.woff2            7.87 kB
+[20:42:05] dist/assets/manrope-cyrillic-600-normal-DvRl3Mj-.woff2            7.87 kB
+[20:42:05] dist/assets/manrope-latin-ext-500-normal-dm74KBQw.woff2           8.19 kB
+[20:42:05] dist/assets/manrope-latin-ext-400-normal-CMDvPJRp.woff2           8.29 kB
+[20:42:05] dist/assets/manrope-latin-ext-600-normal-_gBojHdJ.woff2           8.30 kB
+[20:42:05] dist/assets/sora-latin-ext-600-normal-DLOJK0Ta.woff               9.82 kB
+[20:42:05] dist/assets/manrope-cyrillic-500-normal-CNwnNrRC.woff            10.01 kB
+[20:42:05] dist/assets/manrope-cyrillic-400-normal-Dvx59UGC.woff            10.03 kB
+[20:42:05] dist/assets/manrope-cyrillic-600-normal-It4mZcQk.woff            10.06 kB
+[20:42:05] dist/assets/jetbrains-mono-latin-ext-400-normal-fXTG6kC5.woff    10.13 kB
+[20:42:05] dist/assets/jetbrains-mono-latin-ext-500-normal-ckzbgY84.woff    10.34 kB
+[20:42:05] dist/assets/manrope-latin-ext-500-normal-EtoS1VaI.woff           11.25 kB
+[20:42:05] dist/assets/manrope-latin-ext-600-normal-u5Pl7hTU.woff           11.25 kB
+[20:42:05] dist/assets/manrope-latin-ext-400-normal-C-X6QNXX.woff           11.32 kB
+[20:42:05] dist/assets/manrope-latin-500-normal-BYYD-dBL.woff2              14.04 kB
+[20:42:05] dist/assets/manrope-latin-400-normal-PaqtzbVb.woff2              14.11 kB
+[20:42:05] dist/assets/manrope-latin-600-normal-4f0koTD-.woff2              14.17 kB
+[20:42:05] dist/assets/sora-latin-600-normal-Cdg4DaK0.woff2                 15.00 kB
+[20:42:05] dist/assets/manrope-latin-500-normal-DMZssgOp.woff               18.24 kB
+[20:42:05] dist/assets/manrope-latin-400-normal-8tf8FM3T.woff               18.29 kB
+[20:42:05] dist/assets/manrope-latin-600-normal-BqgrALkZ.woff               18.38 kB
+[20:42:05] dist/assets/sora-latin-600-normal-1_7fyUAY.woff                  18.86 kB
+[20:42:05] dist/assets/jetbrains-mono-latin-400-normal-V6pRDFza.woff2       21.17 kB
+[20:42:05] dist/assets/jetbrains-mono-latin-500-normal-BWZEU5yA.woff2       21.83 kB
+[20:42:05] dist/assets/jetbrains-mono-latin-400-normal-6-qcROiO.woff        27.50 kB
+[20:42:05] dist/assets/jetbrains-mono-latin-500-normal-CJOVTJB7.woff        28.21 kB
+[20:42:05] dist/assets/index-DOd93bF-.css                                   84.75 kB │ gzip:  34.39 kB
+[20:42:05] dist/assets/Panel-D_APIYk7.js                                     0.37 kB │ gzip:   0.25 kB
+[20:42:05] dist/assets/useChartPalette-C1wSpMky.js                           0.93 kB │ gzip:   0.55 kB
+[20:42:05] dist/assets/RHistogram--6QgazC4.js                                1.06 kB │ gzip:   0.62 kB
+[20:42:05] dist/assets/FindingChart-B5ETp8FF.js                              1.10 kB │ gzip:   0.66 kB
+[20:42:05] dist/assets/ScreenStates-BE4OHCwO.js                              1.17 kB │ gzip:   0.53 kB
+[20:42:05] dist/assets/EdgeRadar-BMzIPVo3.js                                 1.34 kB │ gzip:   0.75 kB
+[20:42:05] dist/assets/format-5vWq_6FB.js                                    1.38 kB │ gzip:   0.64 kB
+[20:42:05] dist/assets/EquityAurora-DFtmTEwq.js                              1.62 kB │ gzip:   0.77 kB
+[20:42:05] dist/assets/LineBands-7zIkxMPp.js                                 2.54 kB │ gzip:   1.07 kB
+[20:42:05] dist/assets/Samples-DAAcK9cH.js                                   2.61 kB │ gzip:   1.10 kB
+[20:42:05] dist/assets/Bars-DGcyz65w.js                                      2.87 kB │ gzip:   1.03 kB
+[20:42:05] dist/assets/Behavior-g7e0rF5P.js                                  6.93 kB │ gzip:   2.69 kB
+[20:42:05] dist/assets/Simulator-CaxLBNhl.js                                 7.73 kB │ gzip:   2.86 kB
+[20:42:05] dist/assets/Dashboard-D_EBFRqG.js                                11.10 kB │ gzip:   4.06 kB
+[20:42:05] dist/assets/Settings-BBb7o1-A.js                                 12.14 kB │ gzip:   3.73 kB
+[20:42:05] dist/assets/Analytics-Djn-B_2y.js                                15.87 kB │ gzip:   5.33 kB
+[20:42:05] dist/assets/Import-BDV9dsfU.js                                   25.05 kB │ gzip:   8.88 kB
+[20:42:05] dist/assets/Trades-B-VYoYQ7.js                                   48.94 kB │ gzip:  15.37 kB
+[20:42:05] dist/assets/index--WpMAgME.js                                   435.03 kB │ gzip: 131.36 kB
+[20:42:05] dist/assets/useChart-BW0FKh-W.js                                603.17 kB │ gzip: 204.85 kB
+[20:42:05] (!) Some chunks are larger than 500 kB after minification. Consider:
+[20:42:05] - Using dynamic import() to code-split the application
+[20:42:05] - Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+[20:42:05] - Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+[20:42:05] ✓ built in 10.70s
+[20:42:12] PWA v1.3.0
+[20:42:12] mode      generateSW
+[20:42:12] precache  28 entries (1238.94 KiB)
+[20:42:12] files generated
+[20:42:12]   dist/sw.js
+[20:42:12]   dist/workbox-9c191d2f.js
+[20:42:12] build: exit 0
+[20:42:12] playwright: start
+[20:42:15] heartbeat: playwright running, 30s elapsed, last output 2s ago
+[20:42:19] [WebServer] INFO:     Started server process [20496]
+[20:42:19] [WebServer] INFO:     Waiting for application startup.
+[20:42:19] [WebServer] INFO:     Application startup complete.
+[20:42:19] [WebServer] INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
+[20:42:22] Running 78 tests using 1 worker
+[20:42:30] heartbeat: playwright running, 45s elapsed, last output 7s ago
+[20:42:40]   ok  1 e2e\a11y.spec.ts:100:7 › at 1440 px › dashboard has no WCAG 2.1 AA violations (15.3s)
+[20:42:45] heartbeat: playwright running, 60s elapsed, last output 5s ago
+[20:42:45]   ok  2 e2e\a11y.spec.ts:100:7 › at 1440 px › trades has no WCAG 2.1 AA violations (5.5s)
+[20:42:48]   ok  3 e2e\a11y.spec.ts:100:7 › at 1440 px › import has no WCAG 2.1 AA violations (3.1s)
+[20:42:51]   ok  4 e2e\a11y.spec.ts:100:7 › at 1440 px › samples has no WCAG 2.1 AA violations (3.2s)
+[20:42:56]   ok  5 e2e\a11y.spec.ts:100:7 › at 1440 px › analytics has no WCAG 2.1 AA violations (4.5s)
+[20:43:00] heartbeat: playwright running, 75s elapsed, last output 4s ago
+[20:43:00]   ok  6 e2e\a11y.spec.ts:100:7 › at 1440 px › behavior has no WCAG 2.1 AA violations (3.7s)
+[20:43:04]   ok  7 e2e\a11y.spec.ts:100:7 › at 1440 px › simulator with a result has no WCAG 2.1 AA violations (4.3s)
+[20:43:07]   ok  8 e2e\a11y.spec.ts:100:7 › at 1440 px › settings has no WCAG 2.1 AA violations (3.2s)
+[20:43:14]   ok  9 e2e\a11y.spec.ts:107:5 › at 1440 px › the Coach drawer has no WCAG 2.1 AA violations (6.3s)
+[20:43:15] heartbeat: playwright running, 90s elapsed, last output 1s ago
+[20:43:24]   ok 10 e2e\a11y.spec.ts:100:7 › at 390 px › dashboard has no WCAG 2.1 AA violations (10.7s)
+[20:43:30] heartbeat: playwright running, 105s elapsed, last output 5s ago
+[20:43:31]   ok 11 e2e\a11y.spec.ts:100:7 › at 390 px › trades has no WCAG 2.1 AA violations (6.3s)
+[20:43:34]   ok 12 e2e\a11y.spec.ts:100:7 › at 390 px › import has no WCAG 2.1 AA violations (3.3s)
+[20:43:38]   ok 13 e2e\a11y.spec.ts:100:7 › at 390 px › samples has no WCAG 2.1 AA violations (3.7s)
+[20:43:43]   ok 14 e2e\a11y.spec.ts:100:7 › at 390 px › analytics has no WCAG 2.1 AA violations (4.8s)
+[20:43:45] heartbeat: playwright running, 120s elapsed, last output 2s ago
+[20:43:46]   ok 15 e2e\a11y.spec.ts:100:7 › at 390 px › behavior has no WCAG 2.1 AA violations (3.9s)
+[20:43:51]   ok 16 e2e\a11y.spec.ts:100:7 › at 390 px › simulator with a result has no WCAG 2.1 AA violations (4.5s)
+[20:43:56]   ok 17 e2e\a11y.spec.ts:100:7 › at 390 px › settings has no WCAG 2.1 AA violations (4.5s)
+[20:44:00] heartbeat: playwright running, 135s elapsed, last output 4s ago
+[20:44:01]   ok 18 e2e\a11y.spec.ts:107:5 › at 390 px › the Coach drawer has no WCAG 2.1 AA violations (5.1s)
+[20:44:11]   ok 19 e2e\a11y.spec.ts:123:3 › filter sheet at 390 px › traps focus, has no violations, closes with Escape, and returns focus to its button (9.9s)
+[20:44:15] heartbeat: playwright running, 150s elapsed, last output 4s ago
+[20:44:15]   ok 20 e2e\keyboard.spec.ts:5:1 › the rail, command palette, and trade drawer work from the keyboard alone (4.5s)
+[20:44:18]   ok 21 e2e\phase4.spec.ts:26:3 › Analytics › explores segments, the constellation, streaks, fee drag, and the Monte Carlo fan (3.0s)
+[20:44:24]   ok 22 e2e\phase4.spec.ts:52:3 › Analytics › a rectangle on the constellation opens exactly those trades in the Trades table (5.7s)
+[20:44:29]   ok 23 e2e\phase4.spec.ts:86:3 › Analytics › the same selection can be made without a mouse (4.5s)
+[20:44:30] heartbeat: playwright running, 165s elapsed, last output 1s ago
+[20:44:32]   ok 24 e2e\phase4.spec.ts:102:3 › Behavior › shows the timelines, post-loss performance, and the Discipline Score formula (3.1s)
+[20:44:38]   ok 25 e2e\phase4.spec.ts:134:3 › Simulator › shows the overfitting warning first, the point estimate next, and the interval last (5.8s)
+[20:44:41]   ok 26 e2e\phase4.spec.ts:164:3 › Settings › privacy defaults to aggregates only and the choice is kept (3.0s)
+[20:44:44]   ok 27 e2e\phase4.spec.ts:185:3 › Settings › starting equity can be set and cleared (2.9s)
+[20:44:45] heartbeat: playwright running, 180s elapsed, last output 1s ago
+[20:44:46]   ok 28 e2e\phase4.spec.ts:196:3 › Settings › a column template can be renamed and deleted (2.8s)
+[20:44:50]   ok 29 e2e\phase4.spec.ts:221:3 › Settings › everything can be exported as one zip (3.2s)
+[20:44:58]   ok 30 e2e\phase4.spec.ts:240:3 › keyboard only › Analytics: reach the explorer and the selection form (7.9s)
+[20:45:00] heartbeat: playwright running, 195s elapsed, last output 2s ago
+[20:45:02]   ok 31 e2e\phase4.spec.ts:258:3 › keyboard only › Behavior: the formula tooltip opens on focus and closes with Escape (4.4s)
+[20:45:09]   ok 32 e2e\phase4.spec.ts:271:3 › keyboard only › Simulator: set a rule and read the result (6.5s)
+[20:45:13]   ok 33 e2e\phase4.spec.ts:285:3 › keyboard only › Settings: the wipe stays locked until the phrase is typed (4.3s)
+[20:45:15] heartbeat: playwright running, 210s elapsed, last output 2s ago
+[20:45:18]   ok 34 e2e\screens.spec.ts:21:5 › 1440 px › import, dashboard, and trades with data (4.9s)
+[20:45:20]   ok 35 e2e\screens.spec.ts:38:5 › 1440 px › dashboard empty state (2.3s)
+[20:45:23]   ok 36 e2e\screens.spec.ts:52:5 › 1440 px › dashboard loading state (2.2s)
+[20:45:26]   ok 37 e2e\screens.spec.ts:61:5 › 1440 px › dashboard error state (3.8s)
+[20:45:30] heartbeat: playwright running, 225s elapsed, last output 3s ago
+[20:45:31]   ok 38 e2e\screens.spec.ts:21:5 › 1024 px › import, dashboard, and trades with data (4.7s)
+[20:45:33]   ok 39 e2e\screens.spec.ts:38:5 › 1024 px › dashboard empty state (1.9s)
+[20:45:35]   ok 40 e2e\screens.spec.ts:52:5 › 1024 px › dashboard loading state (1.8s)
+[20:45:38]   ok 41 e2e\screens.spec.ts:61:5 › 1024 px › dashboard error state (3.6s)
+[20:45:42]   ok 42 e2e\screens.spec.ts:21:5 › 390 px › import, dashboard, and trades with data (3.8s)
+[20:45:44]   ok 43 e2e\screens.spec.ts:38:5 › 390 px › dashboard empty state (1.9s)
+[20:45:45] heartbeat: playwright running, 240s elapsed, last output 1s ago
+[20:45:46]   ok 44 e2e\screens.spec.ts:52:5 › 390 px › dashboard loading state (1.7s)
+[20:45:49]   ok 45 e2e\screens.spec.ts:61:5 › 390 px › dashboard error state (3.1s)
+[20:45:51]   ok 46 e2e\smoke.spec.ts:5:1 › imports the sample file from the Import screen (2.3s)
+[20:45:53]   ok 47 e2e\smoke.spec.ts:16:1 › the dashboard renders headline numbers and the equity chart (2.0s)
+[20:45:56]   ok 48 e2e\smoke.spec.ts:25:1 › the trades table scrolls to the last loaded rows (2.9s)
+[20:45:59]   ok 49 e2e\smoke.spec.ts:43:1 › a symbol filter changes the dashboard request and shows as a chip (2.6s)
+[20:46:00] heartbeat: playwright running, 255s elapsed, last output 1s ago
+[20:46:04]   ok 50 e2e\zz-coach-ai.spec.ts:68:1 › with no AI provider set up, the computed report is complete and the AI layer says so (3.8s)
+[20:46:07]   ok 51 e2e\zz-coach-ai.spec.ts:90:1 › Settings sets up a provider with an API key, a model, and consent (2.7s)
+[20:46:14]   ok 52 e2e\zz-coach-ai.spec.ts:115:1 › with a mock model, the summary appears and the chat answers, cites trades, and shows its tools (7.2s)
+[20:46:15] heartbeat: playwright running, 270s elapsed, last output 1s ago
+[20:46:17]   ok 53 e2e\zz-coach-ai.spec.ts:142:1 › Stop ends a slow answer at once (2.9s)
+[20:46:20]   ok 54 e2e\zz-coach-ai.spec.ts:158:5 › chat drawer at 1440 px › has no WCAG 2.1 AA violations with an answer shown (3.7s)
+[20:46:25]   ok 55 e2e\zz-coach-ai.spec.ts:158:5 › chat drawer at 390 px › has no WCAG 2.1 AA violations with an answer shown (4.2s)
+[20:46:29]   ok 56 e2e\zz-coach-screens.spec.ts:58:5 › Coach at 1440 px › ready (3.0s)
+[20:46:30] heartbeat: playwright running, 285s elapsed, last output 1s ago
+[20:46:31]   ok 57 e2e\zz-coach-screens.spec.ts:67:5 › Coach at 1440 px › running (2.1s)
+[20:46:34]   ok 58 e2e\zz-coach-screens.spec.ts:75:5 › Coach at 1440 px › fewer than 30 trades (2.7s)
+[20:46:36]   ok 59 e2e\zz-coach-screens.spec.ts:81:5 › Coach at 1440 px › no trades (2.7s)
+[20:46:39]   ok 60 e2e\zz-coach-screens.spec.ts:87:5 › Coach at 1440 px › error (2.3s)
+[20:46:42]   ok 61 e2e\zz-coach-screens.spec.ts:58:5 › Coach at 1024 px › ready (3.3s)
+[20:46:44]   ok 62 e2e\zz-coach-screens.spec.ts:67:5 › Coach at 1024 px › running (2.3s)
+[20:46:45] heartbeat: playwright running, 300s elapsed, last output 1s ago
+[20:46:47]   ok 63 e2e\zz-coach-screens.spec.ts:75:5 › Coach at 1024 px › fewer than 30 trades (3.0s)
+[20:46:50]   ok 64 e2e\zz-coach-screens.spec.ts:81:5 › Coach at 1024 px › no trades (2.4s)
+[20:46:52]   ok 65 e2e\zz-coach-screens.spec.ts:87:5 › Coach at 1024 px › error (2.0s)
+[20:46:55]   ok 66 e2e\zz-coach-screens.spec.ts:58:5 › Coach at 390 px › ready (3.1s)
+[20:46:57]   ok 67 e2e\zz-coach-screens.spec.ts:67:5 › Coach at 390 px › running (1.7s)
+[20:46:59]   ok 68 e2e\zz-coach-screens.spec.ts:75:5 › Coach at 390 px › fewer than 30 trades (2.6s)
+[20:47:00] heartbeat: playwright running, 315s elapsed, last output 1s ago
+[20:47:02]   ok 69 e2e\zz-coach-screens.spec.ts:81:5 › Coach at 390 px › no trades (2.8s)
+[20:47:04]   ok 70 e2e\zz-coach-screens.spec.ts:87:5 › Coach at 390 px › error (1.6s)
+[20:47:07]   ok 71 e2e\zz-coach.spec.ts:32:1 › importing a file starts the Coach, streams its steps, and shows the report (3.6s)
+[20:47:13]   ok 72 e2e\zz-coach.spec.ts:48:1 › clicking a trade chip scrolls to the trade and highlights it (5.4s)
+[20:47:15] heartbeat: playwright running, 330s elapsed, last output 2s ago
+[20:47:27]   ok 73 e2e\zz-coach.spec.ts:71:1 › Apply as filter on each leak opens exactly the trades the finding counts (14.4s)
+[20:47:30] heartbeat: playwright running, 345s elapsed, last output 3s ago
+[20:47:30] [WebServer] Exception in callback _ProactorBasePipeTransport._call_connection_lost(None)
+[20:47:30] [WebServer] handle: <Handle _ProactorBasePipeTransport._call_connection_lost(None)>
+[20:47:30] [WebServer] Traceback (most recent call last):
+[20:47:30] [WebServer]   File "C:\Users\MADHVIK PANCHAL\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\Lib\asyncio\events.py", line 88, in _run
+[20:47:30] [WebServer]     self._context.run(self._callback, *self._args)
+[20:47:30] [WebServer]   File "C:\Users\MADHVIK PANCHAL\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\Lib\asyncio\proactor_events.py", line 165, in _call_connection_lost
+[20:47:30] [WebServer]     self._sock.shutdown(socket.SHUT_RDWR)
+[20:47:30] [WebServer] ConnectionResetError: [WinError 10054] An existing connection was forcibly closed by the remote host
+[20:47:31]   ok 74 e2e\zz-coach.spec.ts:95:1 › a noise journal gets no leaks and says so (3.4s)
+[20:47:32] [WebServer] Exception in callback _ProactorBasePipeTransport._call_connection_lost(None)
+[20:47:32] [WebServer] handle: <Handle _ProactorBasePipeTransport._call_connection_lost(None)>
+[20:47:32] [WebServer] Traceback (most recent call last):
+[20:47:32] [WebServer]   File "C:\Users\MADHVIK PANCHAL\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\Lib\asyncio\events.py", line 88, in _run
+[20:47:32] [WebServer]     self._context.run(self._callback, *self._args)
+[20:47:32] [WebServer]   File "C:\Users\MADHVIK PANCHAL\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\Lib\asyncio\proactor_events.py", line 165, in _call_connection_lost
+[20:47:32] [WebServer]     self._sock.shutdown(socket.SHUT_RDWR)
+[20:47:32] [WebServer] ConnectionResetError: [WinError 10054] An existing connection was forcibly closed by the remote host
+[20:47:37]   ok 75 e2e\zz-coach.spec.ts:103:1 › the Coach drawer has no WCAG 2.1 AA violations (6.3s)
+[20:47:40]   ok 76 e2e\zz-coach.spec.ts:123:1 › the Coach opens and closes from the keyboard (2.8s)
+[20:47:43]   ok 77 e2e\zz-wipe.spec.ts:8:1 › wipe needs the typed phrase, then removes every trade and file (3.6s)
+[20:47:43]   ok 78 e2e\zz-wipe.spec.ts:41:1 › the server refuses a wipe without the exact phrase (28ms)
+[20:47:45] heartbeat: playwright running, 360s elapsed, last output 1s ago
+[20:47:47]   78 passed (5.6m)
+[20:47:47] playwright: exit 0
+[20:47:47] summary: 78 passed, 0 failed, 0 flaky, 0 skipped, 0 did not run; total 362s; exit 0
+
+API pytest count: 332 collected; all passed in pnpm check (the script runs pytest -q, which suppresses its count summary).

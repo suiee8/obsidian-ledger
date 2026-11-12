@@ -11,7 +11,7 @@ import orjson
 from fastapi import APIRouter, HTTPException, Query, Request, Response
 from pydantic import BaseModel, ConfigDict, Field
 
-from obsidian_ledger.csvsafe import neutralize_cell
+from obsidian_ledger.csvsafe import neutralize_cell, neutralize_csv
 from obsidian_ledger.metrics.data import Filters
 from obsidian_ledger.metrics.engine import AnalysisEngine, Params
 from obsidian_ledger.metrics.segments import DIMENSIONS
@@ -179,31 +179,34 @@ def export_segments(
     result = _engine(request).segments(filters, by, min_n)
     buffer = io.StringIO()
     writer = csv.writer(buffer, lineterminator="\n")
-    writer.writerow([
-        neutralize_cell("dimension"),
-        neutralize_cell("key"),
-        neutralize_cell("trades"),
-        neutralize_cell("win_rate"),
-        neutralize_cell("net_pnl"),
-        neutralize_cell("profit_factor"),
-        neutralize_cell("expectancy"),
-    ])
-    for item in result.get("segments", []):
-        writer.writerow([
-            neutralize_cell(by),
-            neutralize_cell(str(item.get("key", ""))),
-            str(item.get("trades", 0)),
-            str(item.get("win_rate", 0.0)),
-            str(item.get("net_pnl", 0.0)),
-            str(item.get("profit_factor", 0.0)),
-            str(item.get("expectancy", 0.0)),
-        ])
+    writer.writerow(
+        [
+            neutralize_cell("dimension"),
+            neutralize_cell("key"),
+            neutralize_cell("trades"),
+            neutralize_cell("win_rate"),
+            neutralize_cell("net_pnl"),
+            neutralize_cell("profit_factor"),
+            neutralize_cell("expectancy"),
+        ]
+    )
+    for item in result.get("slices", []):
+        writer.writerow(
+            [
+                neutralize_cell(by),
+                neutralize_cell(str(item.get("value", ""))),
+                neutralize_cell(str(item.get("n", 0))),
+                neutralize_cell(str(item.get("win_rate", 0.0))),
+                neutralize_cell(str(item.get("net_pnl", 0.0))),
+                neutralize_cell(str(item.get("profit_factor", 0.0))),
+                neutralize_cell(str(item.get("expectancy", 0.0))),
+            ]
+        )
     return Response(
-        buffer.getvalue(),
+        neutralize_csv(buffer.getvalue()),
         media_type="text/csv; charset=utf-8",
         headers={"Content-Disposition": f'attachment; filename="segments-{by}.csv"'},
     )
-
 
 
 @router.post("/simulate")

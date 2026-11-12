@@ -1,125 +1,73 @@
 # Obsidian Ledger
 
-Obsidian Ledger is a local-first trading journal and performance review workspace. It ingests a trader's own files, computes deterministic metrics, and gives an optional Coach a tool-backed result to explain. It does not predict markets or issue trade signals.
+Obsidian Ledger is a local-first trading journal for importing completed trades, reviewing deterministic performance metrics, and optionally asking an AI Coach to explain its evidence. It does not predict markets or issue trade signals.
 
 ![Obsidian Ledger overview with the local API online](docs/screenshots/overview.png)
 
-## Current status
+## Status
 
-Phases 0 to 3 are built and waiting for review. Phase 1 reads CSV, TSV, TXT, XLSX, XLS, and JSON; detects the broker layout; pairs IBKR fills with FIFO; reports data-quality issues; and stores trades in a local DuckDB file. Phase 2 computes performance metrics, risk, behavior, segment statistics, a discipline score, and what-if simulations, all in deterministic code. Phase 3 adds the Dashboard, Trades, and Import screens, with saved views, a trade drawer for journal notes, and a command palette. The Analytics, Behavior, Simulator, Reports, and Settings screens and the Coach (Phase 5) are not built yet. See `docs/phase-3-screens.md`, `docs/ingestion.md`, `docs/metrics-definitions.md`, and `benchmarks/README.md`.
+Phases 0–6 are implemented. The app includes CSV, TSV, text, XLSX, XLS, and JSON imports; broker-layout detection; FIFO pairing for IBKR fills; a local DuckDB/Parquet store; deterministic metrics, behavior analysis, and simulations; Overview, Trades, Import, Analytics, Behavior, Simulator, and Settings screens; and an optional tool-backed Coach. Phase 6 adds upload and export hardening, keychain credential storage, security and dependency auditing, documentation, and performance measurements up to 10,000 trades.
 
-## Prerequisites
+There is no Reports screen or application-generated PDF export. Exported HTML can be printed to PDF in a browser. Ollama is not connected to the current app; see the [user guide](docs/user-guide.md) for this limitation and other known issues.
 
-- Node.js 22+
-- pnpm 12.18.0+
+## Requirements
+
+- Node.js 22 or newer
+- pnpm 12.18.0
 - Python 3.12
 - [uv](https://docs.astral.sh/uv/)
 
-All runtime dependencies are free and open source. Cloud AI is not required.
+## Install and run
 
-## Install
-
-```powershell
-pnpm install
-uv sync --directory api
-```
-
-Or run both steps at once with `pnpm bootstrap`, which requires `uv` to be installed already. The name `setup` is avoided because pnpm reserves it for its own command.
-
-## Quick start
-
-From a fresh clone, with Node 22+, pnpm 12, Python 3.12, and uv installed:
+From the repository root in PowerShell:
 
 ```powershell
-pnpm bootstrap   # installs web and API dependencies
-pnpm seed        # optional: loads the 1,000-trade sample journal
-pnpm dev         # starts the API on 127.0.0.1:8000 and the web app on 127.0.0.1:5173
+pnpm bootstrap
+pnpm seed        # optional: load the 1,000-trade sample journal
+pnpm dev
 ```
 
-Open <http://127.0.0.1:5173>. The web app stays usable when the API is offline, and the health badge shows that state. Run `pnpm dev:api` or `pnpm dev:web` alone if you want one process.
+Open <http://127.0.0.1:5173>. The API listens only on `127.0.0.1:8000`; the web client remains usable when the API is offline. `pnpm dev:api` and `pnpm dev:web` start either service alone. Copy `.env.example` to `.env` only to change local ports or the allowed browser origins. No telemetry is configured.
 
-`pnpm reset:data` deletes the local data folder, `api/.ledger-data`. Stop `pnpm dev` first, because the database file is locked while the API has it open.
+See the [user guide](docs/user-guide.md) for importing files, using the Coach, privacy controls, and exports. The [architecture](docs/architecture.md), [ingestion notes](docs/ingestion.md), and [metrics definitions](docs/metrics-definitions.md) describe implementation details.
 
-The API exposes:
-
-- `GET /health` for the local service check
-- `GET /` for service metadata
-- `GET /docs` for FastAPI's local API documentation
-- `POST /api/imports/preview?filename=...` (raw file body) and `POST /api/imports/{preview_id}/commit` to import a trade file. See `docs/ingestion.md`.
-- `GET /api/trades` for stored trades with derived equity, drawdown, and loss streaks
-- `GET /api/trades/page` for paged, sorted trade rows used by the Trades screen
-- `GET /api/trades/{trade_key}` and `PATCH /api/trades/{trade_key}` to read and edit a trade's journal fields (notes, tags, emotion, confidence)
-- `GET /api/filter-options` and `GET|POST /api/views`, `DELETE /api/views/{name}` for filter choices and saved views
-- `GET /api/dashboard` for the dashboard payload: headline report, equity, daily P&L, R histogram, weekday-hour heatmap, edge radar, and findings
-- `GET /api/metrics` for the full analysis report, with filters for date, account, symbol, setup, side, and tag
-- `GET /api/segments?by=symbol` for segment tables with sample size and significance
-- `POST /api/simulate` for what-if trading rules. See `docs/phase-2-metrics.md`.
-
-Copy `.env.example` to `.env` only when changing the local API port or allowed browser origins. No telemetry is configured.
-
-## Validate
+## Validation
 
 ```powershell
-pnpm test
+pnpm install --frozen-lockfile
+uv lock --check
+pnpm check       # web lint/typecheck/unit tests and API Ruff/Pyright/pytest
+pnpm test         # web checks/build plus API checks/tests
+pnpm test:e2e     # browser tests using installed Microsoft Edge
+pnpm bench        # ten runs at 1k, 5k, and 10k trades; never above 10k
 ```
 
-```powershell
-pnpm check      # lint, typecheck, and unit tests for the web app and the API
-pnpm test       # check plus the production web build
-pnpm test:e2e   # Playwright: import, dashboard, trades, filters, keyboard, axe, and screenshots
-pnpm bench      # benchmark at 1k, 5k, and 10k trades. Writes benchmarks/RESULTS.md
-```
+Latest Phase 6 validation: 332 API tests, 43 web unit tests, and 78 browser tests. `pnpm check` runs ESLint, TypeScript, Vitest, Ruff, Pyright, and pytest. Playwright runs serially with an isolated temporary API data directory and the installed Edge browser; it does not download a browser. The browser suite writes screenshots to ignored `docs/screens/`; committed reference images stay in `docs/screenshots/`. See [the test report](docs/test-report.txt) and [benchmark results](benchmarks/RESULTS.md).
 
-`pnpm check` runs ESLint, strict TypeScript, Vitest, Ruff, Pyright, and pytest (141 API tests, 23 web unit tests). `pnpm test:e2e` builds the web app, starts the API on a temporary data folder, and drives the built app in Microsoft Edge. Screenshots from that run are saved to `docs/screens/`.
+## Data and privacy boundary
 
-## Sample data and benchmarks
+Imports, the DuckDB database, Parquet files, and ZIP exports stay on this computer. The API accepts browser requests only from configured local origins. Provider keys are stored in the operating-system keychain, not in the database or exports. The Coach works with AI turned off; optional cloud AI requires user selection and consent, and sends only the selected result data to that provider. Review the provider's privacy and billing terms before enabling it. The app has no telemetry.
 
-The committed fixtures are under `samples/`. Each generated CSV has a manifest with its SHA-256 and totals, so the generator's output can be checked.
+CSV exports prefix spreadsheet-formula-like values with an apostrophe after serialization; JSON numeric values remain numbers. ZIP exports are assembled locally and may contain financial and behavioral journal data, so keep them in a secure location.
 
-- MT5 closed positions
-- TradingView entry/exit rows
-- IBKR raw executions
-- a deliberately messy journal containing duplicate, invalid, European-format, formula-like, and instruction-like values
-- a 1,000-row canonical synthetic preview
-- a 100,000-row canonical synthetic journal
+## Known issues
 
-The 100k file is committed. `pnpm bench` generates 1k, 5k, and 10k journals into `benchmarks/out/`, which git ignores, and creates them when they are missing. To generate another size by hand:
+- The app does not currently have an Ollama adapter. Installing Ollama and `qwen2.5:7b` does not connect a local model to this build.
+- The npm audit retains one high Zod advisory and lower-severity advisories; details and mitigation rationale are in [security notes](docs/security.md).
+- Lighthouse and 10,000-trade performance measurements, including their ranges and limitations, are recorded in [benchmark results](benchmarks/RESULTS.md).
 
-```powershell
-uv run --directory api python ../benchmarks/generate_trades.py --rows 1000000 --out ../benchmarks/out/synthetic_1m.csv
-```
+## Samples and project map
 
-Each generated CSV gets a neighboring JSON manifest with row count, seed, SHA-256, win count, and P&L total. The generator is deterministic for a fixed seed.
+The committed fixtures are under `samples/`, including a deliberately messy journal, a 1,000-row preview, and an intentional 100,000-row synthetic sample. The benchmark command is capped at 10,000 trades and stores generated inputs under ignored `benchmarks/out/`.
 
-## Project map
+- `web/` — React, TypeScript, and Vite client
+- `api/` — Python and FastAPI service
+- `samples/` — import fixtures and manifests
+- `benchmarks/` — deterministic generators, harness, and results
+- `docs/` — user guide, architecture, security notes, and ADRs
 
-- `web/` React + TypeScript + Vite client and design system
-- `api/` Python + FastAPI service and future ETL/analytics layers
-- `samples/` local ingestion fixtures
-- `benchmarks/` deterministic generator and performance-input documentation
-- `docs/` architecture, metrics definitions, and architecture decision records
-
-## Privacy boundary
-
-Trade files are not uploaded anywhere. The API stores them in a local DuckDB file and Parquet folder under `.ledger-data/`, which git ignores. The API accepts requests only from the local web origins. Optional cloud LLM support will be opt-in, aggregate-only by default, and separated from deterministic calculations. API keys must never be stored in the database or logs.
+The project is MIT licensed; dependency licenses are listed in [docs/dependencies.md](docs/dependencies.md).
 
 ## License
 
-The project is MIT licensed (see `LICENSE`). Every dependency and its license is listed in `docs/dependencies.md`. Two build-time packages use weak copyleft (MPL-2.0) and are not shipped in the browser bundle.
-
-## Ingestion quickstart
-
-```powershell
-# Preview a file (returns detected layout, questions, and assumptions)
-Invoke-RestMethod -Uri "http://127.0.0.1:8000/api/imports/preview?filename=ibkr_executions.csv" -Method Post -InFile samples\ibkr_executions.csv -ContentType "application/octet-stream"
-```
-
-Then commit with the returned `preview_id`. The TradingView sample needs `default_symbol` first.
-
-## Design preview
-
-The dashboard below shows 1,000 synthetic trades imported from `samples/synthetic_preview.csv`. It was captured from the production build served by `pnpm -C web preview`, with the API running.
-
-![Dashboard with 1,000 imported trades](docs/screenshots/dashboard.png)
-
-The earlier overview screenshot shows the Phase 0 shell with the API online. Run `pnpm dev:web` for the interactive shell and use `Ctrl+K` to open the command palette, which also contains the color-blind palette toggle.
+MIT; see [LICENSE](LICENSE).

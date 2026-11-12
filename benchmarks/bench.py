@@ -63,7 +63,7 @@ DATASETS = {
     10_000: OUT / "synthetic_10k.csv",
 }
 BROWSER_SIZE = 10_000
-DATASET_RUNS = 5
+DATASET_RUNS = 10
 SYMBOL_FILTER = Filters(symbols=("NVDA",))
 SETUP_FILTER = Filters(setups=("breakout",))
 RULE = Rules(daily_loss_cap=500.0)
@@ -119,10 +119,6 @@ def timed(action: Callable[[], Any]) -> tuple[float, Any]:
     return time.perf_counter() - started, result
 
 
-def median_of(runs: int, action: Callable[[], float]) -> float:
-    return statistics.median(action() for _ in range(runs))
-
-
 def ingest_once(source: Path, scratch: Path) -> tuple[dict[str, float], Store, int]:
     """Run one import into a fresh store. Returns stage times, the store, and the accepted count."""
     options = ImportOptions()
@@ -151,7 +147,12 @@ def measure_size(size: int, scratch: Path) -> dict[str, Any]:
     runs = DATASET_RUNS
     source = DATASETS[size]
     print(f"\n== {size:,} trades from {source.name} ({runs} run(s) each)", flush=True)
-    result: dict[str, Any] = {"rows": size, "runs": runs}
+    result: dict[str, Any] = {"rows": size, "runs": runs, "ranges": {}}
+
+    def measure(name: str, action: Callable[[], float]) -> float:
+        values = [action() for _ in range(runs)]
+        result["ranges"][name] = {"min": min(values), "max": max(values)}
+        return statistics.median(values)
 
     ingest_runs: list[dict[str, float]] = []
     store: Store | None = None
@@ -165,6 +166,9 @@ def measure_size(size: int, scratch: Path) -> dict[str, Any]:
     result["ingest"] = {
         key: statistics.median(run[key] for run in ingest_runs) for key in ingest_runs[0]
     }
+    for key in ingest_runs[0]:
+        values = [run[key] for run in ingest_runs]
+        result["ranges"][f"ingest.{key}"] = {"min": min(values), "max": max(values)}
     result["accepted_trades"] = accepted
     print(f"  ingest total       {result['ingest']['total']:8.3f} s", flush=True)
 
@@ -178,10 +182,13 @@ def measure_size(size: int, scratch: Path) -> dict[str, Any]:
 
             return run
 
-        result["dashboard_cold"] = median_of(runs, cold_dashboard(Filters()))
+        result["dashboard_cold"] = measure("dashboard_cold", cold_dashboard(Filters()))
         engine = AnalysisEngine(store)
         engine.dashboard(Filters())
-        result["dashboard_cached"] = timed(lambda: engine.dashboard(Filters()))[0]
+        result["dashboard_cached"] = measure(
+            "dashboard_cached",
+            lambda: timed(lambda: engine.dashboard(Filters()))[0],
+        )
         payload = engine.dashboard(Filters())
         raw_bytes, gzip_bytes = dashboard_payload_bytes(payload)
         result["dashboard_bytes"] = {"raw": raw_bytes, "gzip": gzip_bytes}
@@ -201,11 +208,12 @@ def measure_size(size: int, scratch: Path) -> dict[str, Any]:
 
             return run
 
-        result["filter_change_dashboard"] = median_of(
-            runs, warm_filter_change(SYMBOL_FILTER, lambda engine, f: engine.dashboard(f))
+        result["filter_change_dashboard"] = measure(
+            "filter_change_dashboard",
+            warm_filter_change(SYMBOL_FILTER, lambda engine, f: engine.dashboard(f)),
         )
-        result["filter_change_segments"] = median_of(
-            runs,
+        result["filter_change_segments"] = measure(
+            "filter_change_segments",
             warm_filter_change(SETUP_FILTER, lambda engine, f: engine.segments(f, "symbol", 30)),
         )
         print(f"  filter change      {result['filter_change_dashboard']:8.3f} s", flush=True)
@@ -217,8 +225,8 @@ def measure_size(size: int, scratch: Path) -> dict[str, Any]:
             return seconds
 
         total = store.count_trades()
-        result["page_first"] = median_of(runs, lambda: page(0))
-        result["page_middle"] = median_of(runs, lambda: page(max(0, total // 2)))
+        result["page_first"] = measure("page_first", lambda: page(0))
+        result["page_middle"] = measure("page_middle", lambda: page(max(0, total // 2)))
 
         def simulate() -> float:
             fresh = AnalysisEngine(store)
@@ -228,23 +236,22 @@ def measure_size(size: int, scratch: Path) -> dict[str, Any]:
         coach_engine = AnalysisEngine(store)
         coach_engine.trades_for(Filters())  # the server keeps the loaded frame
         coach_service = CoachService(store, coach_engine)
-        result["coach_report"] = median_of(
-            runs, lambda: timed(lambda: coach_service.report(Filters(), force=True))[0]
+        result["coach_report"] = measure(
+            "coach_report",
+            lambda: timed(lambda: coach_service.report(Filters(), force=True))[0],
         )
         print(f"  coach report       {result['coach_report']:8.3f} s", flush=True)
 
-        result["simulator"] = median_of(runs, simulate)
+        result["simulator"] = measure("simulator", simulate)
         print(f"  simulator          {result['simulator']:8.3f} s", flush=True)
 
         def cold_response() -> float:
             fresh = AnalysisEngine(store)
             started = time.perf_counter()
-            payload = fresh.dashboard(Filters())
-            body = json.dumps(payload, separators=(",", ":")).encode("utf-8")
-            gzip.compress(body, compresslevel=6)
+            fresh.dashboard_bytes(Filters())
             return time.perf_counter() - started
 
-        result["dashboard_response"] = median_of(runs, cold_response)
+        result["dashboard_response"] = measure("dashboard_response", cold_response)
 
         pnl = prepare(store.load_frame(), Filters()).frame["pnl"].to_numpy()
 
@@ -252,7 +259,7 @@ def measure_size(size: int, scratch: Path) -> dict[str, Any]:
             seconds, _ = timed(lambda: monte_carlo(pnl, 5000, 42, 10_000.0, 2_000.0, 1_000.0))
             return seconds
 
-        result["monte_carlo_5000"] = median_of(runs, monte_carlo_run)
+        result["monte_carlo_5000"] = measure("monte_carlo_5000", monte_carlo_run)
         print(f"  monte carlo 5,000  {result['monte_carlo_5000']:8.3f} s", flush=True)
     finally:
         store.close()
@@ -308,10 +315,8 @@ def browser_measurements(size: int) -> dict[str, Any] | None:
     env = {**os.environ, "LEDGER_DATA_DIR": str(scratch / "data")}
     api = subprocess.Popen(
         [
-            "uv",
-            "run",
-            "--directory",
-            str(ROOT / "api"),
+            sys.executable,
+            "-m",
             "uvicorn",
             "obsidian_ledger.main:app",
             "--host",
@@ -343,7 +348,17 @@ def browser_measurements(size: int) -> dict[str, Any] | None:
         with urllib.request.urlopen(commit, timeout=900):  # noqa: S310
             pass
         preview = subprocess.Popen(
-            "pnpm -C web preview", shell=True, cwd=ROOT, stdout=subprocess.DEVNULL
+            [
+                "node",
+                str(ROOT / "web" / "node_modules" / "vite" / "bin" / "vite.js"),
+                "preview",
+                "--host",
+                "127.0.0.1",
+                "--port",
+                "5173",
+            ],
+            cwd=ROOT / "web",
+            stdout=subprocess.DEVNULL,
         )
         _wait_for("http://127.0.0.1:5173/")
         completed = subprocess.run(
@@ -359,20 +374,28 @@ def browser_measurements(size: int) -> dict[str, Any] | None:
             return None
         return json.loads(completed.stdout.strip().splitlines()[-1])
     finally:
-        # `uv run` spawns uvicorn as a child, so terminating only the wrapper leaves the server
-        # listening. Stop the whole tree instead.
-        if preview is not None:
-            subprocess.run(
-                ["taskkill", "/PID", str(preview.pid), "/T", "/F"], capture_output=True, check=False
-            )
-        subprocess.run(
-            ["taskkill", "/PID", str(api.pid), "/T", "/F"], capture_output=True, check=False
-        )
+
+        def stop(process: subprocess.Popen[Any] | None) -> None:
+            if process is not None and process.poll() is None:
+                subprocess.run(
+                    [
+                        "powershell",
+                        "-NoProfile",
+                        "-Command",
+                        f"Stop-Process -Id {process.pid}",
+                    ],
+                    capture_output=True,
+                    check=True,
+                )
+                process.wait(timeout=15)
+
         try:
-            api.wait(timeout=15)
-        except subprocess.TimeoutExpired:
-            api.kill()
-        shutil.rmtree(scratch, ignore_errors=True)
+            stop(preview)
+        finally:
+            try:
+                stop(api)
+            finally:
+                shutil.rmtree(scratch)
 
 
 def _ui_summary(label: str, ui: dict[str, Any]) -> str:
@@ -417,13 +440,27 @@ def render_results(labels: list[str]) -> None:
     if not runs:
         return
     lines = ["# Benchmark results", ""]
-    first = next(iter(runs.values()))
+    first = runs.get("latest", next(iter(runs.values())))
     lines += ["## Machine", ""]
     for key, value in first["machine"].items():
         lines.append(f"- {key}: {value}")
-    lines += ["", f"Times are medians of {DATASET_RUNS} runs. Lower is better.", ""]
+    run_counts = {
+        label: max((size.get("runs", 0) for size in run["sizes"]), default=0)
+        for label, run in runs.items()
+    }
+    lines += [
+        "",
+        "Cells show the median in seconds and, when recorded, the min–max range. "
+        "Run counts are shown in each column header; older labels retain their original counts.",
+        "",
+    ]
 
-    def cell(label: str, rows: int, getter: Callable[[dict[str, Any]], Any]) -> str:
+    def cell(
+        label: str,
+        rows: int,
+        getter: Callable[[dict[str, Any]], Any],
+        range_key: str,
+    ) -> str:
         run = runs.get(label)
         if run is None:
             return "n/a"
@@ -438,33 +475,50 @@ def render_results(labels: list[str]) -> None:
             return "n/a"
         if isinstance(value, str):
             return value
+        bounds = size.get("ranges", {}).get(range_key)
+        if bounds:
+            return f"{value:.3f} s ({bounds['min']:.3f}–{bounds['max']:.3f})"
         return f"{value:.3f} s"
 
-    metrics: list[tuple[str, Callable[[dict[str, Any]], Any]]] = [
-        ("Ingest total", lambda s: s["ingest"]["total"]),
-        ("  analyze", lambda s: s["ingest"]["analyze"]),
-        ("  process rows", lambda s: s["ingest"]["process rows"]),
-        ("  insert trades", lambda s: s["ingest"]["insert trades"]),
-        ("Dashboard, cold", lambda s: s["dashboard_cold"]),
-        ("Dashboard response (JSON + gzip), cold", lambda s: s["dashboard_response"]),
-        ("Dashboard, cached", lambda s: s["dashboard_cached"]),
-        ("Filter change (dashboard, warm frame)", lambda s: s["filter_change_dashboard"]),
-        ("Filter change (segments, warm frame)", lambda s: s["filter_change_segments"]),
-        ("Trades page, first", lambda s: s["page_first"]),
-        ("Trades page, middle", lambda s: s["page_middle"]),
-        ("Coach report, warm frame", lambda s: s["coach_report"]),
-        ("Simulator, one rule", lambda s: s["simulator"]),
-        ("Monte Carlo, 5,000 paths", lambda s: s["monte_carlo_5000"]),
+    metrics: list[tuple[str, Callable[[dict[str, Any]], Any], str]] = [
+        ("Ingest total", lambda s: s["ingest"]["total"], "ingest.total"),
+        ("  analyze", lambda s: s["ingest"]["analyze"], "ingest.analyze"),
+        ("  process rows", lambda s: s["ingest"]["process rows"], "ingest.process rows"),
+        ("  insert trades", lambda s: s["ingest"]["insert trades"], "ingest.insert trades"),
+        ("Dashboard, cold", lambda s: s["dashboard_cold"], "dashboard_cold"),
+        (
+            "Dashboard response (JSON + gzip), cold",
+            lambda s: s["dashboard_response"],
+            "dashboard_response",
+        ),
+        ("Dashboard, cached", lambda s: s["dashboard_cached"], "dashboard_cached"),
+        (
+            "Filter change (dashboard, warm frame)",
+            lambda s: s["filter_change_dashboard"],
+            "filter_change_dashboard",
+        ),
+        (
+            "Filter change (segments, warm frame)",
+            lambda s: s["filter_change_segments"],
+            "filter_change_segments",
+        ),
+        ("Trades page, first", lambda s: s["page_first"], "page_first"),
+        ("Trades page, middle", lambda s: s["page_middle"], "page_middle"),
+        ("Coach report, warm frame", lambda s: s["coach_report"], "coach_report"),
+        ("Simulator, one rule", lambda s: s["simulator"], "simulator"),
+        ("Monte Carlo, 5,000 paths", lambda s: s["monte_carlo_5000"], "monte_carlo_5000"),
     ]
     labels_shown = list(runs.keys())
     for rows in SIZES:
         if not any(any(s["rows"] == rows for s in run["sizes"]) for run in runs.values()):
             continue
         lines += [f"## {rows:,} trades", ""]
-        header = "| Measure | " + " | ".join(labels_shown) + " |"
+        header = "| Measure | " + " | ".join(
+            f"{label} ({run_counts[label]} runs)" for label in labels_shown
+        ) + " |"
         lines += [header, "|" + "---|" * (len(labels_shown) + 1)]
-        for name, getter in metrics:
-            row = [cell(label, rows, getter) for label in labels_shown]
+        for name, getter, range_key in metrics:
+            row = [cell(label, rows, getter, range_key) for label in labels_shown]
             lines.append(f"| {name} | " + " | ".join(row) + " |")
         lines.append("")
 
