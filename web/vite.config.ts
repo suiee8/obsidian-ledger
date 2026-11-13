@@ -1,3 +1,4 @@
+
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import { defineConfig } from "vitest/config";
@@ -39,6 +40,7 @@ export default defineConfig({
     host: "127.0.0.1",
     port: 5173,
     strictPort: true,
+    allowedHosts: ["sb-55m2ifbesbym.vercel.run"],
     headers: securityHeaders,
   },
   preview: {
