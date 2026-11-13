@@ -11,7 +11,13 @@ from typing import Final
 from zoneinfo import ZoneInfo
 
 from obsidian_ledger.ingest.adapters import default_contract_size
-from obsidian_ledger.ingest.parse import DecimalStyle, parse_number, parse_side, parse_time
+from obsidian_ledger.ingest.parse import (
+    DecimalStyle,
+    parse_number,
+    parse_side,
+    parse_time,
+    time_precision,
+)
 from obsidian_ledger.ingest.trade import Draft, Reason, Trade
 
 PRICE_TOLERANCE_FLOOR: Final = 0.01
@@ -32,6 +38,7 @@ class Context:
     adapter: str | None
     base_currency: str
     contract_sizes: Mapping[str, float]
+    symbol_aliases: Mapping[str, str]
 
 
 @dataclass
@@ -48,6 +55,11 @@ def session_for_hour(hour_utc: int) -> str:
     if hour_utc < 13:
         return "london"
     return "new_york"
+
+
+def resolve_symbol(symbol: str, ctx: Context) -> str:
+    value = symbol.strip()
+    return ctx.symbol_aliases.get(value, value)
 
 
 def parse_timestamp(raw: str, ctx: Context) -> tuple[datetime, bool] | None:
@@ -106,7 +118,7 @@ def draft_from_values(
     round_trip: bool,
 ) -> Draft:
     """Build a draft from the mapped cells of one row. Parse errors go into checks."""
-    symbol = values.get("symbol", "").strip() or (ctx.default_symbol or "")
+    symbol = resolve_symbol(values.get("symbol", ""), ctx) or (ctx.default_symbol or "")
     if not symbol:
         checks.errors.append(
             Reason("missing_symbol", "The row has no symbol and no default was given.")
@@ -119,6 +131,8 @@ def draft_from_values(
         )
 
     entry_raw = values.get("entry_time", "").strip()
+    if values.get("entry_clock", "").strip() and not re.search(r"\d{1,2}:\d{2}", entry_raw):
+        entry_raw = f"{entry_raw} {values['entry_clock'].strip()}".strip()
     entry_time: datetime | None = None
     has_offset = False
     if not entry_raw:
@@ -134,6 +148,8 @@ def draft_from_values(
 
     exit_time: datetime | None = None
     exit_raw = values.get("exit_time", "").strip()
+    if values.get("exit_clock", "").strip() and not re.search(r"\d{1,2}:\d{2}", exit_raw):
+        exit_raw = f"{exit_raw} {values['exit_clock'].strip()}".strip()
     if round_trip:
         if not exit_raw:
             checks.errors.append(Reason("missing_exit_time", "The row has no exit time."))
@@ -162,11 +178,11 @@ def draft_from_values(
     exit_price = number_field(values, "exit_price", ctx, checks)
     gross = number_field(values, "gross_pnl", ctx, checks)
     net = number_field(values, "net_pnl", ctx, checks)
-    commission = number_field(values, "commission", ctx, checks) or 0.0
-    swap = number_field(values, "swap", ctx, checks) or 0.0
+    commission = number_field(values, "commission", ctx, checks)
+    swap = number_field(values, "swap", ctx, checks)
     fees_raw = number_field(values, "fees", ctx, checks)
     # Fees and taxes are written as positive costs in most exports. Store them as negative.
-    fees = -abs(fees_raw) if fees_raw is not None else 0.0
+    fees = -abs(fees_raw) if fees_raw is not None else None
 
     decimals = max(
         _decimals(values.get("entry_price", "")),
@@ -210,6 +226,17 @@ def draft_from_values(
         plan_followed=parse_bool(values.get("plan_followed", "")),
         confidence=values.get("confidence", "").strip() or None,
         screenshot_path=values.get("screenshot_path", "").strip() or None,
+        time_precision=max(
+            (time_precision(value) for value in (entry_raw, exit_raw) if value),
+            key=lambda value: {"second": 0, "minute": 1, "hour": 2, "day": 3}[value],
+            default="second",
+        ),
+        entry_notional=number_field(values, "notional", ctx, checks),
+        exit_notional=number_field(values, "exit_notional", ctx, checks),
+        leverage=number_field(values, "leverage", ctx, checks),
+        order_type=values.get("order_type", "").strip() or None,
+        status=values.get("status", "").strip() or None,
+        action=values.get("action", "").strip() or None,
     )
 
 
@@ -226,7 +253,7 @@ def finalize(draft: Draft, checks: Checks, ctx: Context) -> Trade | list[Reason]
         return [Reason("negative_duration", "The exit time is before the entry time.")]
 
     multiplier = draft.multiplier if draft.multiplier is not None else 1.0
-    costs = draft.fees + draft.commission + draft.swap
+    costs = (draft.fees or 0.0) + (draft.commission or 0.0) + (draft.swap or 0.0)
     sign = 1.0 if draft.side == "long" else -1.0
     implied: float | None = None
     if draft.entry_price is not None and draft.exit_price is not None:
@@ -238,9 +265,9 @@ def finalize(draft: Draft, checks: Checks, ctx: Context) -> Trade | list[Reason]
     elif draft.net_pnl is not None:
         reported_gross = draft.net_pnl - costs
     gross = reported_gross if reported_gross is not None else implied
-    if gross is None:
-        return [Reason("no_pnl_or_prices", "The row has neither P&L nor entry and exit prices.")]
-    net = draft.net_pnl if draft.net_pnl is not None else gross + costs
+    net = (
+        draft.net_pnl if draft.net_pnl is not None else gross + costs if gross is not None else None
+    )
 
     warnings = list(checks.warnings)
     if reported_gross is not None and draft.gross_pnl is not None and draft.net_pnl is not None:
@@ -265,20 +292,32 @@ def finalize(draft: Draft, checks: Checks, ctx: Context) -> Trade | list[Reason]
         risk = stop_risk if stop_risk > 0 else None
     r_value: float | None = None
     if risk is not None and risk > 0:
-        r_value = net / risk
-        if draft.provided_r is not None and abs(draft.provided_r - r_value) > R_TOLERANCE:
+        r_value = net / risk if net is not None else None
+        if (
+            draft.provided_r is not None
+            and r_value is not None
+            and abs(draft.provided_r - r_value) > R_TOLERANCE
+        ):
             warnings.append(
                 Reason(
                     "r_mismatch",
                     f"Provided R {draft.provided_r} differs from net / risk {r_value:.4f}.",
                 )
             )
-    elif draft.provided_r is not None:
+    elif draft.provided_r is not None and net is not None:
         r_value = draft.provided_r
     if risk is None:
         warnings.append(Reason("missing_risk", "No planned risk or stop, so R is unavailable."))
     if not draft.has_offset:
         warnings.append(Reason("timezone_assumed", f"Naive timestamps were read in {ctx.tz_name}."))
+    if draft.time_precision in {"hour", "day"}:
+        warnings.append(
+            Reason(
+                "time_precision",
+                f"The source timestamp is only precise to the {draft.time_precision}; "
+                "holding time is approximate.",
+            )
+        )
 
     key_parts = [
         draft.account,
@@ -289,7 +328,7 @@ def finalize(draft: Draft, checks: Checks, ctx: Context) -> Trade | list[Reason]
         f"{draft.qty:.8f}",
         f"{draft.entry_price}",
         f"{draft.exit_price}",
-        f"{net:.2f}",
+        f"{net:.2f}" if net is not None else "unknown",
     ]
     trade_key = hashlib.sha256("|".join(key_parts).encode("utf-8")).hexdigest()
     hour = entry.hour
@@ -310,8 +349,8 @@ def finalize(draft: Draft, checks: Checks, ctx: Context) -> Trade | list[Reason]
         fees=draft.fees,
         commission=draft.commission,
         swap=draft.swap,
-        gross_pnl=round(gross, 8),
-        net_pnl=round(net, 8),
+        gross_pnl=round(gross, 8) if gross is not None else None,
+        net_pnl=round(net, 8) if net is not None else None,
         currency=draft.currency,
         net_pnl_base=None,
         base_currency=ctx.base_currency,
@@ -330,9 +369,18 @@ def finalize(draft: Draft, checks: Checks, ctx: Context) -> Trade | list[Reason]
         plan_followed=draft.plan_followed,
         confidence=draft.confidence,
         screenshot_path=draft.screenshot_path,
-        holding_seconds=(exit_time - entry).total_seconds(),
+        holding_seconds=(
+            (exit_time - entry).total_seconds() if draft.time_precision != "day" else None
+        ),
         weekday=entry.weekday(),
         hour_utc=hour,
         source_row=draft.source_rows[0],
+        time_precision=draft.time_precision,
+        entry_notional=draft.entry_notional,
+        exit_notional=draft.exit_notional,
+        leverage=draft.leverage,
+        order_type=draft.order_type,
+        status=draft.status,
+        action=draft.action,
         warnings=warnings,
     )

@@ -235,7 +235,7 @@ class SliceBuilder:
         """
         params = self.params
         if name == "fee_drag":
-            return np.ones(self.count, dtype=bool), -self.costs
+            return np.isfinite(self.costs), -np.nan_to_num(self.costs, nan=0.0)
         if name == "early_exit":
             usable = np.isfinite(self.mfe) & (self.mfe > 0) & (self.pnl > 0)
             with np.errstate(divide="ignore", invalid="ignore"):

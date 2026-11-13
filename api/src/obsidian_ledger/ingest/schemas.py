@@ -13,6 +13,20 @@ class ColumnOut(BaseModel):
     field: str | None
     confidence: str | None
     source: str
+    reasons: list[str] = []
+
+
+class ColumnProfileOut(BaseModel):
+    index: int
+    header: str
+    type_mix: dict[str, int]
+    regex_shape: list[str]
+    cardinality: int
+    minimum: float | None
+    maximum: float | None
+    monotonicity: str
+    max_length: int
+    samples: list[str]
 
 
 class QuestionOut(BaseModel):
@@ -46,6 +60,7 @@ class PreviewOut(BaseModel):
     kind: str
     encoding: str
     delimiter: str | None
+    line_ending: str
     header_record: int
     adapter: str | None
     shape: str | None
@@ -55,6 +70,14 @@ class PreviewOut(BaseModel):
     timezone: str
     base_currency: str
     columns: list[ColumnOut]
+    profiles: list[ColumnProfileOut]
+    capabilities: dict[str, bool]
+    warnings: list[str]
+    rows_profiled: int
+    duplicate_rows: int
+    symbol_count: int
+    row_order: str
+    totals_rows: int
     questions: list[QuestionOut]
     assumptions: list[AssumptionOut]
     sample_rows: list[dict[str, str]]
@@ -72,6 +95,9 @@ class CommitOut(BaseModel):
     rejected: int
     duplicates_in_file: int
     open_positions: int
+    orphan_closes: int
+    quantity_conserved: bool
+    activity_events: int
     issues: list[IssueOut]
     assumptions: list[AssumptionOut]
     rejected_csv_path: str

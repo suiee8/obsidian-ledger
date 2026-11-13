@@ -15,9 +15,11 @@ Open <http://127.0.0.1:5173>. The API runs on <http://127.0.0.1:8000> and binds 
 
 ## Import a journal
 
-Choose **Import** and select a CSV, TSV, text, XLSX, XLS, or JSON export. Review the detected columns, assumptions, and rejected rows before committing the import. Blocking questions must be answered first. XLS/XLSX formulas are not evaluated; only cached cell values are read.
+Choose **Import** and select a CSV, TSV, text, XLSX, XLS, or JSON export. The app infers roles from the file's contents; you do not need to choose a broker. Review the **What we found** card, capability checklist, confidence, examples, warnings, and rejected rows before committing. You can override a role, and ambiguous or headerless files require an explicit mapping. Blocking questions must be answered first. XLS/XLSX formulas are not evaluated; only cached cell values are read.
 
 Uploads are limited to 200 MB by default. Archives are accepted only as XLSX files and are rejected if they contain unsafe paths, too many files, excessive expanded size, or an unusually high compression ratio. Imported files and the local database remain on this computer.
+
+Missing prices, fees, stops, and P&L stay unavailable; the app never substitutes zero. If a file has no P&L, activity counts and symbol/time summaries are still shown, while P&L-dependent metrics and the Coach verdict are marked unavailable/cannot be assessed. Notional is not treated as P&L.
 
 ## Read the results and Coach
 

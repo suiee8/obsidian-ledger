@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import threading
 import uuid
@@ -38,8 +39,8 @@ CREATE TABLE IF NOT EXISTS trades (
     fees DOUBLE NOT NULL,
     commission DOUBLE NOT NULL,
     swap DOUBLE NOT NULL,
-    gross_pnl DOUBLE NOT NULL,
-    net_pnl DOUBLE NOT NULL,
+    gross_pnl DOUBLE,
+    net_pnl DOUBLE,
     currency VARCHAR NOT NULL,
     net_pnl_base DOUBLE,
     base_currency VARCHAR NOT NULL,
@@ -62,6 +63,30 @@ CREATE TABLE IF NOT EXISTS trades (
     source_row INTEGER NOT NULL,
     screenshot_path VARCHAR,
     confidence VARCHAR
+    ,time_precision VARCHAR NOT NULL DEFAULT 'second'
+    ,entry_notional DOUBLE
+    ,exit_notional DOUBLE
+    ,leverage DOUBLE
+    ,order_type VARCHAR
+    ,status VARCHAR
+    ,action VARCHAR
+);
+CREATE TABLE IF NOT EXISTS activity_events (
+    event_key VARCHAR PRIMARY KEY,
+    import_id VARCHAR NOT NULL,
+    account VARCHAR NOT NULL,
+    symbol VARCHAR NOT NULL,
+    direction VARCHAR,
+    action VARCHAR,
+    quantity DOUBLE,
+    notional DOUBLE,
+    event_time TIMESTAMP,
+    time_precision VARCHAR NOT NULL,
+    leverage DOUBLE,
+    order_type VARCHAR,
+    status VARCHAR,
+    source_row INTEGER NOT NULL,
+    duplicate BOOLEAN NOT NULL DEFAULT FALSE
 );
 CREATE TABLE IF NOT EXISTS settings (key VARCHAR PRIMARY KEY, value VARCHAR NOT NULL);
 CREATE TABLE IF NOT EXISTS imports (
@@ -105,7 +130,8 @@ WITH params AS (
         (SELECT COUNT(*) FROM settings WHERE key = 'starting_equity') > 0 AS has_equity
 ),
 ordered AS (
-    SELECT t.*, COALESCE(t.net_pnl_base, 0.0) AS pnl_base
+    SELECT t.*,
+        CASE WHEN t.net_pnl IS NULL THEN NULL ELSE COALESCE(t.net_pnl_base, 0.0) END AS pnl_base
     FROM trades t
 ),
 running AS (
@@ -149,7 +175,7 @@ SELECT
     fees, commission, swap, gross_pnl, net_pnl, currency, net_pnl_base, base_currency,
     stop_loss, take_profit, planned_risk, r_multiple, mae, mfe, setup, timeframe,
     session, tags, notes, emotion, plan_followed, holding_seconds, weekday, hour_utc,
-    source_row,
+    source_row, time_precision, entry_notional, exit_notional, leverage, order_type, status, action,
     screenshot_path,
     confidence,
     pnl_base,
@@ -173,6 +199,19 @@ INCOMING: Final = "incoming_trades"
 MIGRATIONS: Final = """
 ALTER TABLE trades ADD COLUMN IF NOT EXISTS screenshot_path VARCHAR;
 ALTER TABLE trades ADD COLUMN IF NOT EXISTS confidence VARCHAR;
+ALTER TABLE trades ALTER COLUMN fees DROP NOT NULL;
+ALTER TABLE trades ALTER COLUMN commission DROP NOT NULL;
+ALTER TABLE trades ALTER COLUMN swap DROP NOT NULL;
+ALTER TABLE trades ALTER COLUMN gross_pnl DROP NOT NULL;
+ALTER TABLE trades ALTER COLUMN net_pnl DROP NOT NULL;
+ALTER TABLE trades ALTER COLUMN holding_seconds DROP NOT NULL;
+ALTER TABLE trades ADD COLUMN IF NOT EXISTS time_precision VARCHAR DEFAULT 'second';
+ALTER TABLE trades ADD COLUMN IF NOT EXISTS entry_notional DOUBLE;
+ALTER TABLE trades ADD COLUMN IF NOT EXISTS exit_notional DOUBLE;
+ALTER TABLE trades ADD COLUMN IF NOT EXISTS leverage DOUBLE;
+ALTER TABLE trades ADD COLUMN IF NOT EXISTS order_type VARCHAR;
+ALTER TABLE trades ADD COLUMN IF NOT EXISTS status VARCHAR;
+ALTER TABLE trades ADD COLUMN IF NOT EXISTS action VARCHAR;
 """
 
 
@@ -235,6 +274,57 @@ class Store:
     def insert_trades(self, import_id: str, trades: Sequence[Trade], base: str) -> tuple[int, int]:
         """Insert Trade objects. Kept for callers that build trades one at a time."""
         return self.insert_frame(import_id, frame_from_trades(trades), base)
+
+    def insert_activity_events(self, import_id: str, events: Sequence[dict[str, Any]]) -> int:
+        """Store source order/fill rows separately from matched trade summaries."""
+        if not events:
+            return 0
+        rows = [
+            {
+                "event_key": hashlib.sha256(
+                    f"{import_id}|{event['source_row']}".encode()
+                ).hexdigest(),
+                "import_id": import_id,
+                **event,
+            }
+            for event in events
+        ]
+        incoming = pl.DataFrame(rows)
+        names = ", ".join(incoming.columns)
+        with self._lock:
+            self._conn.register("incoming_activity_events", incoming)
+            try:
+                before = int(
+                    self._conn.execute("SELECT COUNT(*) FROM activity_events").fetchall()[0][0]
+                )
+                self._conn.execute(
+                    f"INSERT INTO activity_events ({names}) SELECT {names} "
+                    "FROM incoming_activity_events ON CONFLICT (event_key) DO NOTHING"
+                )
+                after = int(
+                    self._conn.execute("SELECT COUNT(*) FROM activity_events").fetchall()[0][0]
+                )
+            finally:
+                self._conn.unregister("incoming_activity_events")
+            inserted = after - before
+            if inserted:
+                self._bump_version_locked()
+        return inserted
+
+    def load_activity_frame(self, import_id: str | None = None) -> pl.DataFrame:
+        """Imported source events, optionally limited to one import, in source-time order."""
+        with self._lock:
+            if import_id is None:
+                relation = self._conn.sql(
+                    "SELECT * FROM activity_events ORDER BY event_time, source_row"
+                )
+            else:
+                relation = self._conn.sql(
+                    "SELECT * FROM activity_events WHERE import_id = ? "
+                    "ORDER BY event_time, source_row",
+                    params=[import_id],
+                )
+            return relation.pl()  # pyright: ignore
 
     def _count_locked(self) -> int:
         row = _first(self._conn.execute("SELECT COUNT(*) FROM trades").fetchall())

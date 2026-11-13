@@ -161,6 +161,17 @@ def fee_drag(frame: pl.DataFrame) -> dict[str, Any]:
     """Costs against gross P&L, overall and by symbol. Costs are signed: negative is a cost."""
     if frame.height == 0:
         return {"costs": 0.0, "gross": 0.0, "drag": None, "by_symbol": []}
+    if frame["costs"].null_count():
+        return {
+            "costs": None,
+            "gross": None,
+            "drag": None,
+            "by_symbol": [],
+            "rule": (
+                "Not available: complete fees, commissions, and swap values are required "
+                "to calculate fee drag."
+            ),
+        }
     pnl = frame["pnl"].to_numpy().astype(np.float64)
     costs = frame["costs"].to_numpy().astype(np.float64)
     gross_total = float(pnl.sum() - costs.sum())

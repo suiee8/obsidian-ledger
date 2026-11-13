@@ -12,7 +12,8 @@ from typing import Any
 
 import polars as pl
 
-from obsidian_ledger.coach.models import Change, ChangeItem, CoachReport
+from obsidian_ledger.coach.fmt import figure
+from obsidian_ledger.coach.models import Caveat, Change, ChangeItem, CoachReport
 from obsidian_ledger.coach.params import CoachParams
 from obsidian_ledger.coach.report import build_report
 from obsidian_ledger.coach.slices import MEASURED_PATTERNS, SliceBuilder
@@ -113,6 +114,34 @@ class CoachService:
                 excluded_no_fx=prepared.excluded_no_fx,
                 progress=progress,
             )
+            if frame.height == 0 and prepared.unpriced.height:
+                reason = (
+                    "This file has no P&L, so trading performance cannot be assessed. "
+                    "Import realized P&L to enable the Coach performance review."
+                )
+                count = prepared.unpriced.height
+                n_figure = figure(count, "count", "core|trades", "Trades available")
+                verdict = built.verdict.model_copy(
+                    update={
+                        "label": "cannot_be_assessed",
+                        "headline": "Cannot be assessed",
+                        "lines": [reason, "No P&L-based leaks or strengths were tested."],
+                        "confidence": "low",
+                        "basis": "P&L is not present in the imported file",
+                        "expectancy": figure(
+                            None, "R", "core|expectancy_r", "Average result per trade"
+                        ),
+                        "n": n_figure,
+                    }
+                )
+                built = built.model_copy(
+                    update={
+                        "status": "cannot_be_assessed",
+                        "sample_trades": n_figure,
+                        "verdict": verdict,
+                        "caveats": [Caveat(text=reason, figure=n_figure)],
+                    }
+                )
             previous_json = self.store.latest_coach_report(filter_key)
             change = (
                 compare(CoachReport.model_validate_json(previous_json), built)

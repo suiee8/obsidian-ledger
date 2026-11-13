@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 from collections.abc import Iterable
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, datetime, timedelta
 from typing import Final, Literal
 
 DecimalStyle = Literal["dot", "comma"]
@@ -29,8 +29,12 @@ DATE_CANDIDATES: Final[tuple[DateCandidate, ...]] = (
     DateCandidate("iso", "%Y-%m-%dT%H:%M:%S", None),
     DateCandidate("iso_space", "%Y-%m-%d %H:%M:%S", None),
     DateCandidate("iso_space_minutes", "%Y-%m-%d %H:%M", None),
+    DateCandidate("iso_space_hour", "%Y-%m-%d %H:", None),
+    DateCandidate("iso_space_hour_plain", "%Y-%m-%d %H", None),
+    DateCandidate("iso_date", "%Y-%m-%d", None),
     DateCandidate("mt5", "%Y.%m.%d %H:%M:%S", None),
     DateCandidate("mt5_minutes", "%Y.%m.%d %H:%M", None),
+    DateCandidate("dotted_date", "%d.%m.%Y", None),
     DateCandidate("ibkr_compact", "%Y%m%d;%H%M%S", None),
     DateCandidate("dotted_dayfirst", "%d.%m.%Y %H:%M:%S", None),
     DateCandidate("dotted_dayfirst_minutes", "%d.%m.%Y %H:%M", None),
@@ -38,6 +42,8 @@ DATE_CANDIDATES: Final[tuple[DateCandidate, ...]] = (
     DateCandidate("slash_dayfirst_minutes", "%d/%m/%Y %H:%M", SLASH_DAYFIRST),
     DateCandidate("slash_monthfirst", "%m/%d/%Y %H:%M:%S", SLASH_MONTHFIRST),
     DateCandidate("slash_monthfirst_minutes", "%m/%d/%Y %H:%M", SLASH_MONTHFIRST),
+    DateCandidate("slash_dayfirst_date", "%d/%m/%Y", SLASH_DAYFIRST),
+    DateCandidate("slash_monthfirst_date", "%m/%d/%Y", SLASH_MONTHFIRST),
 )
 
 _NUMBER_VALUE: Final = re.compile(r"^[+-]?\d+(\.\d+)?$")
@@ -82,22 +88,84 @@ def count_number_style(values: Iterable[str]) -> tuple[DecimalStyle, int, int]:
 
 
 def parse_side(text: str) -> Literal["long", "short"] | None:
-    """Read direction words such as "buy", "Entry long", or "SELL"."""
+    """Read direction words, preferring explicit long/short over buy/sell."""
     words = set(re.findall(r"[a-z]+", text.lower()))
-    if words & {"long", "buy"}:
+    if words & {"long", "buy", "b", "plus"}:
         return "long"
-    if words & {"short", "sell"}:
+    if words & {"short", "sell", "s", "minus"}:
         return "short"
     return None
 
 
+def parse_side_action(
+    text: str,
+) -> tuple[Literal["open", "close"] | None, Literal["long", "short"] | None]:
+    """Read the action and position direction when a source encodes both in one cell."""
+    words = set(re.findall(r"[a-z]+", text.lower()))
+    direction: Literal["long", "short"] | None = None
+    if "long" in words:
+        direction = "long"
+    elif "short" in words:
+        direction = "short"
+    elif words & {"buy", "b"}:
+        direction = "long"
+    elif words & {"sell", "s"}:
+        direction = "short"
+
+    action: Literal["open", "close"] | None = None
+    if words & {"open", "opening", "entry", "enter"}:
+        action = "open"
+    elif words & {"close", "closing", "exit", "exiting"}:
+        action = "close"
+    elif "long" in words and "buy" in words:
+        action = "open"
+    elif "long" in words and "sell" in words:
+        action = "close"
+    elif "short" in words and "sell" in words:
+        action = "open"
+    elif "short" in words and "buy" in words:
+        action = "close"
+    return action, direction
+
+
+def time_precision(text: str) -> Literal["second", "minute", "hour", "day"]:
+    """Report the precision actually present in a timestamp, without inventing fields."""
+    value = text.strip()
+    if re.fullmatch(r"\d{4}-\d{2}-\d{2}", value) or re.fullmatch(
+        r"\d{1,2}[/.]\d{1,2}[/.]\d{4}", value
+    ):
+        return "day"
+    if re.search(r":\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:?\d{2})?$", value):
+        return "second"
+    if re.search(r":\d{2}(?:Z|[+-]\d{2}:?\d{2})?$", value):
+        return "minute"
+    if re.search(r"(?:\s|T)\d{1,2}:?$", value):
+        return "hour"
+    if (
+        re.fullmatch(r"\d{10}", value)
+        or re.fullmatch(r"\d{13}", value)
+        or re.fullmatch(r"\d+(?:\.\d+)?", value)
+    ):
+        return "second"
+    return "day"
+
+
 def parse_time(text: str, slash_family: str | None) -> tuple[datetime, bool] | None:
     """Parse one timestamp. Returns (value, has_offset), or None if no candidate fits."""
+    raw = text.strip()
+    if re.fullmatch(r"\d{10}", raw):
+        return datetime.fromtimestamp(int(raw), UTC), True
+    if re.fullmatch(r"\d{13}", raw):
+        return datetime.fromtimestamp(int(raw) / 1000, UTC), True
+    if re.fullmatch(r"\d{1,6}(?:\.\d+)?", raw):
+        serial = float(raw)
+        if 1 <= serial <= 100000:
+            return datetime(1899, 12, 30) + timedelta(days=serial), False
     for candidate in DATE_CANDIDATES:
         if candidate.family is not None and candidate.family != slash_family:
             continue
         try:
-            value = datetime.strptime(text.strip(), candidate.pattern)
+            value = datetime.strptime(raw, candidate.pattern)
         except ValueError:
             continue
         return value, value.tzinfo is not None

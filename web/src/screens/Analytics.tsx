@@ -4,6 +4,8 @@ import { BarSeries, GroupedBars } from "../components/charts/Bars";
 import { BrushScatter, type BrushRange } from "../components/charts/BrushScatter";
 import { MonteCarloFan } from "../components/charts/LineBands";
 import { Panel } from "../components/Panel";
+import { ActivityOnly } from "../components/Availability";
+import { useAvailability } from "../lib/queries";
 import { DISCLAIMER, EmptyScreen, ScreenError, ScreenSkeleton } from "../components/ScreenStates";
 import { fmtInt, fmtMoney, fmtNumber, fmtPercent, fmtR, WEEKDAY_LABELS } from "../lib/format";
 import {
@@ -511,11 +513,11 @@ function FeeDrag({ data }: { data: ExploreData["fee_drag"] }) {
       <dl className="stat-row">
         <div>
           <dt>Total costs</dt>
-          <dd>{fmtMoney(data.costs)}</dd>
+          <dd>{data.costs === null ? "Not available" : fmtMoney(data.costs)}</dd>
         </div>
         <div>
           <dt>Gross P&L</dt>
-          <dd>{fmtMoney(data.gross)}</dd>
+          <dd>{data.gross === null ? "Not available" : fmtMoney(data.gross)}</dd>
         </div>
         <div>
           <dt>Drag</dt>
@@ -589,6 +591,7 @@ function FanPanel({ params }: { params: string }) {
 export default function Analytics() {
   const liveParams = useFilters((state) => state.toParams());
   const params = useDebouncedValue(liveParams, FILTER_DEBOUNCE_MS);
+  const availability = useAvailability(params);
   const query = useExplore(params);
   const data = query.data;
 
@@ -602,6 +605,9 @@ export default function Analytics() {
     );
   }
   if (query.isPending || data === undefined) return <ScreenSkeleton label="Loading analytics" />;
+  if (availability.data && !availability.data.available) {
+    return <ActivityOnly data={availability.data} />;
+  }
   if (data.points.n === 0) {
     return (
       <EmptyScreen

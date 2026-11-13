@@ -62,16 +62,23 @@ def test_net_only_rows_are_accepted_without_prices(tmp_path: Path) -> None:
     assert outcome.trades[0].net_pnl == pytest.approx(-40.0)
 
 
-def test_row_with_no_pnl_and_no_prices_is_rejected(tmp_path: Path) -> None:
+def test_row_with_no_pnl_and_no_prices_keeps_financial_values_unknown(tmp_path: Path) -> None:
     path = _csv(tmp_path, "1,ETHUSD,long,2026-01-06T10:00:00Z,2026-01-06T11:00:00Z,2,,,,,,")
-    assert _codes(_run(path), 2) == {"no_pnl_or_prices"}
+    outcome = _run(path)
+    assert outcome.rejected == []
+    assert len(outcome.trades) == 1
+    assert outcome.trades[0].net_pnl is None
+    assert outcome.trades[0].gross_pnl is None
+    assert outcome.trades[0].entry_price is None
+    assert outcome.trades[0].exit_price is None
 
 
-def test_identical_rows_are_kept_once_and_the_copy_is_rejected(tmp_path: Path) -> None:
+def test_identical_rows_are_kept_and_flagged_as_possible_duplicate_fills(tmp_path: Path) -> None:
     row = "1,AAPL,long,2026-01-06T10:00:00Z,2026-01-06T11:00:00Z,10,100,101,,10,,"
     outcome = _run(_csv(tmp_path, row, row))
-    assert len(outcome.trades) == 1
-    assert _codes(outcome, 3) == {"duplicate_in_file"}
+    assert len(outcome.trades) == 2
+    assert len({trade.trade_key for trade in outcome.trades}) == 2
+    assert any(reason.code == "duplicate_kept" for reason in outcome.trades[1].warnings)
 
 
 def test_zero_quantity_and_bad_side_report_every_reason(tmp_path: Path) -> None:

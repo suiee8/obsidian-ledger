@@ -124,7 +124,11 @@ export function TradeDrawer({ tradeKey, onClose }: TradeDrawerProps) {
 
       <dl className="detail-grid">
         <dt>Net P&L</dt>
-        <dd className={trade.net_pnl_base !== null && trade.net_pnl_base < 0 ? "tone-loss" : "tone-profit"}>
+        <dd
+          className={
+            trade.net_pnl_base === null ? "muted" : trade.net_pnl_base < 0 ? "tone-loss" : "tone-profit"
+          }
+        >
           {fmtMoney(trade.net_pnl_base)}
         </dd>
         <dt>R multiple</dt>
@@ -136,7 +140,11 @@ export function TradeDrawer({ tradeKey, onClose }: TradeDrawerProps) {
           {fmtNumber(trade.entry_price, 5)} → {fmtNumber(trade.exit_price, 5)}
         </dd>
         <dt>Costs</dt>
-        <dd>{fmtMoney(trade.fees + trade.commission + trade.swap, trade.currency)}</dd>
+        <dd>
+          {trade.fees === null || trade.commission === null || trade.swap === null
+            ? "Not available from this file"
+            : fmtMoney(trade.fees + trade.commission + trade.swap, trade.currency)}
+        </dd>
         <dt>Planned risk</dt>
         <dd>{fmtMoney(trade.planned_risk, trade.currency)}</dd>
         <dt>Stop / target</dt>

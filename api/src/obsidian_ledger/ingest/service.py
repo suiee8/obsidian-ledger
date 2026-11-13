@@ -18,6 +18,7 @@ from obsidian_ledger.ingest.run import run_import
 from obsidian_ledger.ingest.schemas import (
     AssumptionOut,
     ColumnOut,
+    ColumnProfileOut,
     CommitOut,
     IssueOut,
     PreviewOut,
@@ -74,6 +75,7 @@ class ImportService:
             kind=analysis.source.kind,
             encoding=analysis.source.encoding or "utf-8",
             delimiter=analysis.source.delimiter,
+            line_ending=analysis.source.line_ending,
             header_record=analysis.source.header_record,
             adapter=analysis.adapter,
             shape=analysis.shape,
@@ -89,9 +91,32 @@ class ImportService:
                     field=c.field,
                     confidence=c.confidence,
                     source=c.source,
+                    reasons=list(c.reasons),
                 )
                 for c in analysis.columns
             ],
+            profiles=[
+                ColumnProfileOut(
+                    index=profile.index,
+                    header=profile.header,
+                    type_mix=profile.type_mix,
+                    regex_shape=list(profile.regex_shape),
+                    cardinality=profile.cardinality,
+                    minimum=profile.minimum,
+                    maximum=profile.maximum,
+                    monotonicity=profile.monotonicity,
+                    max_length=profile.max_length,
+                    samples=list(profile.samples),
+                )
+                for profile in analysis.profiles
+            ],
+            capabilities=analysis.capabilities,
+            warnings=list(analysis.warnings),
+            rows_profiled=analysis.rows_profiled,
+            duplicate_rows=analysis.duplicate_rows,
+            symbol_count=len(analysis.symbols_sampled),
+            row_order=analysis.row_order,
+            totals_rows=analysis.totals_rows,
             questions=_question_out(analysis),
             assumptions=_assumption_out(analysis),
             sample_rows=analysis.preview_rows,
@@ -132,11 +157,7 @@ class ImportService:
             mapping = {column.header: column.field for column in analysis.columns}
             self.store.save_template(analysis.fingerprint, options.template_name, mapping)
 
-        duplicates = sum(
-            1
-            for rejected in outcome.rejected
-            if any(r.code == "duplicate_in_file" for r in rejected.reasons)
-        )
+        activity_events = self.store.insert_activity_events(import_id, outcome.activity_events)
         record: dict[str, Any] = {
             "rows_total": outcome.rows_total,
             "blank_rows": outcome.blank_rows,
@@ -144,10 +165,14 @@ class ImportService:
             "inserted": inserted,
             "already_present": present,
             "rejected": len(outcome.rejected),
-            "duplicates_in_file": duplicates,
+            "duplicates_in_file": outcome.duplicates_in_file,
+            "orphan_closes": outcome.orphan_closes,
+            "quantity_conserved": outcome.quantity_conserved,
             "raw_rows": raw_rows,
             "adapter": analysis.adapter,
             "shape": analysis.shape,
+            "capabilities": analysis.capabilities,
+            "warnings": list(analysis.warnings),
             "assumptions": [a.key + ": " + a.value for a in analysis.assumptions],
             "issues": [issue.code for issue in issues],
             "options": options.model_dump(exclude_none=True),
@@ -166,8 +191,11 @@ class ImportService:
             inserted=inserted,
             already_present=present,
             rejected=len(outcome.rejected),
-            duplicates_in_file=duplicates,
+            duplicates_in_file=outcome.duplicates_in_file,
             open_positions=len(outcome.open_positions),
+            orphan_closes=outcome.orphan_closes,
+            quantity_conserved=outcome.quantity_conserved,
+            activity_events=activity_events,
             issues=[
                 IssueOut(
                     code=i.code,

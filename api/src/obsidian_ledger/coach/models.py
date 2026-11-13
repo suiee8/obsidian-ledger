@@ -14,8 +14,8 @@ Unit = Literal["currency", "R", "count", "ratio", "number", "seconds", "score", 
 Confidence = Literal["high", "medium", "low"]
 FindingKind = Literal["leak", "strength", "pattern"]
 Category = Literal["segment", "behavior"]
-VerdictLabel = Literal["edge_present", "unproven", "negative"]
-ReportStatus = Literal["ok", "too_few_trades", "empty"]
+VerdictLabel = Literal["edge_present", "unproven", "negative", "cannot_be_assessed"]
+ReportStatus = Literal["ok", "too_few_trades", "empty", "cannot_be_assessed"]
 
 
 class Strict(BaseModel):

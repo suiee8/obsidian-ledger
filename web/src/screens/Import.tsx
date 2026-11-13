@@ -17,15 +17,80 @@ type Answers = {
   dateFormat?: "dayfirst" | "monthfirst";
   defaultSymbol?: string;
   sideHeader?: string;
+  sideMode?: "netting";
+  mapping?: Record<string, string | null>;
+  symbolAliases?: Record<string, string>;
+};
+
+const ROLES = [
+  "trade_id",
+  "order_id",
+  "account",
+  "symbol",
+  "side",
+  "action",
+  "qty",
+  "entry_price",
+  "exit_price",
+  "fill_price",
+  "notional",
+  "entry_time",
+  "exit_time",
+  "fill_time",
+  "fees",
+  "commission",
+  "swap",
+  "gross_pnl",
+  "net_pnl",
+  "leverage",
+  "order_type",
+  "status",
+  "stop_loss",
+  "take_profit",
+  "notes",
+  "tags",
+  "setup",
+  "asset_class",
+  "currency",
+  "multiplier",
+] as const;
+
+const CAPABILITIES = [
+  ["has_time", "Time"],
+  ["has_direction", "Direction or action"],
+  ["has_quantity", "Quantity"],
+  ["has_notional", "Notional value"],
+  ["has_price", "Price"],
+  ["has_fees", "Fees"],
+  ["has_pnl", "P&L"],
+  ["has_stop", "Stop"],
+] as const;
+
+const WARNING_LABELS: Record<string, string> = {
+  hour_precision: "Hour-only timestamps; holding durations are approximate.",
+  truncated_symbols: "Some symbols may be truncated; values are preserved as-is.",
+  duplicates: "Exact duplicate rows were found and will be kept.",
+  zero_leverage: "Zero leverage values were found.",
+  partial_fills: "Order and filled quantities differ; filled quantities are used.",
+  totals_row: "Trailing totals rows will be ignored.",
 };
 
 /** Build the import options from the answers. Only the questions the preview asked are sent. */
 function optionsFrom(answers: Answers): Record<string, unknown> {
   const options: Record<string, unknown> = {};
+  const mapping: Record<string, string | null> = { ...(answers.mapping ?? {}) };
   if (answers.shape) options.shape = answers.shape;
   if (answers.dateFormat) options.date_format = answers.dateFormat;
   if (answers.defaultSymbol?.trim()) options.default_symbol = answers.defaultSymbol.trim();
-  if (answers.sideHeader) options.mapping = { [answers.sideHeader]: "side" };
+  if (answers.sideHeader) mapping[answers.sideHeader] = "side";
+  if (answers.sideMode) options.side_mode = answers.sideMode;
+  if (Object.keys(mapping).length > 0) options.mapping = mapping;
+  const symbolAliases: Record<string, string> = {};
+  for (const [source, replacement] of Object.entries(answers.symbolAliases ?? {})) {
+    const trimmedReplacement = replacement.trim();
+    if (trimmedReplacement.length > 0) symbolAliases[source] = trimmedReplacement;
+  }
+  if (Object.keys(symbolAliases).length > 0) options.symbol_aliases = symbolAliases;
   return options;
 }
 
@@ -118,6 +183,36 @@ function Questions({
             </label>
           );
         }
+        if (question.id === "side_mode") {
+          return (
+            <label key={question.id} className="question">
+              <span>{question.text}</span>
+              <select
+                value={answers.sideMode ?? ""}
+                onChange={(event) =>
+                  onChange({
+                    ...answers,
+                    sideMode: event.target.value === "netting" ? "netting" : undefined,
+                  })
+                }
+              >
+                <option value="">Choose</option>
+                {question.options.map((option) => (
+                  <option key={option} value={option}>
+                    Treat rows as a netted position history
+                  </option>
+                ))}
+              </select>
+            </label>
+          );
+        }
+        if (question.id === "mapping" || question.id === "mapping_ambiguity") {
+          return (
+            <p key={question.id} className="chip">
+              {question.text} Choose the roles in the table below.
+            </p>
+          );
+        }
         return (
           <p key={question.id} className="chip">
             {question.text}
@@ -143,40 +238,130 @@ function PreviewPanel({
     if (question.id === "default_symbol") return (answers.defaultSymbol ?? "").trim() !== "";
     if (question.id === "shape") return answers.shape !== undefined && answers.shape !== "";
     if (question.id === "side") return answers.sideHeader !== undefined && answers.sideHeader !== "";
+    if (question.id === "side_mode") return answers.sideMode !== undefined;
+    if (question.id === "mapping") {
+      return Object.values(answers.mapping ?? {}).some((role) => role !== null);
+    }
+    if (question.id === "mapping_ambiguity") {
+      return question.options.every((header) =>
+        Object.prototype.hasOwnProperty.call(answers.mapping ?? {}, header),
+      );
+    }
     return false;
   });
+  const profileByIndex = new Map(preview.profiles.map((profile) => [profile.index, profile]));
+  const symbolColumn = preview.columns.find((column) => column.field === "symbol");
+  const symbolSamples = symbolColumn ? profileByIndex.get(symbolColumn.index)?.samples ?? [] : [];
 
   return (
     <section className="glass panel import-preview" aria-labelledby="preview-title">
-      <h2 id="preview-title" className="panel-title">
-        {preview.filename}
-      </h2>
+      <h2 id="preview-title" className="panel-title">What we found</h2>
       <p className="muted">
+        {preview.filename} ·{" "}
         {preview.kind.toUpperCase()} · {preview.encoding} · header on line {preview.header_record}
         {preview.delimiter ? ` · delimiter "${preview.delimiter}"` : ""}
         {preview.adapter ? ` · recognised as ${preview.adapter}` : ""}
         {preview.shape ? ` · ${preview.shape.replace("_", " ")}` : ""}
+        {` · ${preview.rows_profiled} rows · ${preview.symbol_count} symbols · ${preview.row_order}`}
       </p>
 
       <Questions preview={preview} answers={answers} onChange={setAnswers} />
 
-      <h3 className="section-title">Columns</h3>
+      <h3 className="section-title">Capabilities</h3>
+      <ul className="assumptions">
+        {CAPABILITIES.map(([key, label]) => (
+          <li key={key}>
+            <strong>{label}:</strong>{" "}
+            {preview.capabilities[key] ? <span className="chip chip-ok">found</span> : <span className="chip chip-muted">not found</span>}
+          </li>
+        ))}
+      </ul>
+
+      {preview.warnings.length > 0 && (
+        <>
+          <h3 className="section-title">Warnings</h3>
+          <ul className="issues">
+            {preview.warnings.map((warning) => (
+              <li key={warning} className="issue issue-warning">
+                {WARNING_LABELS[warning] ?? warning}
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+
+      {preview.warnings.includes("truncated_symbols") && symbolSamples.length > 0 && (
+        <>
+          <h3 className="section-title">Symbol aliases</h3>
+          <p className="muted">
+            Possible fixed-width truncation was detected. Values remain unchanged unless you enter
+            a replacement for an exact sample value.
+          </p>
+          <div className="questions">
+            {symbolSamples.map((source) => (
+              <label key={source} className="question">
+                <span>Replace {source} with</span>
+                <input
+                  aria-label={`Alias for ${source}`}
+                  maxLength={64}
+                  value={answers.symbolAliases?.[source] ?? ""}
+                  onChange={(event) =>
+                    setAnswers((current) => ({
+                      ...current,
+                      symbolAliases: {
+                        ...current.symbolAliases,
+                        [source]: event.target.value,
+                      },
+                    }))
+                  }
+                />
+              </label>
+            ))}
+          </div>
+        </>
+      )}
+
+      <h3 className="section-title">Column roles</h3>
       <table className="mapping-table">
         <thead>
           <tr>
             <th scope="col">File column</th>
-            <th scope="col">Means</th>
+            <th scope="col">Role</th>
             <th scope="col">Confidence</th>
+            <th scope="col">Sample values</th>
           </tr>
         </thead>
         <tbody>
           {preview.columns.map((column) => (
             <tr key={column.index}>
               <td>{column.header}</td>
-              <td>{column.field ?? "ignored"}</td>
+              <td>
+                <select
+                  aria-label={`Role for ${column.header}`}
+                  value={answers.mapping?.[column.header] ?? column.field ?? ""}
+                  onChange={(event) =>
+                    setAnswers((current) => ({
+                      ...current,
+                      mapping: {
+                        ...current.mapping,
+                        [column.header]: event.target.value || null,
+                      },
+                    }))
+                  }
+                >
+                  <option value="">Ignore</option>
+                  {ROLES.map((role) => (
+                    <option key={role} value={role}>
+                      {role.replaceAll("_", " ")}
+                    </option>
+                  ))}
+                </select>
+              </td>
               <td>
                 <ConfidenceChip confidence={column.confidence} source={column.source} />
+                {column.reasons.length > 0 && <span className="muted"> — {column.reasons.join("; ")}</span>}
               </td>
+              <td>{profileByIndex.get(column.index)?.samples.join(", ") ?? ""}</td>
             </tr>
           ))}
         </tbody>
@@ -193,7 +378,12 @@ function PreviewPanel({
       </ul>
 
       <h3 className="section-title">First rows</h3>
-      <div className="table-wrap">
+      <div
+        className="table-wrap"
+        role="region"
+        aria-label="Sample rows, horizontally scrollable"
+        tabIndex={0}
+      >
         <table className="sample-table">
           <tbody>
             {preview.sample_rows.map((row, index) => (
@@ -251,6 +441,12 @@ function CommitPanel({ result }: { result: Commit }) {
         <dd>{result.rejected}</dd>
         <dt>Open positions not counted</dt>
         <dd>{result.open_positions}</dd>
+        <dt>Unmatched closes</dt>
+        <dd>{result.orphan_closes}</dd>
+        <dt>Source events retained</dt>
+        <dd>{result.activity_events}</dd>
+        <dt>Quantity conserved</dt>
+        <dd>{result.quantity_conserved ? "Yes" : "No — review data quality"}</dd>
       </dl>
       {result.issues.length > 0 && (
         <>

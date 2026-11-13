@@ -94,7 +94,7 @@ def validate_extension_and_content(path: Path, filename: str) -> None:
         for sig in BINARY_SIGNATURES:
             if head.startswith(sig):
                 raise IngestError("extension_mismatch", "Binary file detected with text extension.")
-        if b"\x00" in head:
+        if b"\x00" in head and not head.startswith((b"\xff\xfe", b"\xfe\xff")):
             raise IngestError("extension_mismatch", "Binary null bytes detected in text file.")
         encoding = sniff_encoding(head)
         try:

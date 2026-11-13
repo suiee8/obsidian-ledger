@@ -33,9 +33,9 @@ class Draft:
     entry_price: float | None
     exit_price: float | None
     price_decimals: int
-    fees: float
-    commission: float
-    swap: float
+    fees: float | None
+    commission: float | None
+    swap: float | None
     gross_pnl: float | None
     net_pnl: float | None
     currency: str
@@ -54,6 +54,13 @@ class Draft:
     plan_followed: bool | None = None
     confidence: str | None = None
     screenshot_path: str | None = None
+    time_precision: str = "second"
+    entry_notional: float | None = None
+    exit_notional: float | None = None
+    leverage: float | None = None
+    order_type: str | None = None
+    status: str | None = None
+    action: str | None = None
 
 
 @dataclass
@@ -73,11 +80,11 @@ class Trade:
     multiplier: float
     entry_price: float | None
     exit_price: float | None
-    fees: float
-    commission: float
-    swap: float
-    gross_pnl: float
-    net_pnl: float
+    fees: float | None
+    commission: float | None
+    swap: float | None
+    gross_pnl: float | None
+    net_pnl: float | None
     currency: str
     net_pnl_base: float | None
     base_currency: str
@@ -94,12 +101,19 @@ class Trade:
     notes: str
     emotion: str | None
     plan_followed: bool | None
-    holding_seconds: float
+    holding_seconds: float | None
     weekday: int
     hour_utc: int
     source_row: int
     confidence: str | None = None
     screenshot_path: str | None = None
+    time_precision: str = "second"
+    entry_notional: float | None = None
+    exit_notional: float | None = None
+    leverage: float | None = None
+    order_type: str | None = None
+    status: str | None = None
+    action: str | None = None
     warnings: list[Reason] = field(default_factory=list[Reason])
 
 

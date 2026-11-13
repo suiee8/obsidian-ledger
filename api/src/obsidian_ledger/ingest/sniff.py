@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import codecs
 import csv
+import io
+import re
 from dataclasses import dataclass
 from typing import Final
 
@@ -45,11 +47,6 @@ def sniff_encoding(head: bytes) -> str:
     return "utf-8"
 
 
-def _first_record(line: str, delimiter: str) -> list[str]:
-    records = list(csv.reader([line], delimiter=delimiter))
-    return records[0] if records else []
-
-
 def _best_header(rows: list[list[str]], delimiter: str | None) -> Layout | None:
     best: Layout | None = None
     for index, row in enumerate(rows):
@@ -69,20 +66,61 @@ def _best_header(rows: list[list[str]], delimiter: str | None) -> Layout | None:
 
 
 def detect_text_layout(lines: list[str]) -> Layout:
-    """Try each delimiter on the first lines and keep the header with the most known columns."""
+    """Detect known or unfamiliar headers, otherwise keep a headerless file importable."""
     best: Layout | None = None
     for delimiter in DELIMITERS:
-        parsed = [_first_record(line, delimiter) for line in lines]
+        try:
+            parsed = list(csv.reader(io.StringIO("\n".join(lines)), delimiter=delimiter))
+        except csv.Error:
+            continue
         layout = _best_header(parsed, delimiter)
         if layout is None:
-            continue
+            width_counts: dict[int, int] = {}
+            for row in parsed[:HEAD_LINES]:
+                if len(row) > 1 and any(cell.strip() for cell in row):
+                    width_counts[len(row)] = width_counts.get(len(row), 0) + 1
+            if not width_counts:
+                continue
+            width = max(width_counts, key=lambda count: width_counts[count])
+            matching = [
+                (index, row) for index, row in enumerate(parsed[:HEAD_LINES]) if len(row) == width
+            ]
+            if len(matching) < 2:
+                continue
+            first_index, first_row = matching[0]
+            next_row = matching[1][1]
+            first_looks_like_header = all(
+                cell.strip()
+                and len(cell.strip()) <= MAX_HEADER_CHARS
+                and not re.fullmatch(r"[+-]?\d+(?:[.,]\d+)?", cell.strip())
+                and not re.match(r"^\d{4}[-/.]\d{1,2}[-/.]\d{1,2}", cell.strip())
+                for cell in first_row
+            )
+            next_has_data = any(
+                re.fullmatch(r"[+-]?\d+(?:[.,]\d+)?", cell.strip())
+                or re.match(r"^\d{4}[-/.]\d{1,2}[-/.]\d{1,2}", cell.strip())
+                for cell in next_row
+            )
+            if first_looks_like_header and next_has_data:
+                layout = Layout(
+                    delimiter,
+                    first_index,
+                    tuple(cell.strip() for cell in first_row),
+                    0,
+                )
+            else:
+                layout = Layout(
+                    delimiter,
+                    -1,
+                    tuple(f"Column {index + 1}" for index in range(width)),
+                    0,
+                )
         if best is None or (layout.hits, len(layout.headers)) > (best.hits, len(best.headers)):
             best = layout
     if best is None:
         raise IngestError(
             "no_header_row",
-            f"No header row with at least {MIN_HEADER_HITS} recognised column names was found "
-            f"in the first {HEAD_LINES} lines.",
+            "The file has no rows with a consistent tabular layout.",
         )
     return best
 
@@ -91,8 +129,12 @@ def detect_rows_layout(rows: list[list[str]]) -> Layout:
     """Find the header in rows already parsed from XLSX, XLS, or JSON."""
     layout = _best_header(rows[:HEAD_LINES], None)
     if layout is None:
-        raise IngestError(
-            "no_header_row",
-            "No header row with at least two recognised column names was found in the first rows.",
-        )
+        first: list[str] = []
+        for row in rows:
+            if any(cell.strip() for cell in row):
+                first = row
+                break
+        if len(first) < 2:
+            raise IngestError("no_header_row", "The file has no consistent tabular layout.")
+        return Layout(None, -1, tuple(f"Column {index + 1}" for index in range(len(first))), 0)
     return layout

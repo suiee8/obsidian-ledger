@@ -3,9 +3,11 @@ import { useMemo } from "react";
 import { BarSeries, DayBars } from "../components/charts/Bars";
 import { DisciplineBreakdown } from "../components/DisciplineBreakdown";
 import { Panel } from "../components/Panel";
+import { ActivityOnly } from "../components/Availability";
 import { DISCLAIMER, EmptyScreen, ScreenError, ScreenSkeleton } from "../components/ScreenStates";
 import { fmtInt, fmtMoney, fmtPercent } from "../lib/format";
 import { useBehaviorReport, useTimeline, type Timeline } from "../lib/phase4";
+import { useAvailability } from "../lib/queries";
 import { useDebouncedValue } from "../lib/useDebouncedValue";
 import { FILTER_DEBOUNCE_MS, useFilters } from "../state/filters";
 
@@ -109,6 +111,7 @@ function PostLoss({ groups }: { groups: NonNullable<Timeline["post_loss"]> }) {
 export default function Behavior() {
   const liveParams = useFilters((state) => state.toParams());
   const params = useDebouncedValue(liveParams, FILTER_DEBOUNCE_MS);
+  const availability = useAvailability(params);
   const timeline = useTimeline(params);
   const report = useBehaviorReport(params);
 
@@ -129,6 +132,9 @@ export default function Behavior() {
   const scored = report.data;
   if (timeline.isPending || report.isPending || data === undefined || scored === undefined) {
     return <ScreenSkeleton label="Loading behavior" />;
+  }
+  if (availability.data && !availability.data.available) {
+    return <ActivityOnly data={availability.data} />;
   }
   if (data.trades === 0 || !data.totals || !data.post_loss || !data.rules || !data.thresholds) {
     return (

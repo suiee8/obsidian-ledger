@@ -50,8 +50,8 @@ export const ExploreSchema = z.object({
     histogram: z.array(z.object({ length: z.number(), wins: z.number(), losses: z.number() })),
   }),
   fee_drag: z.object({
-    costs: z.number(),
-    gross: z.number(),
+    costs: num,
+    gross: num,
     drag: num,
     rule: z.string().optional(),
     by_symbol: z.array(

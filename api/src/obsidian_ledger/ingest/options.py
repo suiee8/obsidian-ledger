@@ -7,7 +7,7 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-Shape = Literal["round_trip", "legs", "executions"]
+Shape = Literal["round_trip", "legs", "executions", "orders"]
 
 
 class ImportOptions(BaseModel):
@@ -15,7 +15,10 @@ class ImportOptions(BaseModel):
 
     # Raw header text -> canonical field name, or null to ignore the column.
     mapping: dict[str, str | None] = Field(default_factory=dict)
+    # Exact source symbol -> user-confirmed replacement. No automatic symbol repair is done.
+    symbol_aliases: dict[str, str] = Field(default_factory=dict)
     shape: Shape | None = None
+    side_mode: Literal["netting"] | None = None
     # Answers the slash-date question. "dayfirst" reads 01/06 as 1 June.
     date_format: Literal["dayfirst", "monthfirst"] | None = None
     decimal: Literal["dot", "comma"] | None = None

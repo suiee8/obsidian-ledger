@@ -15,9 +15,9 @@ export const ReportSchema = z
     core: z
       .object({
         trades: z.number(),
-        wins: z.number().optional(),
-        losses: z.number().optional(),
-        flat: z.number().optional(),
+        wins: nullableNumber.optional(),
+        losses: nullableNumber.optional(),
+        flat: nullableNumber.optional(),
         net_pnl: nullableNumber.optional(),
         win_rate: nullableNumber.optional(),
         profit_factor: nullableNumber.optional(),
@@ -33,9 +33,9 @@ export const ReportSchema = z
       .object({
         drawdown: z
           .object({
-            max_drawdown: z.number(),
+            max_drawdown: nullableNumber,
             max_drawdown_pct: nullableNumber,
-            recovered: z.boolean(),
+            recovered: z.boolean().nullable(),
           })
           .passthrough(),
         daily_ratios: z
@@ -109,6 +109,32 @@ export const DashboardSchema = z
   })
   .passthrough();
 
+export const AvailabilitySchema = z.object({
+  available: z.boolean(),
+  has_pnl: z.boolean(),
+  has_prices: z.boolean(),
+  message: z.string().nullable(),
+  dataset_version: z.string(),
+  activity: z
+    .object({
+      trades: z.number(),
+      source_events: z.number(),
+      symbols: z.number(),
+      by_symbol: z.array(z.object({ symbol: z.string(), events: z.number() })),
+      by_day: z.array(z.object({ day: z.string(), events: z.number() })),
+      by_hour: z.array(z.object({ hour: z.number(), events: z.number() })),
+      directions: z.record(z.string(), z.number()),
+      order_types: z.record(z.string(), z.number()),
+      leverage_values: z.number(),
+      average_leverage: nullableNumber,
+      hold_times_available: z.boolean(),
+      average_holding_seconds: nullableNumber,
+      time_precision: z.array(z.string()),
+      overtraded_days: z.number(),
+    })
+    .nullable(),
+});
+
 function findingSchema() {
   return z.object({
     dimension: z.string(),
@@ -135,21 +161,21 @@ export const TradeRowSchema = z
     qty: z.number(),
     entry_price: nullableNumber,
     exit_price: nullableNumber,
-    gross_pnl: z.number(),
-    net_pnl: z.number(),
+    gross_pnl: nullableNumber,
+    net_pnl: nullableNumber,
     net_pnl_base: nullableNumber,
     currency: z.string(),
     base_currency: z.string(),
-    fees: z.number(),
-    commission: z.number(),
-    swap: z.number(),
+    fees: nullableNumber,
+    commission: nullableNumber,
+    swap: nullableNumber,
     planned_risk: nullableNumber,
     r_multiple: nullableNumber,
     stop_loss: nullableNumber,
     take_profit: nullableNumber,
     mae: nullableNumber,
     mfe: nullableNumber,
-    holding_seconds: z.number(),
+    holding_seconds: nullableNumber,
     session: z.string(),
     timeframe: z.string().nullable(),
     notes: z.string(),
@@ -207,6 +233,20 @@ const columnSchema = z.object({
   field: z.string().nullable(),
   confidence: z.string().nullable(),
   source: z.string(),
+  reasons: z.array(z.string()),
+});
+
+const columnProfileSchema = z.object({
+  index: z.number(),
+  header: z.string(),
+  type_mix: z.record(z.string(), z.number()),
+  regex_shape: z.array(z.string()),
+  cardinality: z.number(),
+  minimum: nullableNumber,
+  maximum: nullableNumber,
+  monotonicity: z.string(),
+  max_length: z.number(),
+  samples: z.array(z.string()),
 });
 
 export const PreviewSchema = z.object({
@@ -217,6 +257,7 @@ export const PreviewSchema = z.object({
   kind: z.string(),
   encoding: z.string(),
   delimiter: z.string().nullable(),
+  line_ending: z.string(),
   header_record: z.number(),
   adapter: z.string().nullable(),
   shape: z.string().nullable(),
@@ -226,6 +267,14 @@ export const PreviewSchema = z.object({
   timezone: z.string(),
   base_currency: z.string(),
   columns: z.array(columnSchema),
+  profiles: z.array(columnProfileSchema),
+  capabilities: z.record(z.string(), z.boolean()),
+  warnings: z.array(z.string()),
+  rows_profiled: z.number(),
+  duplicate_rows: z.number(),
+  symbol_count: z.number(),
+  row_order: z.string(),
+  totals_rows: z.number(),
   questions: z.array(questionSchema),
   assumptions: z.array(assumptionSchema),
   sample_rows: z.array(z.record(z.string(), z.string())),
@@ -243,6 +292,9 @@ export const CommitSchema = z.object({
   rejected: z.number(),
   duplicates_in_file: z.number(),
   open_positions: z.number(),
+  orphan_closes: z.number(),
+  quantity_conserved: z.boolean(),
+  activity_events: z.number(),
   issues: z.array(
     z.object({
       code: z.string(),
@@ -327,11 +379,11 @@ export const CoachReportSchema = z.object({
   filter_key: z.string(),
   filters: z.record(z.string(), z.unknown()),
   generated_at: z.string(),
-  status: z.enum(["ok", "too_few_trades", "empty"]),
+  status: z.enum(["ok", "too_few_trades", "empty", "cannot_be_assessed"]),
   base_currency: z.string(),
   sample_trades: FigureSchema,
   verdict: z.object({
-    label: z.enum(["edge_present", "unproven", "negative"]),
+    label: z.enum(["edge_present", "unproven", "negative", "cannot_be_assessed"]),
     headline: z.string(),
     lines: z.array(z.string()),
     confidence: ConfidenceSchema,

@@ -10,9 +10,9 @@ import gzip
 import hashlib
 import json
 import threading
-from collections import OrderedDict
+from collections import Counter, OrderedDict
 from dataclasses import asdict, dataclass
-from typing import Any, Final
+from typing import Any, Final, cast
 
 import numpy as np
 import orjson
@@ -88,6 +88,26 @@ class AnalysisEngine:
         """(dataset version, filtered trades with derived columns). The frame is cached."""
         return self._prepared(filters)
 
+    def availability(self, filters: Filters) -> dict[str, Any]:
+        """Return P&L availability and non-P&L activity for the current selection."""
+        version, prepared = self._prepared(filters)
+        if prepared.frame.height or not prepared.unpriced.height:
+            return {
+                "available": True,
+                "has_pnl": prepared.frame.height > 0,
+                "has_prices": True,
+                "message": None,
+                "activity": None,
+                "dataset_version": version,
+            }
+        report = self._unavailable_report(version, prepared.unpriced, self._starting_equity())
+        return {
+            "available": False,
+            **report["availability"],
+            "activity": report["activity"],
+            "dataset_version": version,
+        }
+
     def _starting_equity(self) -> float | None:
         raw = self.store.get_setting(STARTING_EQUITY_KEY)
         return float(raw) if raw is not None else None
@@ -118,6 +138,8 @@ class AnalysisEngine:
         version, prepared = self._prepared(filters)
         starting = self._starting_equity()
         frame = prepared.frame
+        if frame.height == 0 and prepared.unpriced.height:
+            return self._unavailable_report(version, prepared.unpriced, starting)
         if frame.height == 0:
             return _empty_report(version, prepared.excluded_no_fx, starting)
 
@@ -194,6 +216,108 @@ class AnalysisEngine:
             "discipline": discipline,
             "caveats": caveats,
         }
+
+    def _unavailable_report(
+        self, version: str, trades: pl.DataFrame, starting: float | None
+    ) -> dict[str, Any]:
+        """Report activity that remains valid when source rows contain no P&L."""
+        report = _empty_report(version, 0, starting)
+        count = trades.height
+        report["sample"].update(trades=count, low_confidence=count < LOW_CONFIDENCE_N)
+        report["core"].update(trades=count, wins=None, losses=None, flat=None)
+        report["risk"]["drawdown"] = {
+            "max_drawdown": None,
+            "max_drawdown_pct": None,
+            "recovered": None,
+        }
+        report["risk"]["daily_ratios"] = {
+            "available": False,
+            "reason": (
+                "Not available: this file has no P&L. Import realized P&L to enable "
+                "performance metrics."
+            ),
+        }
+
+        latest = self.store.latest_import()
+        capabilities = cast(dict[str, bool], latest.get("capabilities", {})) if latest else {}
+        has_prices = bool(capabilities.get("has_price", False))
+        report["availability"] = {
+            "has_pnl": False,
+            "has_prices": has_prices,
+            "message": (
+                "Not available: this file has no P&L or prices. "
+                "Import realized P&L and entry/exit prices to enable performance metrics."
+                if not has_prices
+                else (
+                    "Not available: this file has no P&L. Import realized P&L to enable "
+                    "performance metrics."
+                )
+            ),
+        }
+
+        import_id = str(latest["import_id"]) if latest and latest.get("import_id") else None
+        events = self.store.load_activity_frame(import_id)
+        symbols: Counter[str] = Counter()
+        days: Counter[str] = Counter()
+        hours: Counter[int] = Counter()
+        directions: Counter[str] = Counter()
+        order_types: Counter[str] = Counter()
+        leverage_values: list[float] = []
+        trades_per_day: Counter[str] = Counter()
+        if "entry_time" in trades.columns:
+            for entry_time in trades.get_column("entry_time").drop_nulls().to_list():
+                trades_per_day[entry_time.date().isoformat()] += 1
+        for event in events.iter_rows(named=True):
+            symbol = event.get("symbol")
+            if symbol:
+                symbols[str(symbol)] += 1
+            timestamp = event.get("event_time")
+            if timestamp is not None:
+                days[timestamp.date().isoformat()] += 1
+                hours[timestamp.hour] += 1
+            direction = event.get("direction")
+            if direction:
+                directions[str(direction)] += 1
+            order_type = event.get("order_type")
+            if order_type:
+                order_types[str(order_type)] += 1
+            leverage = event.get("leverage")
+            if leverage is not None:
+                leverage_values.append(float(leverage))
+
+        precision = (
+            trades.get_column("time_precision").unique().to_list()
+            if "time_precision" in trades.columns
+            else []
+        )
+        hold_values = trades.get_column("holding_seconds").drop_nulls().to_list()
+        report["activity"] = {
+            "trades": count,
+            "source_events": events.height,
+            "symbols": len(symbols),
+            "by_symbol": [
+                {"symbol": name, "events": total} for name, total in symbols.most_common()
+            ],
+            "by_day": [{"day": day, "events": total} for day, total in sorted(days.items())],
+            "by_hour": [{"hour": hour, "events": total} for hour, total in sorted(hours.items())],
+            "directions": dict(directions),
+            "order_types": dict(order_types),
+            "leverage_values": len(leverage_values),
+            "average_leverage": (
+                sum(leverage_values) / len(leverage_values) if leverage_values else None
+            ),
+            "hold_times_available": bool(hold_values),
+            "average_holding_seconds": (
+                sum(hold_values) / len(hold_values) if hold_values else None
+            ),
+            "time_precision": precision,
+            "overtraded_days": sum(total > 10 for total in trades_per_day.values()),
+        }
+        report["caveats"] = [
+            report["availability"]["message"],
+            "Trade counts, activity, and holding time are available; P&L-based metrics are not.",
+        ]
+        return report
 
     def dashboard(self, filters: Filters) -> dict[str, Any]:
         """Everything the Dashboard draws, in one cached response.

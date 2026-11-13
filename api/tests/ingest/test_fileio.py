@@ -29,10 +29,10 @@ def test_header_detection_skips_preamble_and_finds_semicolon_delimiter() -> None
     assert layout.header_index == 3
 
 
-def test_header_detection_fails_clearly_when_no_columns_are_recognised() -> None:
-    with pytest.raises(IngestError) as caught:
-        detect_text_layout(["foo,bar", "1,2", "3,4"])
-    assert caught.value.code == "no_header_row"
+def test_unknown_headers_are_exposed_as_headerless_columns_for_manual_mapping() -> None:
+    layout = detect_text_layout(["foo,bar", "1,2", "3,4"])
+    assert layout.header_index == 0
+    assert layout.headers == ("foo", "bar")
 
 
 def test_duplicate_headers_get_numbered_names() -> None:

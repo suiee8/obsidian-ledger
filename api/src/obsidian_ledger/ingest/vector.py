@@ -16,6 +16,8 @@ for all rows at once and must give the same values as the per-row code.
 from __future__ import annotations
 
 import hashlib
+import re
+from collections import Counter
 from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -35,15 +37,22 @@ from obsidian_ledger.ingest.normalize import (
     draft_from_values,
     finalize,
 )
-from obsidian_ledger.ingest.parse import DATE_CANDIDATES, DecimalStyle
+from obsidian_ledger.ingest.parse import (
+    DATE_CANDIDATES,
+    DecimalStyle,
+    parse_side_action,
+    time_precision,
+)
 from obsidian_ledger.ingest.trade import Reason, Rejected, Trade
 
 _NUMBER_SHAPE: Final = r"^[+-]?\d+(\.\d+)?$"
 _CURRENCY_SIGNS: Final = r"[$€£¥]"
 _FORMULA_START: Final = r"^[=+\-@\t\r]"
 _DECIMAL_SUFFIX: Final = r"[.,](\d+)$"
-_LONG_WORDS: Final = r"(^|[^a-z])(long|buy)([^a-z]|$)"
-_SHORT_WORDS: Final = r"(^|[^a-z])(short|sell)([^a-z]|$)"
+_LONG_WORDS: Final = r"(^|[^a-z])long([^a-z]|$)"
+_SHORT_WORDS: Final = r"(^|[^a-z])short([^a-z]|$)"
+_BUY_WORDS: Final = r"(^|[^a-z])(buy|b)([^a-z]|$)"
+_SELL_WORDS: Final = r"(^|[^a-z])(sell|s)([^a-z]|$)"
 _PLAN_TRUE: Final = ("true", "yes", "y", "1")
 _PLAN_FALSE: Final = ("false", "no", "n", "0")
 # Numeric fields that report bad_number when present but not numeric. The qty field is handled
@@ -63,6 +72,9 @@ _NUMERIC_FIELDS: Final = (
     "r_multiple",
     "mae",
     "mfe",
+    "notional",
+    "exit_notional",
+    "leverage",
 )
 _TEXT_FIELDS: Final = (
     "trade_id",
@@ -77,6 +89,9 @@ _TEXT_FIELDS: Final = (
     "emotion",
     "screenshot_path",
     "confidence",
+    "order_type",
+    "status",
+    "action",
 )
 
 
@@ -118,6 +133,10 @@ def _side(text: pl.Expr) -> pl.Expr:
         .then(pl.lit("long"))
         .when(lowered.str.contains(_SHORT_WORDS))
         .then(pl.lit("short"))
+        .when(lowered.str.contains(_BUY_WORDS))
+        .then(pl.lit("long"))
+        .when(lowered.str.contains(_SELL_WORDS))
+        .then(pl.lit("short"))
         .otherwise(None)
     )
 
@@ -133,6 +152,8 @@ def _timestamp(text: pl.Expr, tz_name: str, family: str | None) -> tuple[pl.Expr
     results: list[pl.Expr] = []
     has_offset: pl.Expr | None = None
     for candidate in DATE_CANDIDATES:
+        if candidate.key in {"iso_space_hour", "iso_space_hour_plain"}:
+            continue
         if candidate.family is not None and candidate.family != family:
             continue
         parsed = prepared.str.to_datetime(format=candidate.pattern, strict=False, time_unit="us")
@@ -147,7 +168,26 @@ def _timestamp(text: pl.Expr, tz_name: str, family: str | None) -> tuple[pl.Expr
             )
         results.append(utc)
     assert has_offset is not None, "the offset pattern is always a candidate"
-    return pl.coalesce(results), has_offset
+    numeric = prepared.cast(pl.Float64, strict=False)
+    digits = prepared.str.len_chars()
+    epoch_value = prepared.cast(pl.Int64, strict=False)
+    epoch_us = (
+        pl.when(digits == 10)
+        .then(epoch_value * 1_000_000)
+        .when(digits == 13)
+        .then(epoch_value * 1_000)
+        .otherwise(None)
+        .cast(pl.Datetime("us"))
+    )
+    excel_us = (
+        pl.when((numeric >= 1) & (numeric <= 100000) & ~digits.is_in([10, 13]))
+        .then(
+            pl.lit(datetime(1899, 12, 30))
+            + pl.duration(microseconds=(numeric * 86_400_000_000).cast(pl.Int64))
+        )
+        .otherwise(None)
+    )
+    return pl.coalesce([*results, epoch_us, excel_us]), has_offset | epoch_us.is_not_null()
 
 
 def _formula_like(cell: pl.Expr) -> pl.Expr:
@@ -220,7 +260,7 @@ def _trade_keys(frame: pl.DataFrame) -> list[str]:
             f"{qty:.8f}",
             f"{entry_price}",
             f"{exit_price}",
-            f"{net:.2f}",
+            f"{net:.2f}" if net is not None else "unknown",
         ]
         keys.append(hashlib.sha256("|".join(parts).encode("utf-8")).hexdigest())
     return keys
@@ -267,7 +307,12 @@ def run_round_trip(
             )
             continue
         numbers.append(number)
-        cells.append(row[:width])
+        parsed_row = row[:width]
+        symbol_index = analysis.field_index.get("symbol")
+        if symbol_index is not None and symbol_index < len(parsed_row):
+            source_symbol = parsed_row[symbol_index].strip()
+            parsed_row[symbol_index] = ctx.symbol_aliases.get(source_symbol, source_symbol)
+        cells.append(parsed_row)
 
     if not numbers:
         empty = VectorRows(
@@ -276,14 +321,58 @@ def run_round_trip(
         return empty, {}
 
     names = [f"c{index}" for index in range(width)]
-    raw = pl.DataFrame(cells, schema=names, orient="row").with_columns(
-        pl.Series("source_row", numbers, dtype=pl.Int32)
-    )
     field_index = analysis.field_index
+
+    def row_time(row: list[str], prefix: str) -> str:
+        base_name = f"{prefix}_time"
+        clock_name = f"{prefix}_clock"
+        base = row[field_index[base_name]].strip() if base_name in field_index else ""
+        clock = row[field_index[clock_name]].strip() if clock_name in field_index else ""
+        if base and clock and not re.search(r"\d{1,2}:\d{2}", base):
+            return f"{base} {clock}"
+        return base or clock
+
+    raw = pl.DataFrame(cells, schema=names, orient="row").with_columns(
+        pl.Series("source_row", numbers, dtype=pl.Int32),
+        pl.Series(
+            "time_precision",
+            [
+                max(
+                    (time_precision(row_time(row, prefix)) for prefix in ("entry", "exit")),
+                    key=lambda value: {"second": 0, "minute": 1, "hour": 2, "day": 3}[value],
+                    default="second",
+                )
+                for row in cells
+            ],
+            dtype=pl.String,
+        ),
+        pl.Series(
+            "inferred_action",
+            [
+                parse_side_action(
+                    row[field_index["side"]]
+                    if "side" in field_index and field_index["side"] < len(row)
+                    else ""
+                )[0]
+                for row in cells
+            ],
+            dtype=pl.String,
+        ),
+    )
 
     def text(field: str) -> pl.Expr:
         if field in field_index:
-            return pl.col(f"c{field_index[field]}").str.strip_chars()
+            base = pl.col(f"c{field_index[field]}").str.strip_chars()
+            clock_field = "entry_clock" if field == "entry_time" else "exit_clock"
+            if field in {"entry_time", "exit_time"} and clock_field in field_index:
+                clock = pl.col(f"c{field_index[clock_field]}").str.strip_chars()
+                base_has_minutes = base.str.contains(r"\d{1,2}:\d{2}")
+                return (
+                    pl.when(base_has_minutes | (clock == ""))
+                    .then(base)
+                    .otherwise(pl.concat_str([base, clock], separator=" ").str.strip_chars())
+                )
+            return base
         return pl.lit("", dtype=pl.String)
 
     # Step 1: parse each field from its text.
@@ -370,12 +459,16 @@ def run_round_trip(
             | pl.col("multiplier_bad")
             | pl.any_horizontal([pl.col(f"bad_{field}") for field in _NUMERIC_FIELDS])
         ),
-        fees=pl.when(pl.col("n_fees").is_not_null()).then(-pl.col("n_fees").abs()).otherwise(0.0),
-        commission_f=pl.col("n_commission").fill_null(0.0),
-        swap_f=pl.col("n_swap").fill_null(0.0),
+        fees=pl.when(pl.col("n_fees").is_not_null()).then(-pl.col("n_fees").abs()).otherwise(None),
+        commission_f=pl.col("n_commission"),
+        swap_f=pl.col("n_swap"),
     )
     step2 = step2.with_columns(
-        costs=pl.col("fees") + pl.col("commission_f") + pl.col("swap_f"),
+        costs=(
+            pl.col("fees").fill_null(0.0)
+            + pl.col("commission_f").fill_null(0.0)
+            + pl.col("swap_f").fill_null(0.0)
+        ),
     )
     sign = pl.when(pl.col("side") == "long").then(1.0).otherwise(-1.0)
     step2 = step2.with_columns(
@@ -401,8 +494,7 @@ def run_round_trip(
         .otherwise(pl.col("gross") + pl.col("costs")),
         # A null comparison only happens when entry or exit is missing, and those rows already fail
         # the draft check, so treating null as "no finalize error" is safe.
-        finalize_error=((pl.col("exit_time") < pl.col("entry_time")).fill_null(False))
-        | pl.col("gross").is_null(),
+        finalize_error=(pl.col("exit_time") < pl.col("entry_time")).fill_null(False),
         draft_error=pl.col("draft_error").fill_null(True),
         account=pl.when(pl.col("t_account") != "")
         .then(pl.col("t_account"))
@@ -436,6 +528,7 @@ def run_round_trip(
         warning_codes=_warning_codes(
             {
                 "formula_like_cell": pl.col("formula"),
+                "time_precision": pl.col("time_precision").is_in(["hour", "day"]),
                 "net_mismatch": pl.col("n_gross_pnl").is_not_null()
                 & pl.col("n_net_pnl").is_not_null()
                 & (
@@ -466,24 +559,27 @@ def run_round_trip(
 
     candidates = all_rows.filter(pl.col("keep"))
     keys = _trade_keys(candidates)
-    candidates = candidates.with_columns(
-        pl.Series("trade_key", keys, dtype=pl.String),
-    ).with_columns(
-        first_row=pl.col("source_row").min().over("trade_key"),
-    )
-    duplicates = candidates.filter(pl.col("source_row") > pl.col("first_row")).select(
-        ["source_row", "first_row"]
-    )
-    for number, first in duplicates.iter_rows():
-        rejected.append(
-            Rejected(
-                number,
-                [Reason("duplicate_in_file", f"Same trade as row {first}.")],
-                row_cells[number],
-            )
+    key_counts = Counter(keys)
+    occurrences: Counter[str] = Counter()
+    distinct_keys: list[str] = []
+    duplicate_warning: list[bool] = []
+    for key in keys:
+        occurrences[key] += 1
+        occurrence = occurrences[key]
+        duplicate_warning.append(key_counts[key] > 1)
+        distinct_keys.append(
+            key
+            if occurrence == 1
+            else hashlib.sha256(f"{key}|occurrence:{occurrence}".encode()).hexdigest()
         )
-
-    accepted = candidates.filter(pl.col("source_row") == pl.col("first_row"))
+    warning_lists = candidates.get_column(WARNING_COLUMN).to_list()
+    for index, is_duplicate in enumerate(duplicate_warning):
+        if is_duplicate:
+            warning_lists[index] = [*warning_lists[index], "duplicate_kept"]
+    accepted = candidates.with_columns(
+        pl.Series("trade_key", distinct_keys, dtype=pl.String),
+        pl.Series(WARNING_COLUMN, warning_lists, dtype=pl.List(pl.String)),
+    )
     accepted = accepted.with_columns(
         trade_id=pl.when(pl.col("t_trade_id") != "")
         .then(pl.col("t_trade_id"))
@@ -559,6 +655,16 @@ def run_round_trip(
         pl.col("source_row"),
         pl.col("screenshot_path"),
         pl.col("confidence"),
+        pl.col("time_precision"),
+        pl.col("n_notional").alias("entry_notional"),
+        pl.col("n_exit_notional").alias("exit_notional"),
+        pl.col("n_leverage").alias("leverage"),
+        pl.col("t_order_type").alias("order_type"),
+        pl.col("t_status").alias("status"),
+        pl.when(pl.col("t_action") != "")
+        .then(pl.col("t_action"))
+        .otherwise(pl.col("inferred_action"))
+        .alias("action"),
         pl.col(WARNING_COLUMN),
     )
     stored = stored.cast(ACCEPTED_SCHEMA)
@@ -580,10 +686,16 @@ def _apply_fx(
         .otherwise(_lookup(currency, fx_rates))
     )
     frame = accepted.with_columns(
-        net_pnl_base=pl.when(currency == ctx.base_currency)
+        net_pnl_base=pl.when(pl.col("net").is_null())
+        .then(None)
+        .when(currency == ctx.base_currency)
         .then(pl.col("net"))
         .otherwise(pl.col("net") * rate)
     )
-    missing = frame.filter(pl.col("net_pnl_base").is_null()).group_by("currency").len()
+    missing = (
+        frame.filter(pl.col("net").is_not_null() & pl.col("net_pnl_base").is_null())
+        .group_by("currency")
+        .len()
+    )
     fx_missing = {str(row[0]): int(row[1]) for row in missing.iter_rows()}
     return frame, fx_missing

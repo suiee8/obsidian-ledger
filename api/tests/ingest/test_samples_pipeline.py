@@ -115,9 +115,11 @@ def test_synthetic_preview_matches_manifest_net_total() -> None:
     outcome = _run("synthetic_preview.csv")
     assert outcome.rejected == []
     assert len(outcome.trades) == 1000
-    total = sum(trade.net_pnl for trade in outcome.trades)
+    pnl_values = [trade.net_pnl for trade in outcome.trades]
+    assert all(value is not None for value in pnl_values)
+    total = sum(value for value in pnl_values if value is not None)
     assert total == pytest.approx(5083.08, abs=0.05)  # samples/synthetic_preview.manifest.json
-    wins = sum(1 for trade in outcome.trades if trade.net_pnl > 0)
+    wins = sum(1 for value in pnl_values if value is not None and value > 0)
     assert wins == 485
     for trade in outcome.trades:
         assert trade.r_multiple is not None

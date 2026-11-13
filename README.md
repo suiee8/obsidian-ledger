@@ -10,6 +10,10 @@ Phases 0–6 are implemented. The app includes CSV, TSV, text, XLSX, XLS, and JS
 
 There is no Reports screen or application-generated PDF export. Exported HTML can be printed to PDF in a browser. Ollama is not connected to the current app; see the [user guide](docs/user-guide.md) for this limitation and other known issues.
 
+## Importing trade history
+
+Import detects file structure and infers column roles from headers and cell contents; selecting a broker is not required. Review the **What we found** card, capability checklist, confidence, samples, and warnings before committing. Low-confidence or ambiguous fields require a mapping choice. Files with missing prices or P&L retain those values as unavailable rather than filling them with zero; activity summaries remain available, and the Coach reports that performance cannot be assessed without P&L. See [the import guide](docs/ingestion.md) for supported formats, mapping, timestamps, and limitations.
+
 ## Requirements
 
 - Node.js 22 or newer

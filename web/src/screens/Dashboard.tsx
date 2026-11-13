@@ -1,12 +1,13 @@
 import { lazy, Suspense, useEffect, useState } from "react";
 
 import { useFilters } from "../state/filters";
-import { useDashboard } from "../lib/queries";
+import { useAvailability, useDashboard } from "../lib/queries";
 import { useDebouncedValue } from "../lib/useDebouncedValue";
 import { FILTER_DEBOUNCE_MS } from "../state/filters";
 import { fmtInt, fmtMoney, fmtNumber, fmtPercent, fmtR } from "../lib/format";
 import { useUi } from "../state/ui";
 import { Kpi } from "../components/Kpi";
+import { ActivityOnly } from "../components/Availability";
 import { ChartFallback, Panel } from "../components/Panel";
 import { DisciplineRing } from "../components/DisciplineRing";
 import { Findings } from "../components/Findings";
@@ -133,6 +134,7 @@ export default function Dashboard() {
   const liveParams = useFilters((state) => state.toParams());
   const params = useDebouncedValue(liveParams, FILTER_DEBOUNCE_MS);
   const query = useDashboard(params);
+  const availability = useAvailability(params);
   const data = query.data;
   const hasTrades = data !== undefined && data.report.sample.trades > 0;
 
@@ -161,6 +163,9 @@ export default function Dashboard() {
   }
   if (query.isPending || data === undefined) {
     return <DashboardSkeleton />;
+  }
+  if (availability.data && !availability.data.available) {
+    return <ActivityOnly data={availability.data} />;
   }
   if (data.report.sample.trades === 0 && data.equity.points.length === 0) {
     return <EmptyDashboard />;

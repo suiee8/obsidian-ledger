@@ -59,6 +59,13 @@ TRADE_DTYPES: Final[tuple[tuple[str, pl.DataType], ...]] = (
     ("source_row", pl.Int32()),
     ("screenshot_path", pl.String()),
     ("confidence", pl.String()),
+    ("time_precision", pl.String()),
+    ("entry_notional", pl.Float64()),
+    ("exit_notional", pl.Float64()),
+    ("leverage", pl.Float64()),
+    ("order_type", pl.String()),
+    ("status", pl.String()),
+    ("action", pl.String()),
 )
 
 ACCEPTED_SCHEMA: Final = pl.Schema({**dict(TRADE_DTYPES), WARNING_COLUMN: pl.List(pl.String())})

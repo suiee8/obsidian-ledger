@@ -3,7 +3,9 @@
 ```mermaid
 flowchart LR
   Browser["React + TypeScript PWA<br/>127.0.0.1:5173"] -->|"JSON and Coach stream"| API["FastAPI service<br/>127.0.0.1:8000"]
-  API --> Ingest["Streaming ingestion<br/>CSV, TSV, XLSX, JSON"]
+  API --> Ingest["Content-based ingestion<br/>profile, infer, map, validate"]
+  Ingest --> ImportReview["Import review<br/>roles, confidence, capabilities"]
+  ImportReview --> Browser
   Ingest --> Raw["Original uploads<br/>Parquet on local disk"]
   Ingest --> DB[("Canonical trades<br/>DuckDB and allow-listed views")]
   DB --> Metrics["Deterministic metrics<br/>statistics and simulations"]
@@ -14,6 +16,7 @@ flowchart LR
   AI --> Browser
   API --> TradeExport["Trades and segments CSV"]
   Coach --> ReportExport["Coach report CSV, Markdown, HTML"]
+  API --> Activity["Activity and availability<br/>even without P&L"]
   API --> ZipExport["Full local ZIP export"]
   Raw --> ZipExport
   DB --> ZipExport
@@ -26,6 +29,7 @@ flowchart LR
 - The browser talks to a FastAPI process bound to `127.0.0.1`; default CORS allows only the local Vite origins.
 - Raw uploads and the DuckDB database stay on the user's machine. The browser does not send files to a hosted service.
 - Deterministic Python code owns parsing, normalization, arithmetic, confidence intervals, simulations, and report evidence.
+- Import inference uses file structure and content; broker layouts are optional hints. Missing financial values remain unavailable rather than being represented as zero.
 - An optional Coach can call typed read tools to explain tool results. It never becomes the source of a number; unsupported figures are withheld.
 - Provider keys are stored in the OS keychain. External model calls require explicit consent; aggregate-only data is the default.
 - CSV cells are neutralized after serialization, including negative numeric-looking cells. JSON numeric values stay numeric.

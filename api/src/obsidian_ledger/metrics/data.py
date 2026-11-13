@@ -43,17 +43,10 @@ class Prepared:
 
     frame: pl.DataFrame
     excluded_no_fx: int
+    unpriced: pl.DataFrame
 
 
-def prepare(raw: pl.DataFrame, filters: Filters) -> Prepared:
-    """Restrict to filtered trades with base-currency P&L and add the derived columns.
-
-    Costs are converted with the same rate as net P&L, so fee drag stays in base currency.
-    """
-    if raw.height == 0:
-        return Prepared(raw, 0)
-    no_fx = raw.filter(pl.col("net_pnl_base").is_null()).height
-    frame = raw.filter(pl.col("net_pnl_base").is_not_null())
+def _apply_filters(frame: pl.DataFrame, filters: Filters) -> pl.DataFrame:
     if filters.date_from is not None:
         frame = frame.filter(pl.col("exit_time").dt.date() >= filters.date_from)
     if filters.date_to is not None:
@@ -72,6 +65,16 @@ def prepare(raw: pl.DataFrame, filters: Filters) -> Prepared:
             pl.col("tags").fill_null("").str.to_lowercase().str.contains(needle, literal=True)
             | pl.col("emotion").fill_null("").str.to_lowercase().eq(needle)
         )
+    return frame
+
+
+def prepare(raw: pl.DataFrame, filters: Filters) -> Prepared:
+    """Split unavailable P&L rows from valued rows and prepare the latter for metrics."""
+    if raw.height == 0:
+        return Prepared(raw, 0, raw)
+    no_fx = raw.filter(pl.col("net_pnl_base").is_null()).height
+    unpriced = _apply_filters(raw.filter(pl.col("net_pnl").is_null()), filters)
+    frame = _apply_filters(raw.filter(pl.col("net_pnl_base").is_not_null()), filters)
     frame = frame.with_columns(
         pl.col("net_pnl_base").alias("pnl"),
         pl.when(pl.col("net_pnl") != 0)
@@ -82,4 +85,4 @@ def prepare(raw: pl.DataFrame, filters: Filters) -> Prepared:
         pl.col("exit_time").dt.date().alias("exit_day"),
         pl.col("entry_time").dt.date().alias("entry_day"),
     ).with_columns((pl.col("costs_native") * pl.col("fx")).alias("costs"))
-    return Prepared(frame, no_fx)
+    return Prepared(frame, no_fx, unpriced)

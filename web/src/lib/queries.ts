@@ -12,6 +12,7 @@ import { useUi } from "../state/ui";
 import { jsonBody, requestJson } from "./api";
 import {
   CommitSchema,
+  AvailabilitySchema,
   DashboardSchema,
   FilterOptionsSchema,
   PreviewSchema,
@@ -46,6 +47,17 @@ export function useDashboard(params: string) {
     queryKey: ["dashboard", params],
     queryFn: ({ signal }) =>
       requestJson(`/api/dashboard${params ? `?${params}` : ""}`, DashboardSchema, { signal }),
+    placeholderData: keepPreviousData,
+    staleTime: 15_000,
+  });
+}
+
+export function useAvailability(params: string) {
+  useAbortSuperseded("availability", (key) => key[1] === params, [params]);
+  return useQuery({
+    queryKey: ["availability", params],
+    queryFn: ({ signal }) =>
+      requestJson(`/api/availability${params ? `?${params}` : ""}`, AvailabilitySchema, { signal }),
     placeholderData: keepPreviousData,
     staleTime: 15_000,
   });
@@ -162,6 +174,13 @@ export function useCommitImport() {
       void client.invalidateQueries({ queryKey: ["dashboard"] });
       void client.invalidateQueries({ queryKey: ["trades-page"] });
       void client.invalidateQueries({ queryKey: ["filter-options"] });
+      void client.invalidateQueries({ queryKey: ["availability"] });
+      void client.invalidateQueries({ queryKey: ["explore"] });
+      void client.invalidateQueries({ queryKey: ["segments"] });
+      void client.invalidateQueries({ queryKey: ["fan"] });
+      void client.invalidateQueries({ queryKey: ["behavior-report"] });
+      void client.invalidateQueries({ queryKey: ["timeline"] });
+      void client.invalidateQueries({ queryKey: ["simulate"] });
       // The Coach runs on the new data and streams its steps in the drawer.
       useUi.getState().requestCoachRun();
     },

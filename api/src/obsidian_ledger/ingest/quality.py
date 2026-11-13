@@ -63,6 +63,53 @@ CATALOG: Final[dict[str, tuple[Severity, str, str]]] = {
         "Duplicate execution",
         "The same fill appears more than once. Keep one copy.",
     ),
+    "duplicate_kept": (
+        "info",
+        "Exact duplicate rows kept",
+        "Rows may represent separate fills. They were kept and assigned distinct trade keys.",
+    ),
+    "duplicates": (
+        "info",
+        "Exact duplicate rows kept",
+        "Rows may represent separate fills. They were kept and assigned distinct trade keys.",
+    ),
+    "hour_precision": (
+        "warning",
+        "Hour-only timestamps",
+        "Import more precise times for exact holding durations; current durations are approximate.",
+    ),
+    "truncated_symbols": (
+        "warning",
+        "Possible truncated symbols",
+        "Values are preserved as-is. Review the symbol column or add an alias; "
+        "no correction was guessed.",
+    ),
+    "zero_leverage": (
+        "warning",
+        "Zero leverage values",
+        "Check whether zero means no leverage data or an invalid source value.",
+    ),
+    "partial_fills": (
+        "info",
+        "Order and filled quantities differ",
+        "Filled quantities are used for matching; inspect partial fills before importing.",
+    ),
+    "totals_row": (
+        "info",
+        "Trailing totals row skipped",
+        "The summary row was excluded from trade activity.",
+    ),
+    "orphan_close": (
+        "info",
+        "Close without a matching open",
+        "Check whether the source is missing the opening order or was exported with a "
+        "different range.",
+    ),
+    "quantity_conservation": (
+        "error",
+        "Quantity conservation failed",
+        "Review partial fills and unmatched quantities before relying on the paired trades.",
+    ),
     "unknown_leg": ("error", "Leg is neither entry nor exit", "Check the Type column values."),
     "duplicate_leg": (
         "error",
@@ -193,6 +240,10 @@ def build_issues(outcome: RunOutcome) -> list[Issue]:
     for code, rows in warned_rows.items():
         if code in CATALOG and code not in rejected_rows:
             issues.append(_issue(code, len(rows), rows))
+    for code in outcome.data_warnings:
+        if code in CATALOG and code not in {issue.code for issue in issues}:
+            count = outcome.duplicates_in_file if code == "duplicates" else 1
+            issues.append(_issue(code, count, []))
 
     if outcome.open_positions:
         count = len(outcome.open_positions)
@@ -206,6 +257,10 @@ def build_issues(outcome: RunOutcome) -> list[Issue]:
                 suggested_fix=CATALOG["open_position"][2],
             )
         )
+    if outcome.orphan_closes:
+        issues.append(_issue("orphan_close", outcome.orphan_closes, []))
+    if not outcome.quantity_conserved:
+        issues.append(_issue("quantity_conservation", 1, []))
 
     if outcome.fx_missing:
         currencies = ", ".join(sorted(outcome.fx_missing))
@@ -233,9 +288,11 @@ def build_issues(outcome: RunOutcome) -> list[Issue]:
             )
         )
 
-    outlier_indexes = _robust_outliers(frame.get_column("net_pnl").to_list())
+    pnl_frame = frame.filter(pl.col("net_pnl").is_not_null())
+    pnl_values = pnl_frame.get_column("net_pnl").to_list()
+    outlier_indexes = _robust_outliers(pnl_values)
     if outlier_indexes:
-        source_rows = frame.get_column("source_row").to_list()
+        source_rows = pnl_frame.get_column("source_row").to_list()
         rows = [source_rows[index] for index in outlier_indexes]
         issues.append(_issue("outlier", len(rows), rows))
 

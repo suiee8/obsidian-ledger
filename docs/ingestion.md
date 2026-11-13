@@ -6,7 +6,7 @@ This is the reference for how a trade file becomes stored trades. The code lives
 
 | Kind | How it is read |
 | --- | --- |
-| CSV, TSV, TXT | Delimiter (`,`, `;`, tab, or `|`) and header row are detected from the first 80 lines. Lines above the header, such as a preamble, are skipped. |
+| CSV, TSV, TXT | Encoding, delimiter (`,`, `;`, tab, or `|`), line endings, quoting, and header row are detected. Preamble and blank lines are skipped. UTF-8 BOM and UTF-16 are supported; unsupported or undecodable input returns a structured error. |
 | XLSX, XLS | First sheet, cached cell values only. Formulas are never evaluated. |
 | JSON | A list of objects, a list of lists, or a Google Sheets export with a `values` array. Nested objects (for example Notion properties) are stored as JSON text, so they are not parsed as values. |
 
@@ -19,18 +19,27 @@ The analysis chooses one shape per file:
 - `round_trip`: one row per closed trade, with entry and exit values on the same row. Used by MT5.
 - `legs`: two rows per trade, an entry leg and an exit leg, paired by trade number. Used by TradingView.
 - `executions`: raw fills with buy or sell and a quantity. Paired into round trips with FIFO. Used by IBKR.
+- `orders`: order-history events with open/close action and long/short direction. Events are matched FIFO per account, instrument, and direction; partial fills are supported and unmatched opens/closes are reported.
 
-Generic files are classified by the columns they contain. A file with exit prices, exit times, or P&L is a round trip. A file with side, quantity, and a price or time, and no exit, is executions.
+Broker adapters are optional confidence hints, not import gates. Generic files are profiled and mapped from headers and contents. Content evidence can override a conflicting header. Unknown or headerless files can be mapped manually; ambiguous fields are surfaced as questions rather than silently guessed.
+
+## What we found and capabilities
+
+The Import screen reports the detected encoding, delimiter, header row, inferred role, confidence, reasons, sample values, capabilities, and warnings. Role overrides are available before commit. Mapping templates use the normalized header set and content signature; they are not tied to a broker name.
+
+Minimum import requirements are an instrument, a timestamp, a direction or action, and a quantity or notional value. After inference, capabilities (`has_time`, `has_direction`, `has_quantity`, `has_notional`, `has_price`, `has_fees`, `has_pnl`, and `has_stop`) describe what the file supports. Missing price, fee, stop, and P&L values stay null; they are not converted to zero. Metrics that require unavailable inputs are returned as unavailable, while activity counts and symbol/time summaries remain usable. The Coach verdict is `cannot_be_assessed` when the imported journal has no P&L.
+
+The profiler samples the first 2,000 data rows and a stride sample, and reports type/shape evidence, distinct values, range, monotonicity, and maximum observed length. Fixed-width fields and repeated exact rows are warned about without changing the source values. When truncation is flagged, the Import screen accepts exact source-symbol-to-replacement aliases; no alias is applied unless you enter it. Timestamp precision is retained as second, minute, hour, or day; no missing minute/second is invented. Separate date and clock columns are combined when confidently identified.
 
 ## Column mapping
 
-Each header is normalized (lowercase, punctuation becomes spaces, so `P&L` becomes `p l` and `S/L` becomes `s l`). It is then scored against synonyms for each canonical field:
+Each header is normalized (lowercase, punctuation becomes spaces, so `P&L` becomes `p l` and `S/L` becomes `s l`). Header synonyms and fuzzy matches are combined with profile evidence from values:
 
 - Exact match: high confidence.
 - All synonym words appear in the header: medium.
 - Fuzzy match with a similarity of 0.82 or more: low.
 
-Each canonical field is assigned to at most one column. Precedence: broker adapter, then a saved template for the same headers, then synonyms, then your overrides in the import options. A saved template keys on the normalized header list.
+Each canonical field is assigned to at most one column. A saved template and broker adapter can provide hints, while content-based inference resolves conflicts. Explicit user overrides take precedence. Low-confidence cases require a user mapping. A template is keyed by normalized headers plus content signature.
 
 ## Assumptions and questions
 
@@ -83,9 +92,9 @@ For round trips with prices, the price-implied P&L is `sign x (exit - entry) x q
 - Identical IBKR fills in one file: the second is rejected as `duplicate_fill`.
 - A trade already in the store from an earlier import: counted as `already_present` and not inserted again.
 
-## FIFO pairing (executions)
+## FIFO pairing (executions and orders)
 
-Fills are sorted by time. A fill in the same direction as the open position adds a lot. A fill in the other direction closes the oldest lots first, producing one leg per matched piece. Commissions are split by quantity. Quantity left open at the end of the file is reported as `open_position` and is not counted as a trade.
+Fills are sorted by time, with original source order breaking ties in the file's detected ascending or descending order. An order row with explicit open/close action and direction is paired FIFO per account, instrument, and direction. Partial fills and scale-ins/outs produce matched pieces. Unmatched opens remain open and unmatched closes are reported as orphan closes. Quantity conservation is reported as a data-quality check. Exact duplicate source rows are retained and flagged; occurrence-indexed keys keep otherwise identical rows distinct.
 
 ## Rejection and warning codes
 
@@ -151,11 +160,14 @@ Errors use one shape: `{"error": {"code", "message", "details"}}`.
 
 The directory is set by `LEDGER_DATA_DIR` and is git-ignored.
 
-## Known limits (Phase 1)
+## Known limits
 
 - Forex pip and lot conversion beyond the MT5 contract sizes is not implemented. Set `contract_sizes` explicitly.
 - Option contracts and crypto funding rates are read only through the generic columns (multiplier, swap). No dedicated option model yet.
 - Broker PDF statements and Notion API JSON are not supported.
 - Multi-account, multi-currency conversion needs `fx_rates` entered by you. No online rates are fetched.
+- Headerless files do not contain enough evidence for reliable automatic role assignment. The Import screen requests an explicit mapping; this is intentional.
+- Date-only and hour-only values preserve their source precision. Holding-time and ordering interpretation is therefore less precise than full timestamps.
+- Notional value is not converted into P&L. Any formula-based P&L derivation requires explicit user confirmation and must not be inferred from equal open and close notionals.
 - `messy_journal.csv` has one timestamp column, so none of its rows has an exit time. Its README mentions a "close stamped before its open" row, which cannot be detected in this file. The negative-duration rule is covered by a test with inline data.
 - Performance: 100k rows ingest in about 10.6 seconds and 1M rows in about 129 seconds on the measured machine. See `benchmarks/README.md`.

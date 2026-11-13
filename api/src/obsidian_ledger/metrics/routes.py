@@ -320,3 +320,26 @@ def dashboard(
             headers={**headers, "Content-Encoding": "gzip"},
         )
     return Response(raw, media_type="application/json", headers=headers)
+
+
+@router.get("/availability")
+def availability(
+    request: Request,
+    date_from: date | None = None,
+    date_to: date | None = None,
+    account: Annotated[list[str] | None, Query()] = None,
+    symbol: Annotated[list[str] | None, Query()] = None,
+    setup: Annotated[list[str] | None, Query()] = None,
+    side: Annotated[list[str] | None, Query()] = None,
+    tag: str | None = None,
+) -> dict[str, Any]:
+    filters = Filters(
+        date_from=date_from,
+        date_to=date_to,
+        accounts=tuple(account or []),
+        symbols=tuple(symbol or []),
+        setups=tuple(setup or []),
+        sides=tuple(side or []),
+        tag=tag,
+    )
+    return _engine(request).availability(filters)

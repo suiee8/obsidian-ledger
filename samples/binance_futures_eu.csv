@@ -1,0 +1,5 @@
+Symbol;Side;Filled Quantity;Price;Fee;Realized P&L;Timestamp;Order Type
+BTCUSDT;buy long;0,10;50.000,00;0,50;;2025-11-02 10:00;LIMIT
+BTCUSDT;sell long;0,10;50.100,00;0,50;9,00;2025-11-02 11:00;LIMIT
+ETHUSDT;buy long;0,50;2.000,00;0,20;;2025-11-03 09:00;MARKET
+ETHUSDT;sell long;0,50;2.020,00;0,20;9,60;2025-11-03 10:00;MARKET
