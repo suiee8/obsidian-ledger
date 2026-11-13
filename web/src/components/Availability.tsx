@@ -58,11 +58,12 @@ export function ActivityOnly({ data }: { data: AvailabilityData }) {
 
   return (
     <div className="dashboard">
-      <section className="glass panel" aria-labelledby="availability-title">
+      <section className="glass panel unavailable-state" aria-labelledby="availability-title">
+        <p className="eyebrow">Not available</p>
         <h1 id="availability-title" className="panel-title">
           Performance metrics unavailable
         </h1>
-        <p>{data.message}</p>
+        <p role="status">{data.message}</p>
         <p className="muted">
           Import a realized P&amp;L column and entry/exit prices. Missing financial values are not
           treated as zero.

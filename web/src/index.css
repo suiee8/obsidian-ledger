@@ -2965,3 +2965,23 @@ textarea {
     transition: none !important;
   }
 }
+
+/* Designed "not available" and "cannot be assessed" states. */
+.unavailable-state {
+  border-left: 3px solid var(--palette-royal400);
+  display: grid;
+  gap: 6px;
+}
+
+.unavailable-state .panel-title,
+.unavailable-state p {
+  margin: 0;
+}
+
+.coach-cannot-assess {
+  border-left: 3px solid var(--palette-royal400);
+}
+
+.coach-cannot-assess p {
+  margin: 0 0 8px;
+}

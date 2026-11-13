@@ -105,6 +105,23 @@ function Body({
       </div>
     );
   }
+  if (report.status === "cannot_be_assessed") {
+    return (
+      <div className="coach-state coach-cannot-assess" role="status">
+        <p className="eyebrow">Verdict</p>
+        <h3>{report.verdict.headline}</h3>
+        {report.verdict.lines.map((line) => (
+          <p key={line}>{line}</p>
+        ))}
+        <p className="muted">Basis: {report.verdict.basis}.</p>
+        <div className="row-actions">
+          <button type="button" className="btn btn-primary" onClick={() => setRoute("import")}>
+            Import a file with P&amp;L
+          </button>
+        </div>
+      </div>
+    );
+  }
   if (report.status === "too_few_trades") {
     return (
       <div className="coach-state" role="status">

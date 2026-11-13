@@ -106,6 +106,9 @@ class Rig:
         self.model.bodies.clear()
         self.model.requests.clear()
         self.llm._summaries.clear()  # pyright: ignore[reportPrivateUsage]
+        # The module-scoped app would otherwise trip its circuit breaker after three failing cases.
+        self.llm._provider_failures.clear()  # pyright: ignore[reportPrivateUsage]
+        self.llm._provider_unavailable_until.clear()  # pyright: ignore[reportPrivateUsage]
         self.llm.answer_seconds = None  # use the limit saved in Settings
         return self.model
 

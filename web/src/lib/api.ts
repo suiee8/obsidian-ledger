@@ -72,6 +72,7 @@ export async function apiFetch(
       () => controller.abort(new DOMException("The local API request timed out.", "TimeoutError")),
       policy.timeoutMs ?? 120_000,
     );
+    let keepForwardingAbort = false;
     try {
       const response = await fetch(`${apiBase()}${path}`, { ...init, signal: controller.signal });
       recordConnectionSuccess();
@@ -82,6 +83,8 @@ export async function apiFetch(
         );
         continue;
       }
+      // The caller's signal must still cancel a streaming body after the headers arrive.
+      keepForwardingAbort = true;
       return response;
     } catch (reason) {
       lastError = reason;
@@ -92,7 +95,7 @@ export async function apiFetch(
       }
     } finally {
       globalThis.clearTimeout(timeout);
-      externalSignal?.removeEventListener("abort", abortFromCaller);
+      if (!keepForwardingAbort) externalSignal?.removeEventListener("abort", abortFromCaller);
     }
     await new Promise((resolve) =>
       globalThis.setTimeout(resolve, 150 * 2 ** attempt * (0.5 + Math.random())),

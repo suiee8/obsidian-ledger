@@ -18,7 +18,8 @@ export default defineConfig({
   use: {
     baseURL: "http://127.0.0.1:5173",
     // Uses the Microsoft Edge that is already installed, so no browser download is needed.
-    channel: "msedge",
+    // E2E_BROWSER_CHANNEL=chrome selects Chrome on machines without Edge (for example Linux CI).
+    channel: process.env.E2E_BROWSER_CHANNEL ?? "msedge",
     viewport: { width: 1440, height: 1000 },
     trace: "retain-on-failure",
     // Without these, a locator that matches nothing waits for the whole test timeout.

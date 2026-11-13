@@ -80,6 +80,10 @@ export function useCoachRun(params: string, trigger: number, enabled: boolean): 
     const query = [params, force ? "force=true" : ""].filter(Boolean).join("&");
     const stream = new EventSource(`${apiBase()}/api/coach/stream${query ? `?${query}` : ""}`);
     let finished = false;
+    let opened = false;
+    stream.addEventListener("open", () => {
+      opened = true;
+    });
 
     const apply = (event: StepEvent) => {
       setSteps((current) =>
@@ -123,9 +127,11 @@ export function useCoachRun(params: string, trigger: number, enabled: boolean): 
     });
     stream.addEventListener("error", (message) => {
       if (finished) return;
-      // A named `error` event carries a message. A dropped connection has no data.
+      // A named `error` event carries a message. A dropped connection has no data. The browser
+      // reconnects a connection that dropped mid-run, but one that never opened means the API is
+      // unreachable, so that fails at once instead of retrying silently forever.
       const data = (message as MessageEvent<string | undefined>).data;
-      if (typeof data !== "string" && stream.readyState === EventSource.CONNECTING) {
+      if (opened && typeof data !== "string" && stream.readyState === EventSource.CONNECTING) {
         return;
       }
       let text = "The Coach could not reach the local API.";
