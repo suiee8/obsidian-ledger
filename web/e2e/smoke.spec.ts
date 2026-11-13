@@ -1,10 +1,12 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
+import { mkdirSync } from "node:fs";
 import { resolve } from "node:path";
 
 import { API, importSample, SAMPLE_PATH } from "./helpers";
 
 const MEXC_PATH = resolve(process.cwd(), "..", "samples", "mexc_futures_order_history_normalized.csv");
+const SCREENSHOT_OUT = resolve(process.cwd(), "..", "docs", "screens");
 
 async function expectNoA11yViolations(page: Page) {
   const results = await new AxeBuilder({ page })
@@ -35,6 +37,9 @@ test("MEXC import shows capabilities and unavailable performance accessibly", as
   });
   if (!reset.ok()) throw new Error(`Could not reset isolated E2E workspace: ${await reset.text()}`);
 
+  await page.addInitScript(() => {
+    document.documentElement.dataset.shader = "off";
+  });
   await page.goto("/");
   await page.getByRole("button", { name: "Import", exact: true }).click();
   await page.locator('input[type="file"]').setInputFiles(MEXC_PATH);
@@ -46,9 +51,14 @@ test("MEXC import shows capabilities and unavailable performance accessibly", as
   await expect(preview).toContainText("Hour-only timestamps");
   await expect(preview).toContainText("truncated");
   await expect(preview).toContainText("Exact duplicate rows");
-  for (const width of [1440, 390]) {
+  mkdirSync(SCREENSHOT_OUT, { recursive: true });
+  for (const width of [1440, 1024, 390]) {
     await page.setViewportSize({ width, height: 900 });
-    await expectNoA11yViolations(page);
+    await page.screenshot({
+      path: resolve(SCREENSHOT_OUT, `import-mexc-${width}.png`),
+      fullPage: true,
+    });
+    if (width !== 1024) await expectNoA11yViolations(page);
   }
 
   await preview.getByRole("button", { name: "Import", exact: true }).click();

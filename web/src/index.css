@@ -2478,11 +2478,11 @@ body {
 }
 
 .shell[data-route="dashboard"] {
-  --aurora-intensity: 0.32;
+  --aurora-intensity: 0.44;
 }
 
 .shell[data-route="import"] {
-  --aurora-intensity: 0.42;
+  --aurora-intensity: 0.34;
 }
 
 .shell[data-route="trades"] {
@@ -2594,6 +2594,12 @@ body {
 @supports not ((-webkit-mask-composite: xor) or (mask-composite: exclude)) {
   .glass::before {
     display: none;
+  }
+}
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .glass {
+    background: var(--palette-surface1);
   }
 }
 

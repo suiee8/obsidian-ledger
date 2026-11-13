@@ -3,6 +3,14 @@
 This is the pre-redesign contract and visual baseline for Part A. Keep the listed route IDs, test
 selectors, accessible names, chart behaviors, and Playwright setup stable while changing presentation.
 
+## Step 0 baseline
+
+- `phase-6` and `phase-6a` tags exist; HEAD is `023f6b8`.
+- `git status --short` was empty before this inventory was refreshed.
+- `.gitignore` contains `docs/screens/`; that directory is untracked. Do not restore it.
+- `pnpm check`: 54 web unit tests and 354 API tests passed; ESLint, Ruff, and Pyright passed.
+- `pnpm test:e2e`: 90 passed, 0 failed, 0 flaky, 0 skipped.
+
 ## Web source structure
 
 ```text
@@ -18,6 +26,8 @@ web/src/
   tokens.ts
   vite-env.d.ts
   components/
+    AgentPresence.tsx
+    Availability.tsx
     CommandPalette.tsx
     DisciplineBreakdown.tsx
     DisciplineRing.test.tsx
@@ -66,6 +76,7 @@ web/src/
     phase4.ts
     queries.ts
     schemas.ts
+    theme.test.ts
     theme.ts
     useChart.ts
     useChartPalette.ts
@@ -82,6 +93,13 @@ web/src/
     Settings.tsx
     Simulator.tsx
     Trades.tsx
+  shader/
+    SapphireAurora.tsx
+    controller.test.ts
+    controller.ts
+    fragment.glsl
+    gpuTimer.test.ts
+    gpuTimer.ts
   state/
     filters.test.ts
     filters.ts
@@ -90,22 +108,22 @@ web/src/
 
 ## CSS custom properties
 
-There are 73 custom-property declarations in `web/src/index.css`. The table captures each declaration,
-including aliases and later overrides.
+There are 76 unique custom properties in `web/src/index.css`. The table captures each name and
+definition, including aliases, later overrides, motion values, and route-specific shader intensity.
 
-| Declaration group | Name | Current value |
+| Declaration group | Name | Pre-redesign value |
 |---|---|---|
-| Root utility (lines 4–20) | `--surface-table-head` | `#0F1217` |
-| | `--skeleton-highlight` | `#1E2A45` |
+| Root utility | `--surface-table-head` | `#11141A` |
+| | `--skeleton-highlight` | `#1E232D` |
 | | `--footer-scrim` | `rgba(11,13,17,0.72)` |
 | | `--glass-edge-highlight` | `rgba(232,236,244,0.06)` |
-| | `--border-status-warn` | `rgba(245,184,75,0.4)` |
+| | `--border-status-warn` | `rgba(99,132,238,0.4)` |
 | | `--glass-sheen-bottom` | `rgba(255,255,255,0.01)` |
 | | `--glass-sheen-top` | `rgba(255,255,255,0.035)` |
 | | `--fill-questions` | `rgba(52,84,192,0.08)` |
 | | `--fill-badge` | `rgba(52,84,192,0.15)` |
-| | `--glow-status-ok` | `rgba(61,220,151,0.35)` |
-| | `--border-status-ok` | `rgba(61,220,151,0.4)` |
+| | `--glow-status-ok` | `rgba(99,132,238,0.25)` |
+| | `--border-status-ok` | `rgba(99,132,238,0.4)` |
 | | `--grid-line` | `rgba(65,105,225,0.05)` |
 | | `--wash-royal-top` | `rgba(65,105,225,0.16)` |
 | | `--wash-royal-dropzone` | `rgba(65,105,225,0.18)` |
@@ -129,10 +147,11 @@ including aliases and later overrides.
 | | `--palette-surface1` | `#11141A` |
 | | `--palette-surface2` | `#171B23` |
 | | `--palette-surface3` | `#1E232D` |
-| | `--palette-warning` | `#F5B84B` |
-| Status aliases (lines 41–43) | `--status-ok` | `var(--palette-profit)` |
+| | `--palette-warning` | `#6384EE` |
+| Body override | `--palette-dim` | `var(--palette-muted)` |
+| Status aliases | `--status-ok` | `var(--palette-royal400)` |
 | | `--status-warn` | `var(--palette-warning)` |
-| | `--status-error` | `var(--palette-loss)` |
+| | `--status-error` | `var(--palette-royal500)` |
 | Tailwind theme aliases (lines 49–70) | `--color-background` | `var(--palette-background)` |
 | | `--color-surface-1` | `var(--palette-surface1)` |
 | | `--color-surface-2` | `var(--palette-surface2)` |
@@ -155,12 +174,12 @@ including aliases and later overrides.
 | | `--font-sans` | `"Manrope", ui-sans-serif, sans-serif` |
 | | `--font-mono` | `"JetBrains Mono", ui-monospace, monospace` |
 | | `--radius-card` | `16px` |
-| P&L aliases (root, lines 78–80) | `--pnl-profit` | `#3ddc97` |
+| P&L aliases | `--pnl-profit` | `#3ddc97` |
 | | `--pnl-loss` | `#ff5c6c` |
-| | `--pnl-warning` | `#f5b84b` |
-| Color-blind override (lines 83–85) | `--pnl-profit` | `#4169e1` |
+| | `--pnl-warning` | `#6384ee` |
+| Color-blind override | `--pnl-profit` | `#4169e1` |
 | | `--pnl-loss` | `#f5b84b` |
-| Legacy chart aliases (lines 680–687) | `--royal-500` | `#4169e1` |
+| Legacy chart aliases | `--royal-500` | `#4169e1` |
 | | `--royal-300` | `#94adf6` |
 | | `--ice` | `#c9d6ff` |
 | | `--ink` | `#e8ecf4` |
@@ -168,22 +187,30 @@ including aliases and later overrides.
 | | `--dim` | `#6b7488` |
 | | `--line` | `#262c38` |
 | | `--surface-1` | `#11141a` |
+| Motion | `--motion-fast` | `120ms` |
+| | `--motion-base` | `200ms` |
+| | `--motion-slow` | `400ms` |
+| | `--motion-ease` | `cubic-bezier(0.2, 0.75, 0.25, 1)` |
+| Route effects | `--aurora-intensity` | `.14` base; `.32` dashboard; `.42` import; `.035` trades; `.025` while Coach is open |
 
 The requested charcoal, royal-blue, ice, and text values already match the named palette tokens
-(case-insensitively). Existing warning/status amber appears in the warning tokens and the color-blind
-P&L override; it is a recorded deviation from the requested no-extra-hues palette. The existing
-profit/loss green and red are intended for P&L use. Several legacy chart aliases repeat palette values.
-`cssTokens.test.ts` protects the existing token-literal convention and P&L token usage.
+(case-insensitively). The body override resolves CSS uses of `--palette-dim` to the muted text token;
+the chart palette likewise reads the muted token for its `dim` field. Status and warning colors
+currently use royal blue. Amber appears only as the color-blind P&L loss override; green/red P&L
+colors are for financial encodings. Several legacy chart aliases repeat palette values.
+`cssTokens.test.ts` protects the token-literal convention, P&L token usage, and the global
+focus-visible outline.
 
 ## Chart theme
 
-- `lib/theme.ts` defines `ChartPalette` fields `profit`, `loss`, `royal`, `royalSoft`, `ice`, `ink`,
-  `muted`, `dim`, `line`, and `surface`.
+- `lib/theme.ts` defines `ChartPalette` fields `profit`, `loss`, `royal`, `royalSoft`, `royal400`,
+  `royal600`, `royal700`, `ice`, `ink`, `muted`, `dim`, `line`, and `surface`.
 - `readChartPalette()` reads the CSS variables `--pnl-profit`, `--pnl-loss`, `--royal-500`,
-  `--royal-300`, `--ice`, `--ink`, `--muted`, `--dim`, `--line`, and `--surface-1`, with matching
-  fallback values. `FALLBACK_COLOR_BLIND` maps profit to royal blue and loss to amber.
+  `--royal-300`, `--palette-royal400`, `--palette-royal600`, `--palette-royal700`, `--ice`, `--ink`,
+  `--muted`, `--line`, and `--surface-1`, with matching fallback values. Its `dim` field also reads
+  `--muted`. `FALLBACK_COLOR_BLIND` maps profit to royal blue and loss to amber.
 - `useChartPalette()` tracks the existing UI `colorBlind` state. Preserve its behavior and the token
-  names.
+  names. P&L colors remain confined to P&L views.
 - ECharts uses the canvas renderer. Components create their options locally and use the shared
   palette: royal equity curve and area, P&L drawdown/result colors, token-colored axes and grid, and
   tooltips. Chart animation is disabled when reduced motion is requested.
@@ -197,22 +224,30 @@ profit/loss green and red are intended for P&L use. Several legacy chart aliases
 Microsoft Edge (`channel: "msedge"`), a 1440 × 1000 default viewport, and
 `http://127.0.0.1:5173`. Playwright starts an isolated API using a fresh temporary data directory,
 the local mock model server, and the Vite preview server. Browser screenshots are generated by
-`e2e/screens.spec.ts` and `e2e/zz-coach-screens.spec.ts`.
+`e2e/screens.spec.ts`, `e2e/redesign-screens.spec.ts`, `e2e/smoke.spec.ts`, and
+`e2e/zz-coach-screens.spec.ts`.
 
-The pre-change baseline was 332 API tests, 43 web unit tests, and 78 browser tests. `docs/screens/`
-contained 33 generated baseline screenshots:
+The confirmed pre-change baseline is 354 API tests, 54 web unit tests, and 90 browser tests.
+`docs/screens/` is ignored. Before Part A it contained 48 generated images across the standard
+screen, dashboard-state, and Coach-state sets at 1440, 1024, and 390 px. The Part A E2E run refreshed
+those captures and added three MEXC preview screenshots, for 51 images total:
 
 - `import-{1440,1024,390}.png`
+- `import-mexc-{1440,1024,390}.png`
+- `analytics-{1440,1024,390}.png`
+- `behavior-{1440,1024,390}.png`
 - `dashboard-{1440,1024,390}.png`
 - `dashboard-empty-{1440,1024,390}.png`
 - `dashboard-loading-{1440,1024,390}.png`
 - `dashboard-error-{1440,1024,390}.png`
 - `trades-{1440,1024,390}.png`
+- `simulator-{1440,1024,390}.png`
+- `settings-{1440,1024,390}.png`
+- `samples-{1440,1024,390}.png`
 - `coach-{empty,error,few-trades,ready,running}-{1440,1024,390}.png`
 
-SHA-256 hashes for these baseline images are retained in the session comparison record so changed
-screenshots can be reported exactly after the redesign. The screenshots are generated artifacts; the
-compatibility assertions live in the E2E tests.
+The images are ignored generated artifacts and are not committed; the MEXC-import captures are saved
+in the workspace.
 
 ## Routes and stable selectors
 
@@ -242,6 +277,7 @@ dynamic labels are shown as JSX expressions):
 - `screens/Dashboard.tsx`: `"Loading dashboard"`, `"Headline numbers"`, `"Daily-return ratios"`,
   `"Data caveats"`.
 - `screens/Import.tsx`: `"Questions to answer before importing"`,
+  `"Alias for ${source}"`, `"Role for ${column.header}"`, `"Sample rows, horizontally scrollable"`,
   `"Drop a trade file here, or press Enter to choose one"`, `"Trade file"`.
 - `screens/Trades.tsx`: `` `${field} for ${row.symbol}` ``, `"Saved views"`,
   `"Apply a saved view"`, `"New view name"`, `"Trades"`.
@@ -274,16 +310,18 @@ dynamic labels are shown as JSX expressions):
 - `components/coach/AskCoach.tsx`: `"Trades this paragraph is about"`,
   `` `Show trade ${chip.trade_id} in the Trades table, ${chip.pnl}` ``, `"Ask the Coach"`,
   `"Questions and answers"`, `"Example questions"`.
-- `components/coach/CoachDrawer.tsx`: `{id}` on coach sections, `"Verdict"`,
+- `components/coach/CoachDrawer.tsx`: `"Verdict"`,
   `"Resize the Coach panel"`, `"Coach"`, `"Coach views"`.
-- `components/coach/FindingCard.tsx`: `{headingId}` on finding cards,
-  `` `Evidence trades for ${finding.title}` ``,
+- `components/coach/FindingCard.tsx`: `` `Evidence trades for ${finding.title}` ``,
   `` `Show trade ${trade.trade_id} in the Trades table, ${trade.pnl.display}` ``,
   `` `Apply as filter: ${finding.title}` ``.
 - `components/coach/FindingChart.tsx`: the average-per-trade accessible name, composed from the
   finding's slice and other-trades values and optional 95% interval.
 - `components/coach/Timeline.tsx`: `"Report steps"`.
 - `components/DisciplineRing.tsx`: `{label}`.
+- `components/AgentPresence.tsx`: `Agent idle`, `Agent thinking`, `Agent streaming`, `Agent offline`,
+  `Agent error`.
+- `components/Availability.tsx`: `${label} table, horizontally scrollable`.
 - `screens/Simulator.tsx`: `"Overfitting warning"`, `"Before and after table"`,
   `"Why trades were skipped"`.
 - `screens/Settings.tsx`: `` `Rename ${name}` ``, `` `Confirm delete ${name}` ``,
@@ -293,3 +331,14 @@ Also preserve the `aria-labelledby` IDs: `empty-title`, `preview-title`, `result
 `samples-heading`, `findings-title`, `empty-screen-title`, the existing generated coach-section IDs,
 `coach-tab-ask`, and `coach-tab-report`. The E2E tests also select the `"Loading dashboard"` and
 `"Filters"` accessible names.
+
+## Import and unavailable-data contracts
+
+- Keep the Import **What we found** card, role confidence/sample table, capability checklist,
+  warnings, role overrides, and exact alias controls.
+- Preserve the activity-only message **“Not available: this file has no P&L or prices”** and its
+  import guidance. Missing financial data is unavailable, never zero.
+- Preserve the Coach verdict `cannot_be_assessed`, displayed as **“cannot be assessed”**, when a
+  file has no P&L. Do not change Coach logic or figure-check rules.
+- Settings behavior, import logic, API contracts, component names, props, route IDs, accessible
+  labels, and existing role tokens are compatibility constraints for this redesign.

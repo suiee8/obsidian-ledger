@@ -5,7 +5,8 @@
 The shader is decorative and has no accessible name; its canvas is `aria-hidden` and does not receive
 pointer events. Interactive content remains in the foreground. Glass panels use a 92%-opaque
 `surface-1` charcoal background (`#11141A`); browsers without backdrop-filter support receive the same
-solid charcoal fallback.
+fully opaque charcoal fallback. The CSS `@supports` fallback removes translucency when neither the
+standard nor prefixed backdrop-filter property is available.
 
 The brightest shader token is ice (`#C9D6FF`). Compositing the panel at 92% opacity over that token
 produces approximately `#20242C`; primary text (`#E8ECF4`) has a 13.14:1 contrast ratio. As a more

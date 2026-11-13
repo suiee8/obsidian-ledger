@@ -1,4 +1,4 @@
-import { mkdirSync } from "node:fs";
+import { mkdirSync, readdirSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { gzipSync } from "node:zlib";
 
@@ -8,6 +8,8 @@ import { importSample } from "./helpers";
 
 const OUT = resolve(process.cwd(), "..", "docs", "screens");
 const WIDTHS = [1440, 1024, 390];
+const BASELINE_CSS_GZIP_BYTES = 36_351;
+const CSS_GROWTH_BUDGET_BYTES = 20 * 1024;
 
 test.beforeAll(() => {
   mkdirSync(OUT, { recursive: true });
@@ -89,6 +91,22 @@ test("a trade filter updates the visible chip in under 100ms", async ({ page, re
 });
 
 test("the populated dashboard defers chart JavaScript until after its first paint", async ({ page, request }) => {
+  const assetsDirectory = resolve(process.cwd(), "dist", "assets");
+  const assets = readdirSync(assetsDirectory);
+  const cssFiles = assets.filter((name) => name.endsWith(".css"));
+  const shaderFile = assets.find((name) => name.startsWith("SapphireAurora-") && name.endsWith(".js"));
+  if (cssFiles.length === 0) throw new Error("The production build contains no CSS assets");
+  if (!shaderFile) throw new Error("The production build contains no Sapphire Aurora chunk");
+
+  const cssGzipBytes = cssFiles.reduce(
+    (total, name) => total + gzipSync(readFileSync(resolve(assetsDirectory, name))).byteLength,
+    0,
+  );
+  const shaderGzipBytes = gzipSync(readFileSync(resolve(assetsDirectory, shaderFile))).byteLength;
+  console.log(`Production CSS: ${cssGzipBytes} bytes gzip; Sapphire Aurora: ${shaderGzipBytes} bytes gzip`);
+  expect(cssGzipBytes).toBeLessThanOrEqual(BASELINE_CSS_GZIP_BYTES + CSS_GROWTH_BUDGET_BYTES);
+  expect(shaderGzipBytes).toBeLessThanOrEqual(15 * 1024);
+
   await importSample(request);
   let releaseDashboard!: () => void;
   const dashboardGate = new Promise<void>((resolveGate) => {
