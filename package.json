@@ -9,7 +9,7 @@
     "bootstrap": "pnpm install && uv sync --directory api",
     "dev": "node scripts/dev.mjs",
     "dev:web": "pnpm -C web dev",
-    "dev:api": "uv run --directory api uvicorn obsidian_ledger.main:app --host 127.0.0.1 --port 8000",
+    "dev:api": "uv run --directory api uvicorn obsidian_ledger.main:app --host 127.0.0.1 --port 8000 --no-access-log",
     "seed": "uv run --directory api python ../scripts/seed.py",
     "reset:data": "node scripts/reset-data.mjs",
     "check": "pnpm -C web lint && pnpm -C web typecheck && pnpm -C web test && pnpm lint:api && pnpm typecheck:api && uv run --directory api pytest -q",

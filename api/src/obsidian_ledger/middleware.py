@@ -60,10 +60,22 @@ class SecurityHeadersMiddleware:
         await self.app(scope, receive, send_with_security_headers)
 
 
+UPLOAD_PATHS = frozenset({"/api/imports/preview"})
+JSON_BODY_LIMIT_BYTES = 1024 * 1024
+
+
 class RequestBodyLimitMiddleware:
-    def __init__(self, app: ASGIApp, max_body_bytes: int) -> None:
+    """Cap every request body: the upload limit on file endpoints, a small cap on all others."""
+
+    def __init__(
+        self,
+        app: ASGIApp,
+        max_body_bytes: int,
+        json_body_bytes: int = JSON_BODY_LIMIT_BYTES,
+    ) -> None:
         self.app = app
-        self.max_body_bytes = max_body_bytes
+        self.upload_body_bytes = max_body_bytes
+        self.json_body_bytes = min(json_body_bytes, max_body_bytes)
         self.message = "Request body exceeds the allowed size."
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
@@ -71,6 +83,8 @@ class RequestBodyLimitMiddleware:
             await self.app(scope, receive, send)
             return
 
+        is_upload = scope.get("path") in UPLOAD_PATHS
+        limit = self.upload_body_bytes if is_upload else self.json_body_bytes
         content_length = next(
             (value for key, value in scope.get("headers", []) if key.lower() == b"content-length"),
             None,
@@ -91,22 +105,36 @@ class RequestBodyLimitMiddleware:
                     send, 400, "invalid_content_length", "Invalid Content-Length."
                 )
                 return
-            if declared_size > self.max_body_bytes:
+            if declared_size > limit:
                 await self._send_error(send, 413, error_code, self.message)
                 return
 
         received = 0
+        exceeded = False
+        replaced = False
 
         async def limited_receive() -> Message:
-            nonlocal received
+            nonlocal received, exceeded
             message = await receive()
             if message["type"] == "http.request":
                 received += len(message.get("body", b""))
-                if received > self.max_body_bytes:
+                if received > limit:
+                    exceeded = True
                     raise RequestBodyTooLarge(self.message, error_code)
             return message
 
-        await self.app(scope, limited_receive, send)
+        async def guarded_send(message: Message) -> None:
+            # FastAPI turns an error raised while reading a body into a 400. Once the limit is
+            # crossed, the client must see 413 instead, whatever the framework answered.
+            nonlocal replaced
+            if exceeded:
+                if not replaced:
+                    replaced = True
+                    await self._send_error(send, 413, error_code, self.message)
+                return
+            await send(message)
+
+        await self.app(scope, limited_receive, guarded_send)
 
     @staticmethod
     async def _send_error(send: Send, status: int, code: str, message: str) -> None:

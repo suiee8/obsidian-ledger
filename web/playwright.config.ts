@@ -28,7 +28,7 @@ export default defineConfig({
   },
   webServer: [
     {
-      command: "uv run --directory ../api uvicorn obsidian_ledger.main:app --host 127.0.0.1 --port 8000",
+      command: "uv run --directory ../api uvicorn obsidian_ledger.main:app --host 127.0.0.1 --port 8000 --no-access-log",
       url: "http://127.0.0.1:8000/health",
       reuseExistingServer: false,
       // Keys live in memory for the run, never in your Windows Credential Manager. The mock below

@@ -133,3 +133,39 @@ def test_cors_options_preflight_from_unlisted_origin_rejected(tmp_path: Path) ->
     )
     # Both Starlette CORSMiddleware (400) or our middleware (403) reject unlisted preflight
     assert response.status_code in (400, 403)
+
+
+def test_json_endpoints_use_a_small_body_cap_below_the_upload_limit(tmp_path: Path) -> None:
+    client = TestClient(create_app(Settings(data_dir=tmp_path)), base_url="http://127.0.0.1")
+    oversized = client.post(
+        "/api/llm/config",
+        content=b"x" * (1024 * 1024 + 1),
+        headers={"Content-Type": "application/json"},
+    )
+    assert oversized.status_code == 413
+    assert oversized.json()["error"]["code"] == "body_too_large"
+
+
+def test_upload_endpoint_keeps_the_larger_upload_limit(tmp_path: Path) -> None:
+    client = TestClient(create_app(Settings(data_dir=tmp_path)), base_url="http://127.0.0.1")
+    response = client.post(
+        "/api/imports/preview",
+        content=b"a,b\n" + b"1,2\n" * (512 * 1024),
+        headers={"Content-Type": "text/csv", "X-Filename": "big.csv"},
+    )
+    assert response.status_code != 413
+
+
+def test_streamed_body_without_content_length_is_cut_off(tmp_path: Path) -> None:
+    client = TestClient(create_app(Settings(data_dir=tmp_path)), base_url="http://127.0.0.1")
+
+    def chunks() -> object:
+        for _ in range(3):
+            yield b"x" * (512 * 1024)
+
+    response = client.put(
+        "/api/llm/config",
+        content=chunks(),  # type: ignore[arg-type]
+        headers={"Content-Type": "application/json"},
+    )
+    assert response.status_code == 413

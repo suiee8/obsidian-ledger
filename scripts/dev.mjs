@@ -69,7 +69,7 @@ function start(name, command) {
         () =>
           start(
             "api",
-            "uv run --directory api uvicorn obsidian_ledger.main:app --host 127.0.0.1 --port 8000",
+            "uv run --directory api uvicorn obsidian_ledger.main:app --host 127.0.0.1 --port 8000 --no-access-log",
           ),
         delay,
       );
@@ -93,7 +93,7 @@ async function main() {
 
   start(
     "api",
-    "uv run --directory api uvicorn obsidian_ledger.main:app --host 127.0.0.1 --port 8000",
+    "uv run --directory api uvicorn obsidian_ledger.main:app --host 127.0.0.1 --port 8000 --no-access-log",
   );
   start("web", "pnpm -C web dev");
 }

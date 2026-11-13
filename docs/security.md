@@ -12,7 +12,26 @@
 - Provider keys are stored through `keyring` in the OS keychain. The API returns only a masked hint; the database, captured logs, exports, and every ZIP member are checked by a canary-key test.
 - ZIP exports are assembled locally and do not contain the provider key.
 
-## Dependency audit — 2026-11-12
+## Phase 6B backend audit — 2026-11-13
+
+Each item was re-verified with a test run. "Fixed" means a test failed or the control was missing and was changed in this phase.
+
+| # | Control | Result | Evidence |
+| --- | --- | --- | --- |
+| 1 | API binds only to 127.0.0.1; TrustedHost allows `127.0.0.1` and `localhost` | Verified | `test_api_binds_only_to_localhost_by_default`, `test_api_host_setting_rejects_non_loopback_bind_addresses`, `test_wrong_host_is_rejected` |
+| 2 | Origin present and not allow-listed is rejected, including simple cross-origin POSTs and preflights | Fixed (middleware and tests tightened) | `test_request_from_unlisted_origin_is_rejected`, `test_cors_options_preflight_from_unlisted_origin_rejected` |
+| 3 | Body-size limits on every endpoint (small JSON cap, larger upload cap, streamed bodies without Content-Length cut off); archive traversal and zip-bomb rejection | Fixed (limits applied to every endpoint) / archive checks verified | `test_global_request_body_limit_rejects_non_upload_endpoint`, `test_json_endpoints_use_a_small_body_cap_below_the_upload_limit`, `test_streamed_body_without_content_length_is_cut_off`, existing XLSX archive tests |
+| 4 | Security headers on API responses | Verified | `test_all_api_responses_have_security_headers` |
+| 4 | CSP and headers on the Vite dev and preview servers; shader runs under the CSP | See the web header results in `docs/test-report.txt` (`shader.spec.ts`) | `web/vite.config.ts` |
+| 5 | Provider keys only in the OS keychain; no key in DB, logs, exports or ZIP | Verified | Canary-key test (existing) |
+| 5 | Logs never contain notes, trade ids or file names | Verified (new) | `api/tests/security/test_data_handling.py::test_notes_trade_ids_and_filenames_never_reach_the_logs` |
+| 6 | Imports treat cells as data: formula neutralisation on export, no instruction-following from notes | Verified | Existing export-escaping tests; notes are stored and returned as plain strings and are never interpreted. The AI mapping help sends value shapes only. |
+| 7 | `pip-audit` and `pnpm audit` | See the dependency audit below | |
+| 8 | SQL path accepting model-written queries | None exists. Coach tools take typed arguments only. | `test_coach_tools_expose_no_free_form_sql_or_query_argument`, `test_coach_tool_call_rejects_unknown_arguments`. A SELECT-only guard is therefore not needed; if a SQL tool is ever added it must ship with one. |
+
+## Dependency audit — 2026-11-12 (repeated 2026-11-13)
+
+The 2026-11-13 repeat gave the same result: `pip-audit` reports no known vulnerabilities, and `pnpm audit` reports 7 findings (1 high, 5 moderate, 1 low), all listed below. There are no critical findings.
 
 Commands:
 
