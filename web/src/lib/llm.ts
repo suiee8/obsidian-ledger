@@ -3,7 +3,7 @@ import { useCallback, useRef, useState } from "react";
 import { z } from "zod";
 
 import { filtersBody, useFilters } from "../state/filters";
-import { apiBase, jsonBody, requestJson } from "./api";
+import { apiFetch, jsonBody, requestJson } from "./api";
 
 // The optional local model. Nothing here is needed for the Coach report itself.
 
@@ -263,10 +263,14 @@ export function useAskCoach() {
       const fail = (reason: string, message: string) =>
         update(id, (turn) => ({ ...turn, phase: "error", error: { reason, message }, status: "" }));
       try {
-        const response = await fetch(`${apiBase()}/api/coach/ask`, {
-          ...jsonBody({ filters: filtersBody(useFilters.getState()), question }),
-          signal: abort.signal,
-        });
+        const response = await apiFetch(
+          "/api/coach/ask",
+          {
+            ...jsonBody({ filters: filtersBody(useFilters.getState()), question }),
+            signal: abort.signal,
+          },
+          { timeoutMs: 120_000 },
+        );
         if (!response.ok || !response.body) {
           fail("bad_response", `The question could not be sent (${response.status}).`);
           return;

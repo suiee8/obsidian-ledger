@@ -11,6 +11,7 @@ from uuid import uuid4
 from fastapi import APIRouter, Path, Query, Request
 from fastapi.responses import FileResponse
 
+from obsidian_ledger.atomic import atomic_path
 from obsidian_ledger.ingest.errors import IngestError
 from obsidian_ledger.ingest.options import ImportOptions
 from obsidian_ledger.ingest.schemas import CommitOut, PreviewOut
@@ -34,20 +35,21 @@ async def _save_stream(
     digest = hashlib.sha256()
     total = 0
     try:
-        with destination.open("wb") as handle:
-            async for chunk in request.stream():
-                total += len(chunk)
-                if total > service.max_upload_bytes:
-                    raise IngestError(
-                        "too_large",
-                        f"Files over {service.max_upload_bytes // (1024 * 1024)} MB "
-                        "are not accepted.",
-                        status=413,
-                    )
-                digest.update(chunk)
-                handle.write(chunk)
-        if total == 0:
-            raise IngestError("empty_file", "The upload is empty.")
+        with atomic_path(destination) as temporary:
+            with temporary.open("wb") as handle:
+                async for chunk in request.stream():
+                    total += len(chunk)
+                    if total > service.max_upload_bytes:
+                        raise IngestError(
+                            "too_large",
+                            f"Files over {service.max_upload_bytes // (1024 * 1024)} MB "
+                            "are not accepted.",
+                            status=413,
+                        )
+                    digest.update(chunk)
+                    handle.write(chunk)
+            if total == 0:
+                raise IngestError("empty_file", "The upload is empty.")
     except BaseException:
         destination.unlink(missing_ok=True)
         destination.with_suffix(".json").unlink(missing_ok=True)

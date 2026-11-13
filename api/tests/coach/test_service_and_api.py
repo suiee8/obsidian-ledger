@@ -26,7 +26,7 @@ SAMPLES = Path(__file__).resolve().parents[3] / "samples"
 @pytest.fixture
 def client(tmp_path: Path) -> TestClient:
     settings = Settings.model_validate({"data_dir": str(tmp_path / "data")})
-    return TestClient(create_app(settings))
+    return TestClient(create_app(settings), base_url="http://127.0.0.1")
 
 
 def _import_text(client: TestClient, text: str, name: str = "journal.csv") -> None:

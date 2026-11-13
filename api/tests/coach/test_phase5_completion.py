@@ -237,7 +237,10 @@ def big_data(tmp_path_factory: pytest.TempPathFactory) -> Iterator[Path]:
 
 def _cold_client(source: Path, destination: Path) -> TestClient:
     shutil.copytree(source, destination)
-    return TestClient(create_app(Settings.model_validate({"data_dir": str(destination)})))
+    return TestClient(
+        create_app(Settings.model_validate({"data_dir": str(destination)})),
+        base_url="http://127.0.0.1",
+    )
 
 
 def test_a_cold_report_over_http_takes_under_two_seconds(big_data: Path, tmp_path: Path) -> None:
@@ -272,7 +275,7 @@ def test_a_cold_stream_with_all_six_steps_takes_under_two_seconds(
 @pytest.fixture(scope="module")
 def app_client(tmp_path_factory: pytest.TempPathFactory) -> TestClient:
     settings = Settings.model_validate({"data_dir": str(tmp_path_factory.mktemp("sel") / "data")})
-    client = TestClient(create_app(settings))
+    client = TestClient(create_app(settings), base_url="http://127.0.0.1")
     preview = client.post(
         "/api/imports/preview",
         params={"filename": "journal.csv"},

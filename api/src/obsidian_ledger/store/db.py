@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import hashlib
 import json
+import shutil
+import tempfile
 import threading
 import uuid
 from collections.abc import Sequence
@@ -19,6 +21,7 @@ from obsidian_ledger.ingest.trade import Trade
 
 DB_FILE: Final = "ledger.duckdb"
 LOSS_STREAK_FLAG: Final = 3
+MIN_READY_DISK_BYTES: Final = 64 * 1024 * 1024
 
 SCHEMA: Final = """
 CREATE TABLE IF NOT EXISTS trades (
@@ -223,16 +226,88 @@ def _first(rows: list[tuple[Any, ...]]) -> tuple[Any, ...] | None:
 class Store:
     def __init__(self, data_dir: Path) -> None:
         self.data_dir = data_dir
+        self.db_path = data_dir / DB_FILE
+        self.backup_dir = data_dir / "backups"
         self.raw_dir = data_dir / "raw"
         self.rejected_dir = data_dir / "rejected"
         self.staging_dir = data_dir / "staging"
         for folder in (self.data_dir, self.raw_dir, self.rejected_dir, self.staging_dir):
             folder.mkdir(parents=True, exist_ok=True)
         self._lock = threading.Lock()
-        self._conn = duckdb.connect(str(self.data_dir / DB_FILE))
+        self._conn = duckdb.connect(str(self.db_path))
+        self.snapshot_database()
         self._conn.execute(SCHEMA)
         self._conn.execute(MIGRATIONS)
         self._conn.execute(TRADE_VIEW)
+
+    def snapshot_database(self) -> Path | None:
+        if not self.db_path.is_file():
+            return None
+        from obsidian_ledger.atomic import atomic_path
+
+        self.backup_dir.mkdir(parents=True, exist_ok=True)
+        timestamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%S%fZ")
+        name = f"ledger-{timestamp}-{uuid.uuid4().hex[:8]}.duckdb"
+        destination = self.backup_dir / name
+        with atomic_path(destination) as temporary:
+            literal_path = str(temporary).replace("'", "''")
+            catalog_name = self.db_path.stem
+            self._conn.execute("CHECKPOINT")
+            self._conn.execute(f"ATTACH '{literal_path}' AS phase6_snapshot")
+            try:
+                self._conn.execute(f"COPY FROM DATABASE {catalog_name} TO phase6_snapshot")
+            finally:
+                self._conn.execute("DETACH phase6_snapshot")
+        snapshots = sorted(
+            self.backup_dir.glob("ledger-*.duckdb"),
+            key=lambda path: path.stat().st_mtime_ns,
+            reverse=True,
+        )
+        for stale in snapshots[3:]:
+            stale.unlink()
+        return destination
+
+    def health_check(self) -> dict[str, Any]:
+        """Check database access, data-folder write access, and available disk space."""
+        try:
+            with self._lock:
+                self._conn.execute("SELECT 1").fetchone()
+        except duckdb.Error as exc:
+            message = str(exc).lower()
+            error = "database_locked" if "lock" in message else "database_unavailable"
+            return {
+                "database": "locked" if "lock" in message else "unavailable",
+                "database_message": error,
+                "data_dir_writable": False,
+                "disk_free_bytes": None,
+                "disk_space_ok": False,
+            }
+
+        try:
+            with tempfile.NamedTemporaryFile(
+                dir=self.data_dir,
+                prefix=".ready-",
+                delete=False,
+            ) as probe:
+                probe_path = Path(probe.name)
+            probe_path.unlink()
+            free_bytes = shutil.disk_usage(self.data_dir).free
+        except OSError:
+            return {
+                "database": "ok",
+                "database_message": None,
+                "data_dir_writable": False,
+                "disk_free_bytes": None,
+                "disk_space_ok": False,
+            }
+
+        return {
+            "database": "ok",
+            "database_message": None,
+            "data_dir_writable": True,
+            "disk_free_bytes": free_bytes,
+            "disk_space_ok": free_bytes >= MIN_READY_DISK_BYTES,
+        }
 
     def close(self) -> None:
         with self._lock:
@@ -633,6 +708,8 @@ class Store:
         """
         removed: dict[str, int] = {}
         with self._lock:
+            self._conn.execute("CHECKPOINT")
+            self.snapshot_database()
             for table in (
                 "trades",
                 "imports",

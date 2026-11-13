@@ -17,7 +17,7 @@ from obsidian_ledger.settings import Settings
 def test_file_size_limit_rejection(tmp_path: Path) -> None:
     settings = Settings(data_dir=tmp_path, max_upload_mb=1)
     app = create_app(settings)
-    client = TestClient(app)
+    client = TestClient(app, base_url="http://127.0.0.1")
 
     response = client.post(
         "/api/imports/preview",
@@ -144,7 +144,7 @@ def test_json_extension_with_csv_content_rejected(tmp_path: Path) -> None:
 
 def test_upload_preview_api_rejects_mismatched_extension(tmp_path: Path) -> None:
     app = create_app(Settings(data_dir=tmp_path))
-    client = TestClient(app)
+    client = TestClient(app, base_url="http://127.0.0.1")
 
     response = client.post(
         "/api/imports/preview",

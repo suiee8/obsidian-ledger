@@ -25,7 +25,7 @@ def test_secret_key_never_leaks_to_db_exports_or_zip(
     caplog.set_level(logging.DEBUG)
     settings = Settings(data_dir=tmp_path, llm_secret_store="memory")
     app = create_app(settings)
-    client = TestClient(app)
+    client = TestClient(app, base_url="http://127.0.0.1")
 
     # 1. Configure provider and store the secret key
     config_resp = client.put(

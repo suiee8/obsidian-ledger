@@ -144,7 +144,7 @@ def _make(folder: Path, *, with_data: bool, configure: bool = True) -> Rig:
     )
     model = FakeModel()
     app.state.llm.transport = httpx.MockTransport(model.handle)
-    client = TestClient(app)
+    client = TestClient(app, base_url="http://127.0.0.1")
     if with_data:
         preview = client.post(
             "/api/imports/preview",

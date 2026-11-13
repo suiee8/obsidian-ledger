@@ -9,7 +9,7 @@ import { useEffect } from "react";
 import { z } from "zod";
 
 import { useUi } from "../state/ui";
-import { jsonBody, requestJson } from "./api";
+import { apiFetch, jsonBody, requestJson } from "./api";
 import {
   CommitSchema,
   AvailabilitySchema,
@@ -149,13 +149,14 @@ export function useDeleteView() {
 export function usePreviewImport() {
   return useMutation({
     mutationFn: async ({ file }: { file: File }) => {
-      const response = await fetch(
-        `${import.meta.env.VITE_API_URL ?? "http://127.0.0.1:8000"}/api/imports/preview?filename=${encodeURIComponent(file.name)}`,
+      const response = await apiFetch(
+        `/api/imports/preview?filename=${encodeURIComponent(file.name)}`,
         {
           method: "POST",
           headers: { "content-type": "application/octet-stream" },
           body: file,
         },
+        { timeoutMs: 120_000 },
       );
       if (!response.ok) {
         throw new Error(await readErrorMessage(response));

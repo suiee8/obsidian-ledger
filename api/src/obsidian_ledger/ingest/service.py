@@ -8,6 +8,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from obsidian_ledger.atomic import atomic_path
 from obsidian_ledger.ingest.analysis import Analysis, analyze
 from obsidian_ledger.ingest.errors import IngestError
 from obsidian_ledger.ingest.export import rejected_csv
@@ -65,7 +66,8 @@ class ImportService:
         validate_extension_and_content(path, filename)
         analysis = self._analyze(path, ImportOptions())
         meta = {"filename": filename, "sha256": sha256, "size_bytes": size}
-        path.with_suffix(".json").write_text(json.dumps(meta), encoding="utf-8")
+        with atomic_path(path.with_suffix(".json")) as temporary:
+            temporary.write_text(json.dumps(meta), encoding="utf-8")
         date = analysis.date
         return PreviewOut(
             preview_id=preview_id,
@@ -146,9 +148,12 @@ class ImportService:
         issues = build_issues(outcome)
         import_id = uuid.uuid4().hex
 
-        raw_rows = write_raw(analysis.source, self.store.raw_dir / f"{import_id}.parquet")
+        raw_path = self.store.raw_dir / f"{import_id}.parquet"
+        with atomic_path(raw_path) as temporary:
+            raw_rows = write_raw(analysis.source, temporary)
         rejected_path = self.store.rejected_dir / f"{import_id}.csv"
-        rejected_path.write_bytes(rejected_csv(analysis.source.headers, outcome.rejected))
+        with atomic_path(rejected_path) as temporary:
+            temporary.write_bytes(rejected_csv(analysis.source.headers, outcome.rejected))
 
         inserted, present = self.store.insert_frame(import_id, outcome.frame, options.base_currency)
         if options.starting_equity is not None:

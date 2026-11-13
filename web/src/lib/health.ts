@@ -1,20 +1,39 @@
 import { z } from "zod";
 
-export const healthSchema = z.object({
+import { apiBase, apiFetch } from "./api";
+
+const livenessSchema = z.object({
   status: z.literal("ok"),
   service: z.string(),
+  version: z.string(),
 });
 
-export type Health = z.infer<typeof healthSchema>;
+const readinessSchema = z.object({
+  status: z.enum(["ready", "degraded", "down"]),
+  checks: z.object({ ai: z.enum(["configured", "not_configured", "unavailable", "unknown"]) }),
+});
 
-export function apiBase(): string {
-  return import.meta.env.VITE_API_URL ?? "http://127.0.0.1:8000";
-}
+export const healthSchema = livenessSchema;
+
+export type Health = {
+  version: string;
+  status: "ready" | "degraded" | "down";
+  ai: "configured" | "not_configured" | "unavailable" | "unknown";
+};
 
 export async function fetchHealth(signal: AbortSignal): Promise<Health> {
-  const response = await fetch(`${apiBase()}/health`, { signal });
+  const response = await apiFetch("/health", { signal }, { probe: true, attempts: 1, timeoutMs: 5000 });
   if (!response.ok) {
     throw new Error(`Health check failed (${response.status})`);
   }
-  return healthSchema.parse(await response.json());
+  const live = livenessSchema.parse(await response.json());
+  const readyResponse = await apiFetch(
+    "/health/ready",
+    { signal },
+    { probe: true, attempts: 1, timeoutMs: 5000 },
+  );
+  const ready = readinessSchema.parse(await readyResponse.json());
+  return { version: live.version, status: ready.status, ai: ready.checks.ai };
 }
+
+export { apiBase };

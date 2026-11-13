@@ -27,7 +27,7 @@ WIPE = "delete all my data"
 @pytest.fixture(scope="module")
 def app_client(tmp_path_factory: pytest.TempPathFactory) -> TestClient:
     settings = Settings.model_validate({"data_dir": str(tmp_path_factory.mktemp("p4") / "data")})
-    client = TestClient(create_app(settings))
+    client = TestClient(create_app(settings), base_url="http://127.0.0.1")
     text = synth.planted(days=120)
     preview = client.post(
         "/api/imports/preview", params={"filename": "journal.csv"}, content=text.encode("utf-8")
@@ -162,7 +162,10 @@ def test_an_unknown_selection_is_a_clear_404(app_client: TestClient) -> None:
 
 
 def test_settings_roundtrip_and_privacy_defaults(tmp_path: Path) -> None:
-    client = TestClient(create_app(Settings.model_validate({"data_dir": str(tmp_path / "d")})))
+    client = TestClient(
+        create_app(Settings.model_validate({"data_dir": str(tmp_path / "d")})),
+        base_url="http://127.0.0.1",
+    )
     start = client.get("/api/settings").json()
     assert start["privacy"] == {
         "aggregates_only": True,
@@ -200,7 +203,7 @@ def test_privacy_changes_do_not_invalidate_the_analysis_cache(app_client: TestCl
 
 def test_template_rename_and_delete(tmp_path: Path) -> None:
     app = create_app(Settings.model_validate({"data_dir": str(tmp_path / "d")}))
-    client = TestClient(app)
+    client = TestClient(app, base_url="http://127.0.0.1")
     store = cast(Store, app.state.store)
     store.save_template("abc123", "Old name", {"Time": "entry_time"})
     renamed = client.patch("/api/templates/abc123", json={"name": "My broker"})
@@ -225,7 +228,10 @@ def test_export_contains_everything(app_client: TestClient) -> None:
 
 def test_wipe_needs_the_exact_phrase_and_removes_everything(tmp_path: Path) -> None:
     data = tmp_path / "data"
-    client = TestClient(create_app(Settings.model_validate({"data_dir": str(data)})))
+    client = TestClient(
+        create_app(Settings.model_validate({"data_dir": str(data)})),
+        base_url="http://127.0.0.1",
+    )
     text = synth.planted(days=40)
     preview = client.post(
         "/api/imports/preview", params={"filename": "j.csv"}, content=text.encode("utf-8")

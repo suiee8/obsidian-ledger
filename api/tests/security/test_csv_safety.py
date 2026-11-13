@@ -195,7 +195,7 @@ def test_rejected_csv_neutralizes_headers_and_cells() -> None:
 
 def test_coach_report_csv_export_neutralizes_cells(tmp_path: Path) -> None:
     app = create_app(Settings(data_dir=tmp_path))
-    client = TestClient(app)
+    client = TestClient(app, base_url="http://127.0.0.1")
 
     # Ingest sample trades to produce a real coach report
     sample_file = MT5_SAMPLE_CSV.read_bytes()
@@ -235,7 +235,7 @@ def test_coach_report_csv_export_neutralizes_cells(tmp_path: Path) -> None:
 
 def test_numeric_json_values_stay_numeric_in_api(tmp_path: Path) -> None:
     app = create_app(Settings(data_dir=tmp_path))
-    client = TestClient(app)
+    client = TestClient(app, base_url="http://127.0.0.1")
 
     # Ingest MT5 statement with known trades and negative commission/profits
     sample_file = MT5_SAMPLE_CSV.read_bytes()

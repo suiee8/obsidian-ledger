@@ -1,3 +1,4 @@
+import logging
 from collections.abc import AsyncGenerator, Awaitable, Callable
 from contextlib import asynccontextmanager
 
@@ -5,6 +6,7 @@ from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from starlette.middleware.gzip import GZipMiddleware
+from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from obsidian_ledger import __version__
 from obsidian_ledger.coach.routes import router as coach_router
@@ -16,8 +18,15 @@ from obsidian_ledger.ingest.service import ImportService
 from obsidian_ledger.llm.coach import LLMCoach
 from obsidian_ledger.llm.routes import router as llm_router
 from obsidian_ledger.llm.secrets import make_secrets
+from obsidian_ledger.logging_setup import configure_api_logger
 from obsidian_ledger.metrics.engine import AnalysisEngine
 from obsidian_ledger.metrics.routes import router as analysis_router
+from obsidian_ledger.middleware import (
+    RequestBodyLimitMiddleware,
+    RequestBodyTooLarge,
+    RequestPolicyMiddleware,
+    SecurityHeadersMiddleware,
+)
 from obsidian_ledger.settings import Settings, get_settings
 from obsidian_ledger.store.db import Store
 from obsidian_ledger.workspace.data_routes import router as data_router
@@ -29,9 +38,14 @@ MEGABYTE = 1024 * 1024
 
 @asynccontextmanager
 async def _lifespan(app: FastAPI) -> AsyncGenerator[None]:
-    yield
-    store: Store = app.state.store
-    store.close()
+    logger: logging.Logger = configure_api_logger(app.state.settings.data_dir)
+    logger.info("API process started")
+    try:
+        yield
+    finally:
+        store: Store = app.state.store
+        store.close()
+        logger.info("API process stopped")
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -45,6 +59,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         ),
         lifespan=_lifespan,
     )
+    app.state.settings = resolved
     app.add_middleware(
         CORSMiddleware,
         allow_origins=resolved.cors_origin_list,
@@ -112,9 +127,51 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             content={"error": {"code": exc.code, "message": exc.message, "details": exc.details}},
         )
 
+    @app.exception_handler(RequestBodyTooLarge)
+    async def request_body_too_large(_: Request, exc: RequestBodyTooLarge) -> JSONResponse:
+        return JSONResponse(
+            status_code=413,
+            content={"error": {"code": exc.code, "message": str(exc)}},
+        )
+
     @app.get("/health")
     def health() -> dict[str, str]:
-        return {"status": "ok", "service": "obsidian-ledger"}
+        return {"status": "ok", "service": "obsidian-ledger", "version": __version__}
+
+    @app.get("/health/ready")
+    def health_ready(response: Response) -> dict[str, object]:
+        checks: dict[str, object] = app.state.store.health_check()
+        core_ready = (
+            checks["database"] == "ok"
+            and checks["data_dir_writable"] is True
+            and checks["disk_space_ok"] is True
+        )
+        if not core_ready:
+            ai_status = "unknown"
+        else:
+            config = app.state.llm.config()
+            if config.provider in app.state.llm.providers:
+                ai_status = (
+                    "unavailable"
+                    if app.state.llm.provider_unavailable(config.provider)
+                    else "configured"
+                )
+            else:
+                ai_status = "not_configured"
+        checks["ai"] = ai_status
+        if not core_ready:
+            status = "down"
+            response.status_code = 503
+        elif ai_status == "unavailable":
+            status = "degraded"
+        else:
+            status = "ready"
+        return {
+            "status": status,
+            "service": "obsidian-ledger",
+            "version": __version__,
+            "checks": checks,
+        }
 
     @app.get("/")
     def root() -> dict[str, str]:
@@ -124,6 +181,22 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             "phase": "1",
             "docs": "/docs",
         }
+
+    app.add_middleware(
+        TrustedHostMiddleware,
+        allowed_hosts=["127.0.0.1", "localhost"],
+    )
+    app.add_middleware(
+        RequestBodyLimitMiddleware,
+        max_body_bytes=resolved.max_upload_mb * MEGABYTE,
+    )
+    app.add_middleware(
+        RequestPolicyMiddleware,
+        heavy_limit=2,
+        requests_per_minute=resolved.requests_per_minute,
+        timeout_seconds=resolved.request_timeout_seconds,
+    )
+    app.add_middleware(SecurityHeadersMiddleware)
 
     return app
 

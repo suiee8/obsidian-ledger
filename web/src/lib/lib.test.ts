@@ -11,9 +11,10 @@ describe("cn", () => {
 
 describe("healthSchema", () => {
   it("accepts the API payload", () => {
-    expect(healthSchema.parse({ status: "ok", service: "obsidian-ledger" })).toEqual({
+    expect(healthSchema.parse({ status: "ok", service: "obsidian-ledger", version: "0.1.0" })).toEqual({
       status: "ok",
       service: "obsidian-ledger",
+      version: "0.1.0",
     });
   });
 

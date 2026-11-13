@@ -125,6 +125,9 @@ export function useCoachRun(params: string, trigger: number, enabled: boolean): 
       if (finished) return;
       // A named `error` event carries a message. A dropped connection has no data.
       const data = (message as MessageEvent<string | undefined>).data;
+      if (typeof data !== "string" && stream.readyState === EventSource.CONNECTING) {
+        return;
+      }
       let text = "The Coach could not reach the local API.";
       if (typeof data === "string" && data) {
         const parsed: unknown = JSON.parse(data);

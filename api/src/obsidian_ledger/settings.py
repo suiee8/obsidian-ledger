@@ -1,6 +1,8 @@
 from functools import lru_cache
 from pathlib import Path
+from typing import Literal
 
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -14,11 +16,13 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    host: str = "127.0.0.1"
+    host: Literal["127.0.0.1"] = "127.0.0.1"
     port: int = 8000
     cors_origins: str = "http://127.0.0.1:5173,http://localhost:5173"
     data_dir: Path = Path(".ledger-data")
     max_upload_mb: int = 200
+    requests_per_minute: int = Field(default=600, ge=1, le=10000)
+    request_timeout_seconds: int = Field(default=120, ge=5, le=600)
     default_timezone: str = "UTC"
     # Where provider API keys are kept: "keyring" (Windows Credential Manager) or "memory"
     # (tests only, so they never touch the real keychain).

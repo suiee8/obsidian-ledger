@@ -158,7 +158,7 @@ def test_radar_scales_each_axis_across_setups() -> None:
 def client(tmp_path: Path) -> TestClient:
     settings = Settings.model_validate({"data_dir": str(tmp_path / "data")})
     app = create_app(settings)
-    client = TestClient(app)
+    client = TestClient(app, base_url="http://127.0.0.1")
     body = (SAMPLES / "ibkr_executions.csv").read_bytes()
     preview = client.post(
         "/api/imports/preview",
@@ -264,7 +264,10 @@ def test_dashboard_bundles_every_panel(client: TestClient) -> None:
 
 
 def test_empty_dashboard_has_no_panels_data(tmp_path: Path) -> None:
-    client = TestClient(create_app(Settings.model_validate({"data_dir": str(tmp_path / "empty")})))
+    client = TestClient(
+        create_app(Settings.model_validate({"data_dir": str(tmp_path / "empty")})),
+        base_url="http://127.0.0.1",
+    )
     body = client.get("/api/dashboard").json()
     assert body["equity"]["points"] == []
     assert body["report"]["sample"]["trades"] == 0

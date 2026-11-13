@@ -140,6 +140,9 @@ def deterministic_sections(report: CoachReport) -> dict[str, str]:
 
 
 class LLMCoach:
+    CIRCUIT_FAILURE_LIMIT = 3
+    CIRCUIT_COOLDOWN_SECONDS = 60.0
+
     def __init__(
         self,
         store: Store,
@@ -163,6 +166,9 @@ class LLMCoach:
         self.answer_seconds = answer_seconds
         self._summaries: dict[str, dict[str, Any]] = {}
         self._lock = threading.Lock()
+        self._breaker_lock = threading.Lock()
+        self._provider_failures: dict[str, int] = {}
+        self._provider_unavailable_until: dict[str, float] = {}
 
     # ----- configuration -----
 
@@ -180,6 +186,33 @@ class LLMCoach:
             return self.secrets.get(provider_id)
         except SecretError:
             return None
+
+    def provider_unavailable(self, provider_id: str) -> bool:
+        with self._breaker_lock:
+            unavailable_until = self._provider_unavailable_until.get(provider_id)
+            if unavailable_until is None:
+                return False
+            if unavailable_until <= time.monotonic():
+                self._provider_unavailable_until.pop(provider_id, None)
+                self._provider_failures.pop(provider_id, None)
+                return False
+            return True
+
+    def _record_provider_failure(self, provider_id: str) -> None:
+        with self._breaker_lock:
+            failures = self._provider_failures.get(provider_id, 0) + 1
+            if failures >= self.CIRCUIT_FAILURE_LIMIT:
+                self._provider_unavailable_until[provider_id] = (
+                    time.monotonic() + self.CIRCUIT_COOLDOWN_SECONDS
+                )
+                self._provider_failures[provider_id] = 0
+            else:
+                self._provider_failures[provider_id] = failures
+
+    def _record_provider_success(self, provider_id: str) -> None:
+        with self._breaker_lock:
+            self._provider_failures.pop(provider_id, None)
+            self._provider_unavailable_until.pop(provider_id, None)
 
     def provider(self, config: LLMConfig, api_key: str | None = None) -> Provider:
         info = self.providers[config.provider]
@@ -224,6 +257,12 @@ class LLMCoach:
             )
         else:
             out.update(ready=True)
+        if info and self.provider_unavailable(chosen.provider):
+            out.update(
+                ready=False,
+                reason="unreachable",
+                message=f"{info.name} is temporarily unavailable. Try again in about a minute.",
+            )
         return out
 
     def test(self, config: LLMConfig, api_key: str | None = None) -> dict[str, Any]:
@@ -237,6 +276,13 @@ class LLMCoach:
                 "ok": False,
                 "reason": "no_key",
                 "message": f"Enter an API key for {info.name}.",
+            }
+        if self.provider_unavailable(config.provider):
+            return {
+                "ok": False,
+                "reason": "unreachable",
+                "message": f"{info.name} is temporarily unavailable. Try again in about a minute.",
+                "models": [],
             }
         started = time.perf_counter()
         provider = Provider(info, key, config.model, self.transport)
@@ -275,22 +321,31 @@ class LLMCoach:
             raise Unusable(status["reason"], status["message"])
         return filters, config
 
-    @staticmethod
-    def _complete(
+    def complete(
+        self,
         provider: Provider,
         messages: list[dict[str, Any]],
         deadline: Deadline,
         **options: Any,
     ) -> Reply:
+        provider_id = provider.info.id
+        if self.provider_unavailable(provider_id):
+            raise Unusable(
+                "unreachable",
+                "The AI provider is temporarily unavailable. The deterministic report still works.",
+            )
         left = deadline.check()
         try:
-            return provider.chat(messages, timeout=left, **options)
+            reply = provider.chat(messages, timeout=left, **options)
         except ProviderError as exc:
+            self._record_provider_failure(provider_id)
             if exc.reason == "timeout":
                 raise Unusable(
                     "timeout", f"It did not finish within the {deadline.seconds:g}-second limit."
                 ) from exc
             raise Unusable(exc.reason, exc.message) from exc
+        self._record_provider_success(provider_id)
+        return reply
 
     @staticmethod
     def _tool_messages(
@@ -410,7 +465,7 @@ class LLMCoach:
         schema: type[Summary] | type[Answer],
         **options: Any,
     ) -> Any:
-        reply = self._complete(provider, messages, deadline, json_mode=True, **options)
+        reply = self.complete(provider, messages, deadline, json_mode=True, **options)
         try:
             return parse(reply.content, schema)
         except InvalidOutput as first:
@@ -419,7 +474,7 @@ class LLMCoach:
                 {"role": "assistant", "content": reply.content or ""},
                 {"role": "user", "content": prompts.RETRY.format(problem=str(first))},
             ]
-            again = self._complete(provider, retry, deadline, json_mode=True)
+            again = self.complete(provider, retry, deadline, json_mode=True)
             try:
                 return parse(again.content, schema)
             except InvalidOutput as second:
@@ -500,7 +555,7 @@ class LLMCoach:
             if cancel.is_set():
                 raise Stopped
             offer_tools = calls_used < MAX_TOOL_CALLS
-            reply = self._complete(
+            reply = self.complete(
                 provider,
                 messages,
                 deadline,
@@ -538,7 +593,7 @@ class LLMCoach:
                         {"role": "user", "content": prompts.RETRY.format(problem=str(first))},
                     ]
                 )
-                again = self._complete(provider, messages, deadline, json_mode=True)
+                again = self.complete(provider, messages, deadline, json_mode=True)
                 try:
                     answer = parse(again.content, Answer)
                 except InvalidOutput as second:

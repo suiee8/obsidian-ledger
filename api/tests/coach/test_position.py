@@ -16,7 +16,7 @@ from . import synth
 @pytest.fixture
 def client(tmp_path: Path) -> TestClient:
     settings = Settings.model_validate({"data_dir": str(tmp_path / "data")})
-    api = TestClient(create_app(settings))
+    api = TestClient(create_app(settings), base_url="http://127.0.0.1")
     preview = api.post(
         "/api/imports/preview",
         params={"filename": "j.csv"},
