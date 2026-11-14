@@ -14,6 +14,7 @@ export const palette = {
   royal600: "#3454C0",
   royal700: "#27409A",
   ice: "#C9D6FF",
+  white: "#FFFFFF",
   profit: "#3DDC97",
   loss: "#FF5C6C",
   warning: "#6384EE",

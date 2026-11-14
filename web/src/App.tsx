@@ -10,7 +10,7 @@ import { Shell } from "./components/Shell";
 import type { AgentActivity, AgentSignal } from "./components/AgentPresence";
 import { useFilterOptions } from "./lib/queries";
 import { useHealth } from "./lib/useHealth";
-import { useUi, applyColorBlind } from "./state/ui";
+import { useUi, applyColorBlind, applyBackgroundPaused } from "./state/ui";
 import { useFilters } from "./state/filters";
 
 const DashboardScreen = lazy(() => import("./screens/Dashboard"));
@@ -66,6 +66,11 @@ export function App() {
   useEffect(() => {
     applyColorBlind(colorBlind);
   }, [colorBlind]);
+
+  const backgroundPaused = useUi((state) => state.backgroundPaused);
+  useEffect(() => {
+    applyBackgroundPaused(backgroundPaused);
+  }, [backgroundPaused]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {

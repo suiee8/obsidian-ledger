@@ -9,6 +9,7 @@ export interface ChartPalette {
   royal600: string;
   royal700: string;
   ice: string;
+  white: string;
   ink: string;
   muted: string;
   dim: string;
@@ -25,6 +26,7 @@ const FALLBACK: ChartPalette = {
   royal600: palette.royal600,
   royal700: palette.royal700,
   ice: palette.ice,
+  white: palette.white,
   ink: palette.ink,
   muted: palette.muted,
   dim: palette.muted,
@@ -55,6 +57,7 @@ export function readChartPalette(colorBlind = false): ChartPalette {
     royal600: read("--palette-royal600", base.royal600),
     royal700: read("--palette-royal700", base.royal700),
     ice: read("--ice", base.ice),
+    white: read("--palette-white", base.white),
     ink: read("--ink", base.ink),
     muted: read("--muted", base.muted),
     dim: read("--muted", base.dim),

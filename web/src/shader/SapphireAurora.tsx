@@ -4,6 +4,8 @@ import { palette } from "../tokens";
 import { AuroraController, type AuroraFrame, type AuroraControllerState } from "./controller";
 import fragmentShader from "./fragment.glsl?raw";
 import { GpuFrameTimer } from "./gpuTimer";
+import { WHITE_CAP } from "./white";
+import { useUi } from "../state/ui";
 
 type ShaderColors = {
   background: [number, number, number];
@@ -12,6 +14,7 @@ type ShaderColors = {
   royal400: [number, number, number];
   royal300: [number, number, number];
   ice: [number, number, number];
+  white: [number, number, number];
 };
 
 interface AuroraRenderer {
@@ -45,8 +48,9 @@ function readShaderColors(): ShaderColors | null {
   const royal400 = read("--palette-royal400", palette.royal400);
   const royal300 = read("--palette-royal300", palette.royal300);
   const ice = read("--palette-ice", palette.ice);
-  if (!background || !royal700 || !royal500 || !royal400 || !royal300 || !ice) return null;
-  return { background, royal700, royal500, royal400, royal300, ice };
+  const white = read("--palette-white", palette.white);
+  if (!background || !royal700 || !royal500 || !royal400 || !royal300 || !ice || !white) return null;
+  return { background, royal700, royal500, royal400, royal300, ice, white };
 }
 
 function compileShader(gl: WebGL2RenderingContext, type: number, source: string): WebGLShader | null {
@@ -103,8 +107,10 @@ function createRenderer(canvas: HTMLCanvasElement, gl: WebGL2RenderingContext): 
     royal400: gl.getUniformLocation(program, "uRoyal400"),
     royal300: gl.getUniformLocation(program, "uRoyal300"),
     ice: gl.getUniformLocation(program, "uIce"),
+    white: gl.getUniformLocation(program, "uWhite"),
+    whiteCap: gl.getUniformLocation(program, "uWhiteCap"),
   };
-  const { resolution, pointer, time, background, royal700, royal500, royal400, royal300, ice } = uniforms;
+  const { resolution, pointer, time, background, royal700, royal500, royal400, royal300, ice, white, whiteCap } = uniforms;
   if (
     position < 0 ||
     !resolution ||
@@ -115,7 +121,9 @@ function createRenderer(canvas: HTMLCanvasElement, gl: WebGL2RenderingContext): 
     !royal500 ||
     !royal400 ||
     !royal300 ||
-    !ice
+    !ice ||
+    !white ||
+    !whiteCap
   ) {
     gl.deleteProgram(program);
     return null;
@@ -167,6 +175,8 @@ function createRenderer(canvas: HTMLCanvasElement, gl: WebGL2RenderingContext): 
     gl.uniform3fv(royal400, colors.royal400);
     gl.uniform3fv(royal300, colors.royal300);
     gl.uniform3fv(ice, colors.ice);
+    gl.uniform3fv(white, colors.white);
+    gl.uniform1f(whiteCap, WHITE_CAP);
     timer.beginFrame();
     try {
       gl.drawArrays(gl.TRIANGLES, 0, 3);
@@ -197,6 +207,8 @@ export default function SapphireAurora() {
   const [fallback, setFallback] = useState(false);
   const [renderState, setRenderState] = useState<"pending" | "animated" | "static" | "fallback">("pending");
   const [paused, setPaused] = useState(false);
+  const backgroundPaused = useUi((state) => state.backgroundPaused);
+  const controllerRef = useRef<AuroraController | null>(null);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -230,7 +242,7 @@ export default function SapphireAurora() {
       canvas,
       draw: renderer.draw,
       getFrameTime: renderer.getFrameTime,
-      reducedMotion: reducedMotion.matches,
+      reducedMotion: reducedMotion.matches || useUi.getState().backgroundPaused,
       saveData: saveDataEnabled(),
       onStateChange: (state: AuroraControllerState) => {
         setRenderState(state.contextLost ? "fallback" : state.motion);
@@ -250,7 +262,8 @@ export default function SapphireAurora() {
       attributes: true,
       attributeFilter: ["class", "data-cb", "data-theme", "style"],
     });
-    const mediaChange = () => controller.setReducedMotion(reducedMotion.matches);
+    controllerRef.current = controller;
+    const mediaChange = () => controller.setReducedMotion(reducedMotion.matches || useUi.getState().backgroundPaused);
     reducedMotion.addEventListener("change", mediaChange);
     const resize = () => controller.invalidate();
     const pointer = (event: PointerEvent) => {
@@ -261,6 +274,7 @@ export default function SapphireAurora() {
     controller.start();
 
     return () => {
+      controllerRef.current = null;
       observer.disconnect();
       reducedMotion.removeEventListener("change", mediaChange);
       window.removeEventListener("resize", resize);
@@ -270,6 +284,11 @@ export default function SapphireAurora() {
     };
   }, []);
 
+  useEffect(() => {
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    controllerRef.current?.setReducedMotion(reduced || backgroundPaused);
+  }, [backgroundPaused]);
+
   return (
     <div
       className="aurora-layer"
@@ -277,6 +296,7 @@ export default function SapphireAurora() {
       data-render-state={renderState}
       data-paused={paused ? "true" : "false"}
       data-fallback={fallback ? "true" : "false"}
+      data-background={backgroundPaused ? "paused" : "on"}
     >
       <canvas ref={canvasRef} className="aurora-canvas" aria-hidden="true" />
     </div>

@@ -1,6 +1,7 @@
 import { Command } from "cmdk";
 
 import { ROUTE_LABELS, type Route } from "../routes";
+import { useUi } from "../state/ui";
 
 type CommandPaletteProps = {
   open: boolean;
@@ -32,6 +33,8 @@ export function CommandPalette({
   onClearFilters,
   onOpenCoach,
 }: CommandPaletteProps) {
+  const backgroundPaused = useUi((state) => state.backgroundPaused);
+  const toggleBackground = useUi((state) => state.toggleBackgroundPaused);
   const run = (action: () => void) => () => {
     action();
     onOpenChange(false);
@@ -54,6 +57,9 @@ export function CommandPalette({
         </Command.Group>
         <Command.Group heading="View">
           <Command.Item onSelect={run(onToggleColorBlind)}>Toggle color-blind colors</Command.Item>
+          <Command.Item onSelect={run(toggleBackground)}>
+            {backgroundPaused ? "Play background" : "Pause background"}
+          </Command.Item>
           <Command.Item onSelect={run(onClearFilters)}>Clear all filters</Command.Item>
           <Command.Item onSelect={run(onRefresh)}>Recheck the local API</Command.Item>
         </Command.Group>

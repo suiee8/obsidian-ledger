@@ -1,6 +1,7 @@
 import { create } from "zustand";
 
 import type { Route } from "../routes";
+import { initialBackgroundPaused } from "../shader/white";
 
 const COLOR_BLIND_KEY = "ledger.colorBlind";
 const COLUMNS_KEY = "ledger.columns";
@@ -48,6 +49,29 @@ export interface UndoEntry {
   previous: string | null;
 }
 
+export const BACKGROUND_PAUSED_KEY = "ledger.backgroundPaused";
+
+function readBackgroundPaused(): boolean {
+  let stored: string | null = null;
+  let reduced = false;
+  try {
+    stored = window.localStorage.getItem(BACKGROUND_PAUSED_KEY);
+  } catch {
+    stored = null;
+  }
+  try {
+    reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  } catch {
+    reduced = false;
+  }
+  return initialBackgroundPaused(stored, reduced);
+}
+
+export function applyBackgroundPaused(paused: boolean): void {
+  if (typeof document === "undefined") return;
+  document.documentElement.dataset.background = paused ? "paused" : "on";
+}
+
 function readColorBlind(): boolean {
   try {
     return window.localStorage.getItem(COLOR_BLIND_KEY) === "true";
@@ -85,6 +109,9 @@ interface UiStore {
   route: Route;
   paletteOpen: boolean;
   colorBlind: boolean;
+  /** True when the animated background is paused. Saved locally. */
+  backgroundPaused: boolean;
+  toggleBackgroundPaused: () => void;
   columns: TradeColumn[];
   selectedTradeKey: string | null;
   undo: UndoEntry | null;
@@ -112,6 +139,17 @@ export const useUi = create<UiStore>()((set, get) => ({
   route: "dashboard",
   paletteOpen: false,
   colorBlind: readColorBlind(),
+  backgroundPaused: readBackgroundPaused(),
+  toggleBackgroundPaused: () => {
+    const next = !get().backgroundPaused;
+    try {
+      window.localStorage.setItem(BACKGROUND_PAUSED_KEY, String(next));
+    } catch {
+      // The choice still applies for this session.
+    }
+    applyBackgroundPaused(next);
+    set({ backgroundPaused: next });
+  },
   columns: readColumns(),
   selectedTradeKey: null,
   undo: null,

@@ -10,6 +10,8 @@ uniform vec3 uRoyal500;
 uniform vec3 uRoyal400;
 uniform vec3 uRoyal300;
 uniform vec3 uIce;
+uniform vec3 uWhite;
+uniform float uWhiteCap;
 
 out vec4 outColor;
 
@@ -42,6 +44,7 @@ void main() {
   float ribbonA = exp(-abs(flow + 0.08) * 44.0);
   float ribbonB = exp(-abs(flow - 0.11 + warp * 0.07) * 64.0) * 0.68;
   float ribbons = clamp(ribbonA + ribbonB, 0.0, 1.0);
+  float core = exp(-abs(flow + 0.08) * 150.0) + exp(-abs(flow - 0.11 + warp * 0.07) * 190.0) * 0.7;
 
   float vignette = 1.0 - smoothstep(0.12, 0.92, length(point * vec2(0.62, 0.9)));
   vec3 base = mix(uBackground, uRoyal700, (0.035 + warp * 0.025) * vignette);
@@ -53,5 +56,11 @@ void main() {
   float grain = hash21(gl_FragCoord.xy) - 0.5;
   color += uIce * grain * 0.012;
   color = mix(uBackground, color, vignette);
+
+  // Thin white highlights along the ribbons. Adding w of white gives a white share of
+  // w / (luminance + w), so w is limited to cap / (1 - cap) * luminance (see white.ts).
+  float baseLuminance = dot(color, vec3(0.2126, 0.7152, 0.0722));
+  float whiteAmount = min(core * vignette * 0.5, uWhiteCap / (1.0 - uWhiteCap) * baseLuminance);
+  color += uWhite * whiteAmount;
   outColor = vec4(color, 1.0);
 }

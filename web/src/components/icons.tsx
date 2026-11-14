@@ -77,3 +77,18 @@ export function IconSettings() {
     </svg>
   );
 }
+export function IconPause() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M8 5v14M16 5v14" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+export function IconPlay() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M8 5.5v13l11-6.5Z" fill="currentColor" />
+    </svg>
+  );
+}

@@ -1,3 +1,4 @@
+import { Illustration } from "./Illustration";
 import { Panel } from "./Panel";
 import type { AvailabilitySchema } from "../lib/schemas";
 import type { z } from "zod";
@@ -59,6 +60,7 @@ export function ActivityOnly({ data }: { data: AvailabilityData }) {
   return (
     <div className="dashboard">
       <section className="glass panel unavailable-state" aria-labelledby="availability-title">
+        <Illustration kind="unavailable" />
         <p className="eyebrow">Not available</p>
         <h1 id="availability-title" className="panel-title">
           Performance metrics unavailable

@@ -2,11 +2,14 @@ import { lazy, Suspense, useEffect, useState, type ReactNode } from "react";
 
 import { AgentPresence, type AgentActivity } from "./AgentPresence";
 import { ROUTE_LABELS, type Route } from "../routes";
+import { useUi } from "../state/ui";
 import {
   IconAnalytics,
   IconBehavior,
   IconImport,
   IconOverview,
+  IconPause,
+  IconPlay,
   IconSamples,
   IconSettings,
   IconSimulator,
@@ -52,6 +55,8 @@ export function Shell({
   children,
 }: ShellProps) {
   const [shaderReady, setShaderReady] = useState(false);
+  const backgroundPaused = useUi((state) => state.backgroundPaused);
+  const toggleBackground = useUi((state) => state.toggleBackgroundPaused);
 
   useEffect(() => {
     const timer = window.setTimeout(() => setShaderReady(true), 0);
@@ -85,6 +90,17 @@ export function Shell({
             onClick={onToggleCoach}
           >
             Coach
+          </button>
+          <button
+            type="button"
+            className="bg-toggle"
+            data-testid="background-toggle"
+            aria-label="Pause background"
+            aria-pressed={backgroundPaused}
+            title={backgroundPaused ? "Background paused" : "Pause background"}
+            onClick={toggleBackground}
+          >
+            {backgroundPaused ? <IconPlay /> : <IconPause />}
           </button>
           <button type="button" className="kbd-hint" onClick={onOpenPalette} title="Open command palette">
             Ctrl K

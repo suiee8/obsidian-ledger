@@ -24,6 +24,7 @@ describe("palette", () => {
     expect(palette.royal600).toBe("#3454C0");
     expect(palette.royal700).toBe("#27409A");
     expect(palette.ice).toBe("#C9D6FF");
+    expect(palette.white).toBe("#FFFFFF");
     expect(palette.profit).toBe("#3DDC97");
     expect(palette.loss).toBe("#FF5C6C");
     expect(palette.warning).toBe("#6384EE");

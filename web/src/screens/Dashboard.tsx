@@ -10,6 +10,7 @@ import { Kpi } from "../components/Kpi";
 import { ActivityOnly } from "../components/Availability";
 import { ChartFallback, Panel } from "../components/Panel";
 import { DisciplineRing } from "../components/DisciplineRing";
+import { Illustration } from "../components/Illustration";
 import { Findings } from "../components/Findings";
 import { DailyCalendar } from "../components/charts/DailyCalendar";
 import { WeekdayHour } from "../components/charts/WeekdayHour";
@@ -49,6 +50,7 @@ function EmptyDashboard() {
   const setRoute = useUi((state) => state.setRoute);
   return (
     <section className="glass empty-state" aria-labelledby="empty-title">
+      <Illustration kind="empty" />
       <div>
         <p className="eyebrow">Nothing to review yet</p>
         <h2 id="empty-title">Import a journal to see your edge.</h2>
@@ -153,6 +155,7 @@ export default function Dashboard() {
   if (query.isError) {
     return (
       <section className="glass panel" role="alert">
+        <Illustration kind="error" />
         <h2 className="panel-title">The dashboard could not load</h2>
         <p className="muted">{query.error.message}</p>
         <button type="button" className="btn" onClick={() => void query.refetch()}>
@@ -174,6 +177,11 @@ export default function Dashboard() {
   const low = data.report.sample.low_confidence;
   return (
     <div className="dashboard">
+      <header className="hero">
+        <p className="eyebrow">Performance review</p>
+        <h1 className="screen-title">Overview</h1>
+        <p className="lede">Your edge, risk, and discipline for the trades in the current selection.</p>
+      </header>
       <Headline data={data} />
       {(low || data.report.caveats.length > 0) && (
         <ul className="caveats" aria-label="Data caveats">
