@@ -30,7 +30,7 @@ flowchart LR
 - Raw uploads and the DuckDB database stay on the user's machine. The browser does not send files to a hosted service.
 - Deterministic Python code owns parsing, normalization, arithmetic, confidence intervals, simulations, and report evidence.
 - Import inference uses file structure and content; broker layouts are optional hints. Missing financial values remain unavailable rather than being represented as zero.
-- An optional Coach can call typed read tools to explain tool results. It never becomes the source of a number; unsupported figures are withheld.
+- An optional Coach can call seven typed read tools (`get_metrics`, `compare_segments`, `find_leaks`, `find_strengths`, `get_trade`, `list_trades`, `simulate_rule`) to explain tool results. It never becomes the source of a number; unsupported figures are withheld.
 - Provider keys are stored in the OS keychain. External model calls require explicit consent; aggregate-only data is the default.
 - CSV cells are neutralized after serialization, including negative numeric-looking cells. JSON numeric values stay numeric.
 - ZIP exports are assembled locally and contain the selected data and original uploads.

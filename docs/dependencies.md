@@ -97,7 +97,7 @@ Two transitive build-time packages have non-MIT licenses. Neither is shipped in 
 
 | Package | Version | License | Purpose |
 | --- | --- | --- | --- |
-| echarts | 6.1.0 | Apache-2.0 | Equity, R histogram, and edge radar charts. Only the chart types and components the app uses are registered. Apache-2.0 requires keeping the NOTICE file with redistributed copies. |
+| echarts | 6.1.0 | Apache-2.0 | Equity and edge radar charts. Only the chart types and components the app uses are registered. Apache-2.0 requires keeping the NOTICE file with redistributed copies. |
 | @tanstack/react-query | 5.107.1 | MIT | Server state, caching, and request retries |
 | @tanstack/react-virtual | 3.14.26 | MIT | Virtualized rows in the Trades table |
 | zustand | 5.1.0 | MIT | Filter and UI state |

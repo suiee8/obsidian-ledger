@@ -17,16 +17,20 @@ Open <http://127.0.0.1:5173>. The API runs on <http://127.0.0.1:8000> and binds 
 
 Choose **Import** and select a CSV, TSV, text, XLSX, XLS, or JSON export. The app infers roles from the file's contents; you do not need to choose a broker. Review the **What we found** card, capability checklist, confidence, examples, warnings, and rejected rows before committing. You can override a role, and ambiguous or headerless files require an explicit mapping. Blocking questions must be answered first. XLS/XLSX formulas are not evaluated; only cached cell values are read.
 
+When trades are already in the journal, the Import screen shows an **A trade file is already uploaded** card with the symbols and accounts on file and an **Open dashboard** button. Importing another file adds only trades that are not already present.
+
 Uploads are limited to 200 MB by default. Archives are accepted only as XLSX files and are rejected if they contain unsafe paths, too many files, excessive expanded size, or an unusually high compression ratio. Imported files and the local database remain on this computer.
 
 Missing prices, fees, stops, and P&L stay unavailable; the app never substitutes zero. If a file has no P&L, activity counts and symbol/time summaries are still shown, while P&L-dependent metrics and the Coach verdict are marked unavailable/cannot be assessed. Notional is not treated as P&L.
 
 ## Read the results and Coach
 
-- **Overview** summarizes the current journal and links to the detailed analysis.
+- **Filters** at the top of the screen narrow every view by account, symbol, and side. Use **Clear** to remove them. There are no date-range, setup, or tag filters in the interface.
+- **Dashboard** summarizes the current journal: key figures, equity curve, strengths and leaks, P&L calendar, edge radar by setup, and a weekday-and-hour heatmap.
 - **Trades** shows imported trades and supports editing journal fields such as notes and tags.
-- **Analytics**, **Behavior**, and **Simulator** provide deterministic summaries, comparisons, and what-if calculations. Small samples and multiple comparisons are marked to avoid overstating evidence.
-- The **Coach** explains its deterministic report. Numbers are computed by the API; AI-generated paragraphs with unsupported figures are withheld.
+- **Analytics** has the segment explorer (symbol, side, session, weekday, entry hour, holding time, position size, account), the Trade Constellation, MAE and MFE, streaks, fee drag, and a Monte Carlo fan. Before a file is imported, or when filters match nothing, it shows an empty state with an **Import a file** or **Clear filters** button.
+- **Behavior** and **Simulator** provide deterministic summaries and what-if calculations. Small samples and multiple comparisons are marked to avoid overstating evidence.
+- The **Coach** explains its deterministic report. It can call seven read-only tools: `get_metrics`, `compare_segments`, `find_leaks`, `find_strengths`, `get_trade`, `list_trades`, and `simulate_rule`. Numbers are computed by the API; AI-generated paragraphs with unsupported figures are withheld.
 
 The Coach works with AI turned off. When using an AI provider, the current application offers optional cloud providers; each requires your own key and explicit consent. AI output is explanatory and does not change the underlying metrics.
 
