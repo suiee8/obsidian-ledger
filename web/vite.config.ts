@@ -12,6 +12,8 @@ const securityHeaders = (scriptSrc: string) => ({
   "Content-Security-Policy": contentSecurityPolicy(scriptSrc),
   "X-Content-Type-Options": "nosniff",
   "Referrer-Policy": "no-referrer",
+  "Cross-Origin-Opener-Policy": "same-origin",
+  "Cross-Origin-Resource-Policy": "same-origin",
   "X-Frame-Options": "DENY",
   "Permissions-Policy":
     "accelerometer=(), camera=(), geolocation=(), gyroscope=(), microphone=(), payment=(), usb=()",

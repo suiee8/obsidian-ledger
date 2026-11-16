@@ -44,6 +44,18 @@ function recordConnectionFailure(): void {
   if (connectionFailures >= 3) setCircuit(true);
 }
 
+const authListeners = new Set<() => void>();
+
+function notifyAuthRequired(): void {
+  for (const listener of authListeners) listener();
+}
+
+/** Called when the API answers 401, so the login screen can come back after an idle timeout. */
+export function subscribeAuthRequired(listener: () => void): () => void {
+  authListeners.add(listener);
+  return () => authListeners.delete(listener);
+}
+
 export function subscribeConnectivity(listener: (offline: boolean) => void): () => void {
   connectivityListeners.add(listener);
   return () => connectivityListeners.delete(listener);
@@ -74,7 +86,15 @@ export async function apiFetch(
     );
     let keepForwardingAbort = false;
     try {
-      const response = await fetch(`${apiBase()}${path}`, { ...init, signal: controller.signal });
+      const headers = new Headers(init?.headers);
+      headers.set("X-Ledger-Client", "web");
+      const response = await fetch(`${apiBase()}${path}`, {
+        ...init,
+        headers,
+        credentials: "include",
+        signal: controller.signal,
+      });
+      if (response.status === 401) notifyAuthRequired();
       recordConnectionSuccess();
       if (canRetry && [502, 503, 504].includes(response.status) && attempt + 1 < attempts) {
         await response.body?.cancel();
