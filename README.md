@@ -6,7 +6,16 @@ Obsidian Ledger is a local-first trading journal for importing completed trades,
 
 ## Status
 
-Phases 0–6 are implemented. The app includes CSV, TSV, text, XLSX, XLS, and JSON imports; broker-layout detection; FIFO pairing for IBKR fills; a local DuckDB/Parquet store; deterministic metrics, behavior analysis, and simulations; Overview, Trades, Import, Analytics, Behavior, Simulator, and Settings screens; and an optional tool-backed Coach. Phase 6 adds upload and export hardening, keychain credential storage, security and dependency auditing, documentation, and performance measurements up to 10,000 trades.
+Phases 0–6 are implemented. The app includes CSV, TSV, text, XLSX, XLS, and JSON imports; broker-layout detection; FIFO pairing for IBKR fills; a local DuckDB/Parquet store; deterministic metrics, behavior analysis, and simulations; Dashboard, Analytics, Behavior, Simulator, Trades, Import, and Settings screens; and an optional tool-backed Coach. Phase 6 adds upload and export hardening, keychain credential storage, security and dependency auditing, documentation, and performance measurements up to 10,000 trades.
+
+### Current interface
+
+- **Filters:** the top bar filters by account, symbol, and side. Date-range pickers, setup, and tag or emotion filters are not shown in the interface.
+- **Dashboard:** equity curve, strengths and leaks, P&L calendar, edge radar by setup, and weekday-and-hour heatmap. There is no R distribution panel.
+- **Analytics:** segment explorer (symbol, side, session, weekday, hour, holding time, position size, account), Trade Constellation, MAE and MFE, streaks, fee drag, and a Monte Carlo fan. With no file imported, or filters that match nothing, it shows a guided empty state with an Import or Clear filters action.
+- **Import:** when trades are already in the journal, the screen says a file is already uploaded and lists its symbols and accounts. Dropping another file adds only trades that are not already present.
+- **Coach tools:** `get_metrics`, `compare_segments`, `find_leaks`, `find_strengths`, `get_trade`, `list_trades`, and `simulate_rule`. The Coach explains numbers the app computed and never calculates its own. Futures journals (symbol, long or short side, leverage, margin, fees, realized P&L) are supported.
+- There is no command palette or background-pause control.
 
 There is no Reports screen or application-generated PDF export. Exported HTML can be printed to PDF in a browser. Ollama is not connected to the current app; see the [user guide](docs/user-guide.md) for this limitation and other known issues.
 
@@ -46,7 +55,7 @@ pnpm test:e2e     # browser tests using installed Microsoft Edge
 pnpm bench        # ten runs at 1k, 5k, and 10k trades; never above 10k
 ```
 
-Latest Phase 6 validation: 332 API tests, 43 web unit tests, and 78 browser tests. `pnpm check` runs ESLint, TypeScript, Vitest, Ruff, Pyright, and pytest. Playwright runs serially with an isolated temporary API data directory and the installed Edge browser; it does not download a browser. The browser suite writes screenshots to ignored `docs/screens/`; committed reference images stay in `docs/screenshots/`. See [the test report](docs/test-report.txt) and [benchmark results](benchmarks/RESULTS.md).
+The recorded Phase 6 validation run (332 API tests, 43 web unit tests, 78 browser tests) predates the interface changes above; the web unit suite is now 59 tests. `pnpm check` runs ESLint, TypeScript, Vitest, Ruff, Pyright, and pytest. Playwright runs serially with an isolated temporary API data directory and the installed Edge browser; it does not download a browser. The browser suite writes screenshots to ignored `docs/screens/`; committed reference images stay in `docs/screenshots/`. See [the test report](docs/test-report.txt) and [benchmark results](benchmarks/RESULTS.md).
 
 ## Data and privacy boundary
 
@@ -62,7 +71,7 @@ CSV exports prefix spreadsheet-formula-like values with an apostrophe after seri
 
 ## Samples and project map
 
-The committed fixtures are under `samples/` and can be imported from the Import screen, including a deliberately messy journal, a 1,000-row preview, and an intentional 100,000-row synthetic sample. The benchmark command is capped at 10,000 trades and stores generated inputs under ignored `benchmarks/out/`.
+The committed fixtures are under `samples/` and can be imported from the Import screen, including broker exports (Binance, Bybit, MEXC futures, IBKR, MT4, MT5, TradingView, Zerodha), a deliberately messy journal, Coach test files, a 1,000-row preview, and an intentional 100,000-row synthetic sample. See [samples/README.md](samples/README.md). The benchmark command is capped at 10,000 trades and stores generated inputs under ignored `benchmarks/out/`.
 
 - `web/` — React, TypeScript, and Vite client
 - `api/` — Python and FastAPI service
