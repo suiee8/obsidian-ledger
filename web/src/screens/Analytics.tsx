@@ -6,7 +6,7 @@ import { MonteCarloFan } from "../components/charts/LineBands";
 import { Panel } from "../components/Panel";
 import { ActivityOnly } from "../components/Availability";
 import { useAvailability } from "../lib/queries";
-import { DISCLAIMER, EmptyScreen, ScreenError, ScreenSkeleton } from "../components/ScreenStates";
+import { DISCLAIMER, ScreenError, ScreenSkeleton } from "../components/ScreenStates";
 import { fmtInt, fmtMoney, fmtNumber, fmtPercent, fmtR, WEEKDAY_LABELS } from "../lib/format";
 import {
   useCreateSelection,
@@ -17,21 +17,18 @@ import {
   type SegmentsData,
 } from "../lib/phase4";
 import { useDebouncedValue } from "../lib/useDebouncedValue";
-import { FILTER_DEBOUNCE_MS, useFilters } from "../state/filters";
+import { FILTER_DEBOUNCE_MS, hasActiveFilters, useFilters } from "../state/filters";
 import { useUi } from "../state/ui";
 
 const DIMENSIONS = [
   ["symbol", "Symbol"],
-  ["setup", "Setup"],
   ["side", "Side"],
   ["session", "Session"],
   ["weekday", "Weekday"],
   ["hour", "Entry hour (UTC)"],
   ["holding", "Holding time"],
   ["size", "Position size"],
-  ["emotion", "Emotion"],
   ["account", "Account"],
-  ["tag", "Tag"],
 ] as const;
 
 type Slice = SegmentsData["slices"][number];
@@ -588,6 +585,56 @@ function FanPanel({ params }: { params: string }) {
   );
 }
 
+const PREVIEW_CARDS = [
+  ["Segment explorer", "Compare symbols, sessions, hours and sides with significance checks."],
+  ["Trade Constellation", "Every trade as a dot; drag a box to pick trades and open them."],
+  ["MAE and MFE", "How far trades moved against you and for you before closing."],
+  ["Streaks and fee drag", "Winning and losing runs, and what costs take from gross P&L."],
+  ["Monte Carlo fan", "The range of equity paths your history could produce."],
+] as const;
+
+function AnalyticsEmpty() {
+  const setRoute = useUi((state) => state.setRoute);
+  const hasFilters = useFilters((state) => hasActiveFilters(state));
+  const reset = useFilters((state) => state.reset);
+  return (
+    <div className="dashboard">
+      <header>
+        <h1 className="screen-title">Analytics</h1>
+        <p className="lede">
+          {hasFilters
+            ? "No trades match the current filters."
+            : "No trade file has been imported yet, so there is nothing to explore."}
+        </p>
+      </header>
+      <section className="glass panel" aria-labelledby="analytics-empty-title">
+        <h2 id="analytics-empty-title" className="panel-title">
+          {hasFilters ? "Clear the filters to see your trades" : "Import a file to unlock analytics"}
+        </h2>
+        <div className="row-actions">
+          {hasFilters ? (
+            <button type="button" className="btn btn-primary" onClick={reset}>
+              Clear filters
+            </button>
+          ) : (
+            <button type="button" className="btn btn-primary" onClick={() => setRoute("import")}>
+              Import a file
+            </button>
+          )}
+        </div>
+        <ul className="bento" aria-label="What Analytics shows">
+          {PREVIEW_CARDS.map(([title, body]) => (
+            <li key={title} className="glass panel span-6">
+              <h3 className="section-title">{title}</h3>
+              <p className="muted">{body}</p>
+            </li>
+          ))}
+        </ul>
+      </section>
+    </div>
+  );
+}
+
 export default function Analytics() {
   const liveParams = useFilters((state) => state.toParams());
   const params = useDebouncedValue(liveParams, FILTER_DEBOUNCE_MS);
@@ -608,14 +655,7 @@ export default function Analytics() {
   if (availability.data && !availability.data.available) {
     return <ActivityOnly data={availability.data} />;
   }
-  if (data.points.n === 0) {
-    return (
-      <EmptyScreen
-        title="No trades to explore."
-        body="Import a journal, or clear the filters, to look at your trades from every angle."
-      />
-    );
-  }
+  if (data.points.n === 0) return <AnalyticsEmpty />;
   return (
     <div className="dashboard">
       <header>

@@ -19,8 +19,30 @@ RULES: Final = (
     "3. Describe past trades only. Give no financial advice, signals, or predictions.\n"
 )
 
+TOOL_GUIDE: Final = (
+    "Tools, A to Z of what you can use:\n"
+    "- compare_segments: every value of one dimension (symbol, side, session, weekday, hour, "
+    "holding time, size, account) against the rest, with sample size and adjusted significance.\n"
+    "- find_leaks: leaks that survived the false-discovery filter, worst first, with evidence.\n"
+    "- find_strengths: strengths that survived the same filter, best first.\n"
+    "- get_metrics: headline performance, risk, behavior and discipline numbers (net P&L, win "
+    "rate, expectancy, profit factor, drawdown, fees, streaks, tilt, revenge and overtrading).\n"
+    "- get_trade: one trade by its trade key, with derived fields and notes (entry and exit "
+    "price, leverage, margin, fees, holding time, realized P&L).\n"
+    "- list_trades: a sorted page of trades for any filters, at most 100 per call.\n"
+    "- simulate_rule: what-if replay under a daily loss cap, trade limits, or excluded symbols "
+    "or hours, compared with what happened.\n"
+    "Futures journals (for example USDT-M perpetual files with symbol, long or short side, "
+    "leverage, margin, fees and realized P&L per trade) are fully supported: answer about any "
+    "symbol, side, leverage level, holding time or fee impact by calling the matching tool, "
+    "and start with get_metrics before any claim about results. For a broad question, call "
+    "get_metrics, find_leaks and find_strengths, then compare_segments for the dimension "
+    "involved. If a tool returns no trades, say that no file has been imported or that the "
+    "filters match nothing.\n"
+)
+
 ANSWER_TASK: Final = (
-    RULES + "TASK: answer\n"
+    RULES + TOOL_GUIDE + "TASK: answer\n"
     "Call tools to get the numbers you need, then reply with only a JSON object of this shape:\n"
     f"{ANSWER_SHAPE}\n"
     "Use 1 to 4 short paragraphs. Put in finding_ids the ids of findings you describe and in "

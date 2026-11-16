@@ -21,9 +21,6 @@ import type { DashboardData } from "../lib/dashboard";
 const EquityAurora = lazy(() =>
   import("../components/charts/EquityAurora").then((module) => ({ default: module.EquityAurora })),
 );
-const RHistogram = lazy(() =>
-  import("../components/charts/RHistogram").then((module) => ({ default: module.RHistogram })),
-);
 const EdgeRadar = lazy(() =>
   import("../components/charts/EdgeRadar").then((module) => ({ default: module.EdgeRadar })),
 );
@@ -208,12 +205,7 @@ export default function Dashboard() {
             {chartsReady ? <EdgeRadar radar={data.radar} /> : <ChartFallback sizeClass="chart-radar" />}
           </Suspense>
         </Panel>
-        <Panel title="R distribution" className="span-6">
-          <Suspense fallback={<ChartFallback sizeClass="chart-r" />}>
-            {chartsReady ? <RHistogram histogram={data.r_histogram} /> : <ChartFallback sizeClass="chart-r" />}
-          </Suspense>
-        </Panel>
-        <Panel title="Weekday and hour" className="span-6 panel-hug">
+        <Panel title="Weekday and hour" className="span-12 panel-hug">
           <WeekdayHour cells={data.heatmap} />
         </Panel>
       </div>

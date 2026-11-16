@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useDropzone } from "react-dropzone";
 
-import { useCommitImport, usePreviewImport } from "../lib/queries";
+import { useCommitImport, useFilterOptions, usePreviewImport } from "../lib/queries";
 import type { Commit, Preview } from "../lib/schemas";
 import { useUi } from "../state/ui";
 
@@ -477,6 +477,9 @@ function CommitPanel({ result }: { result: Commit }) {
 
 export default function Import() {
   const preview = usePreviewImport();
+  const options = useFilterOptions();
+  const setRoute = useUi((state) => state.setRoute);
+  const existing = options.data && options.data.symbols.length > 0 ? options.data : null;
   const [result, setResult] = useState<Commit | null>(null);
   const dropzone = useDropzone({
     accept: ACCEPT,
@@ -496,6 +499,28 @@ export default function Import() {
       <p className="lede">
         Drop a trade file. Nothing is saved until you confirm. Every assumption is listed first, and you can change any of them.
       </p>
+
+      {existing && !result && !preview.data && (
+        <section className="glass panel" aria-labelledby="already-title" role="status">
+          <h2 id="already-title" className="panel-title">
+            A trade file is already uploaded
+          </h2>
+          <dl className="detail-grid">
+            <dt>Symbols</dt>
+            <dd>{existing.symbols.length}</dd>
+            <dt>Accounts</dt>
+            <dd>{existing.accounts.length > 0 ? existing.accounts.join(", ") : "None named"}</dd>
+          </dl>
+          <p className="muted">
+            Dropping another file adds only trades that are not already in the journal.
+          </p>
+          <div className="row-actions">
+            <button type="button" className="btn btn-primary" onClick={() => setRoute("dashboard")}>
+              Open dashboard
+            </button>
+          </div>
+        </section>
+      )}
 
       <div
         {...dropzone.getRootProps({
