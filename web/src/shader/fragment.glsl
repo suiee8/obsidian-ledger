@@ -38,7 +38,7 @@ void main() {
   point.x *= uResolution.x / uResolution.y;
   point += uPointer * 0.018;
 
-  float time = uTime * 0.035;
+  float time = uTime * 0.22;
   float warp = noise2(point * 2.8 + vec2(time, -time * 0.7)) - 0.5;
   float flow = point.y + sin(point.x * 2.4 + warp * 2.5 + time) * 0.11;
   float ribbonA = exp(-abs(flow + 0.08) * 44.0);

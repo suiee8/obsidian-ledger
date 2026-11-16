@@ -11,9 +11,3 @@ export function cappedWhite(baseLuminance: number, wanted: number, cap = WHITE_C
   return Math.min(Math.max(0, wanted), limit);
 }
 
-/** Whether the pause toggle starts on: the saved choice wins, otherwise follow the OS motion setting. */
-export function initialBackgroundPaused(stored: string | null, prefersReducedMotion: boolean): boolean {
-  if (stored === "true") return true;
-  if (stored === "false") return false;
-  return prefersReducedMotion;
-}

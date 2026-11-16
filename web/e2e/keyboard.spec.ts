@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 
 import { importSample } from "./helpers";
 
-test("the rail, command palette, and trade drawer work from the keyboard alone", async ({
+test("the rail and trade drawer work from the keyboard alone", async ({
   page,
   request,
 }) => {
@@ -19,12 +19,6 @@ test("the rail, command palette, and trade drawer work from the keyboard alone",
   await expect(trades).toBeFocused();
   await page.keyboard.press("Enter");
   await expect(page.getByRole("heading", { name: "Trades", exact: true })).toBeVisible();
-
-  // Ctrl+K opens the command palette, and Escape closes it.
-  await page.keyboard.press("Control+K");
-  await expect(page.getByRole("dialog")).toBeVisible();
-  await page.keyboard.press("Escape");
-  await expect(page.getByRole("dialog")).toHaveCount(0);
 
   // A trade row opens the drawer with Enter, and Escape closes it.
   const firstRow = page.locator('[role="row"][aria-rowindex="1"]');

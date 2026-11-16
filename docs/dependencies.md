@@ -10,7 +10,6 @@ The project is MIT licensed. Apache-2.0 packages require that their `NOTICE` fil
 | --- | --- | --- | --- |
 | react | 19.3.1 | MIT | UI rendering |
 | react-dom | 19.3.1 | MIT | DOM rendering |
-| cmdk | 1.1.1 | MIT | Command palette |
 | zod | 4.6.7 | MIT | Runtime validation of API responses |
 | clsx | 2.1.1 | MIT | Class name composition |
 | tailwind-merge | 3.7.0 | MIT | Tailwind class conflict resolution |
@@ -18,7 +17,6 @@ The project is MIT licensed. Apache-2.0 packages require that their `NOTICE` fil
 | @fontsource/manrope | 5.3.0 | OFL-1.1 | Self-hosted UI font |
 | @fontsource/jetbrains-mono | 5.3.0 | OFL-1.1 | Self-hosted numeric font |
 
-`cmdk` brings in Radix UI packages (MIT), `aria-hidden`, `react-remove-scroll`, `react-style-singleton`, `use-sidecar`, and `get-nonce` (all MIT). `tslib` (0BSD) is also included.
 
 ## Build and development only (web)
 

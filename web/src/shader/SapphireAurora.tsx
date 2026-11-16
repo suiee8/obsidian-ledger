@@ -5,7 +5,6 @@ import { AuroraController, type AuroraFrame, type AuroraControllerState } from "
 import fragmentShader from "./fragment.glsl?raw";
 import { GpuFrameTimer } from "./gpuTimer";
 import { WHITE_CAP } from "./white";
-import { useUi } from "../state/ui";
 
 type ShaderColors = {
   background: [number, number, number];
@@ -197,17 +196,11 @@ function createRenderer(canvas: HTMLCanvasElement, gl: WebGL2RenderingContext): 
   };
 }
 
-function saveDataEnabled(): boolean {
-  const connection = (navigator as Navigator & { connection?: { saveData?: boolean } }).connection;
-  return connection?.saveData === true;
-}
-
 export default function SapphireAurora() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [fallback, setFallback] = useState(false);
   const [renderState, setRenderState] = useState<"pending" | "animated" | "static" | "fallback">("pending");
   const [paused, setPaused] = useState(false);
-  const backgroundPaused = useUi((state) => state.backgroundPaused);
   const controllerRef = useRef<AuroraController | null>(null);
 
   useEffect(() => {
@@ -237,13 +230,12 @@ export default function SapphireAurora() {
       return;
     }
 
-    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
     const controller = new AuroraController({
       canvas,
       draw: renderer.draw,
       getFrameTime: renderer.getFrameTime,
-      reducedMotion: reducedMotion.matches || useUi.getState().backgroundPaused,
-      saveData: saveDataEnabled(),
+      reducedMotion: false,
+      saveData: false,
       onStateChange: (state: AuroraControllerState) => {
         setRenderState(state.contextLost ? "fallback" : state.motion);
         setFallback(state.contextLost);
@@ -263,8 +255,6 @@ export default function SapphireAurora() {
       attributeFilter: ["class", "data-cb", "data-theme", "style"],
     });
     controllerRef.current = controller;
-    const mediaChange = () => controller.setReducedMotion(reducedMotion.matches || useUi.getState().backgroundPaused);
-    reducedMotion.addEventListener("change", mediaChange);
     const resize = () => controller.invalidate();
     const pointer = (event: PointerEvent) => {
       controller.setPointer((event.clientX / window.innerWidth) * 2 - 1, 1 - (event.clientY / window.innerHeight) * 2);
@@ -276,18 +266,12 @@ export default function SapphireAurora() {
     return () => {
       controllerRef.current = null;
       observer.disconnect();
-      reducedMotion.removeEventListener("change", mediaChange);
       window.removeEventListener("resize", resize);
       window.removeEventListener("pointermove", pointer);
       controller.dispose();
       renderer.dispose();
     };
   }, []);
-
-  useEffect(() => {
-    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    controllerRef.current?.setReducedMotion(reduced || backgroundPaused);
-  }, [backgroundPaused]);
 
   return (
     <div
@@ -296,7 +280,6 @@ export default function SapphireAurora() {
       data-render-state={renderState}
       data-paused={paused ? "true" : "false"}
       data-fallback={fallback ? "true" : "false"}
-      data-background={backgroundPaused ? "paused" : "on"}
     >
       <canvas ref={canvasRef} className="aurora-canvas" aria-hidden="true" />
     </div>

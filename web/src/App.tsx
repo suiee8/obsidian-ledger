@@ -2,7 +2,6 @@ import { lazy, Suspense, useCallback, useEffect, useState } from "react";
 import { useIsFetching } from "@tanstack/react-query";
 
 import { CoachDrawer } from "./components/coach/CoachDrawer";
-import { CommandPalette } from "./components/CommandPalette";
 import { FilterBar } from "./components/FilterBar";
 import { FilterSlot } from "./components/FilterSheet";
 import { HealthBadge } from "./components/HealthBadge";
@@ -10,8 +9,7 @@ import { Shell } from "./components/Shell";
 import type { AgentActivity, AgentSignal } from "./components/AgentPresence";
 import { useFilterOptions } from "./lib/queries";
 import { useHealth } from "./lib/useHealth";
-import { useUi, applyColorBlind, applyBackgroundPaused } from "./state/ui";
-import { useFilters } from "./state/filters";
+import { useUi, applyColorBlind } from "./state/ui";
 
 const DashboardScreen = lazy(() => import("./screens/Dashboard"));
 const AnalyticsScreen = lazy(() => import("./screens/Analytics"));
@@ -38,13 +36,9 @@ export function App() {
   });
   const route = useUi((state) => state.route);
   const setRoute = useUi((state) => state.setRoute);
-  const paletteOpen = useUi((state) => state.paletteOpen);
-  const setPaletteOpen = useUi((state) => state.setPaletteOpen);
   const colorBlind = useUi((state) => state.colorBlind);
-  const toggleColorBlind = useUi((state) => state.toggleColorBlind);
   const coachOpen = useUi((state) => state.coachOpen);
   const setCoachOpen = useUi((state) => state.setCoachOpen);
-  const resetFilters = useFilters((state) => state.reset);
   const health = useHealth();
   const options = useFilterOptions();
   const fetching = useIsFetching() > 0;
@@ -65,22 +59,6 @@ export function App() {
   useEffect(() => {
     applyColorBlind(colorBlind);
   }, [colorBlind]);
-
-  const backgroundPaused = useUi((state) => state.backgroundPaused);
-  useEffect(() => {
-    applyBackgroundPaused(backgroundPaused);
-  }, [backgroundPaused]);
-
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
-        event.preventDefault();
-        setPaletteOpen(true);
-      }
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [setPaletteOpen]);
 
   const screen =
     route === "dashboard" ? (
@@ -106,7 +84,6 @@ export function App() {
         busy={fetching || health.state.status === "loading"}
         agentState={agentState}
         onNavigate={setRoute}
-        onOpenPalette={() => setPaletteOpen(true)}
         coachOpen={coachOpen}
         onToggleCoach={() => setCoachOpen(!coachOpen)}
         filters={
@@ -119,15 +96,6 @@ export function App() {
         <Suspense fallback={<ScreenFallback />}>{screen}</Suspense>
       </Shell>
       <CoachDrawer onAgentSignal={onAgentSignal} />
-      <CommandPalette
-        open={paletteOpen}
-        onOpenChange={setPaletteOpen}
-        onNavigate={setRoute}
-        onToggleColorBlind={toggleColorBlind}
-        onRefresh={health.refresh}
-        onClearFilters={resetFilters}
-        onOpenCoach={() => setCoachOpen(true)}
-      />
     </>
   );
 }

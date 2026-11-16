@@ -199,38 +199,12 @@ test("above-the-fold color balance at 1440x900 with the shader off", async ({ pa
   }
 });
 
-test.describe("Pause background", () => {
-  test("pauses the shader, persists after a reload, and can be resumed", async ({ page }) => {
-    await page.goto("/");
-    const toggle = page.getByRole("button", { name: "Pause background" });
-    await expect(toggle).toHaveAttribute("aria-pressed", "false");
-    await expect(page.locator(".aurora-layer")).toHaveAttribute("data-background", "on");
-
-    await toggle.click();
-    await expect(toggle).toHaveAttribute("aria-pressed", "true");
-    await expect(page.locator(".aurora-layer")).toHaveAttribute("data-background", "paused");
-    await expect(page.locator(".aurora-layer")).toHaveAttribute("data-render-state", /^(static|fallback)$/);
-
-    await page.reload();
-    await expect(page.getByRole("button", { name: "Pause background" })).toHaveAttribute("aria-pressed", "true");
-    await expect(page.locator(".aurora-layer")).toHaveAttribute("data-background", "paused");
-
-    await page.getByRole("button", { name: "Pause background" }).click();
-    await expect(page.getByRole("button", { name: "Pause background" })).toHaveAttribute("aria-pressed", "false");
-  });
-
-  test("is also in the command palette", async ({ page }) => {
-    await page.goto("/");
-    await expect(page.getByRole("button", { name: "Import", exact: true })).toBeVisible();
-    await page.keyboard.press("Control+k");
-    await page.getByRole("option", { name: "Pause background" }).click();
-    await expect(page.getByRole("button", { name: "Pause background" })).toHaveAttribute("aria-pressed", "true");
-  });
-
-  test("starts paused when the OS asks for reduced motion", async ({ page }) => {
+test.describe("Background motion", () => {
+  test("has no pause control and keeps animating, even with reduced motion", async ({ page }) => {
     await page.emulateMedia({ reducedMotion: "reduce" });
     await page.goto("/");
-    await expect(page.getByRole("button", { name: "Pause background" })).toHaveAttribute("aria-pressed", "true");
+    await expect(page.getByRole("button", { name: "Pause background" })).toHaveCount(0);
+    await expect(page.locator(".aurora-layer")).toHaveAttribute("data-render-state", /^(animated|fallback)$/);
   });
 });
 

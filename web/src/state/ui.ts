@@ -1,7 +1,6 @@
 import { create } from "zustand";
 
 import type { Route } from "../routes";
-import { initialBackgroundPaused } from "../shader/white";
 
 const COLOR_BLIND_KEY = "ledger.colorBlind";
 const COLUMNS_KEY = "ledger.columns";
@@ -49,29 +48,6 @@ export interface UndoEntry {
   previous: string | null;
 }
 
-export const BACKGROUND_PAUSED_KEY = "ledger.backgroundPaused";
-
-function readBackgroundPaused(): boolean {
-  let stored: string | null = null;
-  let reduced = false;
-  try {
-    stored = window.localStorage.getItem(BACKGROUND_PAUSED_KEY);
-  } catch {
-    stored = null;
-  }
-  try {
-    reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  } catch {
-    reduced = false;
-  }
-  return initialBackgroundPaused(stored, reduced);
-}
-
-export function applyBackgroundPaused(paused: boolean): void {
-  if (typeof document === "undefined") return;
-  document.documentElement.dataset.background = paused ? "paused" : "on";
-}
-
 function readColorBlind(): boolean {
   try {
     return window.localStorage.getItem(COLOR_BLIND_KEY) === "true";
@@ -107,11 +83,7 @@ export interface TradeSelection {
 
 interface UiStore {
   route: Route;
-  paletteOpen: boolean;
   colorBlind: boolean;
-  /** True when the animated background is paused. Saved locally. */
-  backgroundPaused: boolean;
-  toggleBackgroundPaused: () => void;
   columns: TradeColumn[];
   selectedTradeKey: string | null;
   undo: UndoEntry | null;
@@ -128,7 +100,6 @@ interface UiStore {
   requestCoachRun: () => void;
   highlightTrade: (key: string | null) => void;
   setRoute: (route: Route) => void;
-  setPaletteOpen: (open: boolean) => void;
   toggleColorBlind: () => void;
   setColumns: (columns: TradeColumn[]) => void;
   selectTrade: (key: string | null) => void;
@@ -137,19 +108,7 @@ interface UiStore {
 
 export const useUi = create<UiStore>()((set, get) => ({
   route: "dashboard",
-  paletteOpen: false,
   colorBlind: readColorBlind(),
-  backgroundPaused: readBackgroundPaused(),
-  toggleBackgroundPaused: () => {
-    const next = !get().backgroundPaused;
-    try {
-      window.localStorage.setItem(BACKGROUND_PAUSED_KEY, String(next));
-    } catch {
-      // The choice still applies for this session.
-    }
-    applyBackgroundPaused(next);
-    set({ backgroundPaused: next });
-  },
   columns: readColumns(),
   selectedTradeKey: null,
   undo: null,
@@ -172,7 +131,6 @@ export const useUi = create<UiStore>()((set, get) => ({
   requestCoachRun: () => set({ coachOpen: true, coachRunToken: get().coachRunToken + 1 }),
   highlightTrade: (key) => set({ highlightTradeKey: key }),
   setRoute: (route) => set({ route, selectedTradeKey: null, highlightTradeKey: null }),
-  setPaletteOpen: (open) => set({ paletteOpen: open }),
   toggleColorBlind: () => {
     const next = !get().colorBlind;
     try {
