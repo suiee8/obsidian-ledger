@@ -25,7 +25,7 @@ for (const width of WIDTHS) {
   test.describe(`redesigned screens at ${width} px`, () => {
     test.use({ viewport: { width, height: width >= 1024 ? 1000 : 844 } });
 
-    test("analytics, behavior, simulator, settings, and samples", async ({ page, request }) => {
+    test("analytics, behavior, simulator, and settings", async ({ page, request }) => {
       await importSample(request);
       await page.goto("/");
 
@@ -45,10 +45,6 @@ for (const width of WIDTHS) {
       await page.getByRole("button", { name: "Settings", exact: true }).click();
       await expect(page.getByRole("region", { name: "Wipe everything" })).toBeVisible();
       await page.screenshot({ path: `${OUT}/settings-${width}.png`, fullPage: true });
-
-      await page.getByRole("button", { name: "Sample files", exact: true }).click();
-      await expect(page.getByRole("heading", { name: "Fixture catalog" })).toBeVisible();
-      await page.screenshot({ path: `${OUT}/samples-${width}.png`, fullPage: true });
     });
   });
 }

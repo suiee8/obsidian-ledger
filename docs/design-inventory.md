@@ -328,7 +328,7 @@ dynamic labels are shown as JSX expressions):
   `` `Delete ${name}` ``.
 
 Also preserve the `aria-labelledby` IDs: `empty-title`, `preview-title`, `result-title`,
-`samples-heading`, `findings-title`, `empty-screen-title`, the existing generated coach-section IDs,
+`findings-title`, `empty-screen-title`, the existing generated coach-section IDs,
 `coach-tab-ask`, and `coach-tab-report`. The E2E tests also select the `"Loading dashboard"` and
 `"Filters"` accessible names.
 

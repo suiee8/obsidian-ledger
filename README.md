@@ -62,7 +62,7 @@ CSV exports prefix spreadsheet-formula-like values with an apostrophe after seri
 
 ## Samples and project map
 
-The committed fixtures are under `samples/`, including a deliberately messy journal, a 1,000-row preview, and an intentional 100,000-row synthetic sample. The benchmark command is capped at 10,000 trades and stores generated inputs under ignored `benchmarks/out/`.
+The committed fixtures are under `samples/` and can be imported from the Import screen, including a deliberately messy journal, a 1,000-row preview, and an intentional 100,000-row synthetic sample. The benchmark command is capped at 10,000 trades and stores generated inputs under ignored `benchmarks/out/`.
 
 - `web/` — React, TypeScript, and Vite client
 - `api/` — Python and FastAPI service

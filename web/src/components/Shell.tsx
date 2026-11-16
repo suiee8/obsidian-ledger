@@ -10,7 +10,6 @@ import {
   IconOverview,
   IconPause,
   IconPlay,
-  IconSamples,
   IconSettings,
   IconSimulator,
   IconTrades,
@@ -38,7 +37,6 @@ const NAV: readonly { id: Route; icon: ReactNode }[] = [
   { id: "simulator", icon: <IconSimulator /> },
   { id: "trades", icon: <IconTrades /> },
   { id: "import", icon: <IconImport /> },
-  { id: "samples", icon: <IconSamples /> },
   { id: "settings", icon: <IconSettings /> },
 ];
 

@@ -32,14 +32,6 @@ const SCREENS: Screen[] = [
     },
   },
   {
-    name: "samples",
-    open: async (page) => {
-      await page.goto("/");
-      await page.getByRole("button", { name: "Sample files", exact: true }).click();
-      await expect(page.getByRole("heading", { name: "Sample files" })).toBeVisible();
-    },
-  },
-  {
     name: "analytics",
     open: async (page) => {
       await page.goto("/");

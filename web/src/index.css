@@ -472,13 +472,6 @@ th {
   font-weight: 600;
 }
 
-td.file {
-  font-family: "JetBrains Mono", ui-monospace, monospace;
-  font-size: 12px;
-  color: var(--palette-ice);
-  white-space: nowrap;
-}
-
 .footer {
   margin-top: 28px;
   color: var(--palette-dim);

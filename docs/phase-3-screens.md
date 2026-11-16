@@ -8,7 +8,7 @@ Status: built and tested. Waiting for review before Phase 4.
 - Trades: virtualized table with sortable headers, column visibility, inline editing of journal fields (double-click or Enter, Escape cancels, blur saves), Ctrl+Z to undo the last save, and a detail drawer on row click.
 - Import: drag-and-drop or file picker, layout detection, questions for ambiguous fields, a preview panel, commit, and a downloadable rejected-rows CSV.
 - Shell: left rail (Dashboard, Trades, Import), top filter bar (date range, account, symbol, setup, side, tag or emotion), saved views, command palette (Ctrl+K), color-blind palette toggle, and an API health badge.
-- Samples: a read-only catalog of the committed fixtures.
+- Sample files live in `samples/` and can be imported from the Import screen.
 
 The left rail shows only the three screens built here. Analytics, Behavior, Simulator, Reports, and Settings are Phase 4 and later.
 
@@ -65,7 +65,7 @@ Bugs found by the screenshot and fixed:
 - `src/components/FilterBar.test.tsx` (2): chips and menu.
 - `src/screens/Dashboard.test.tsx` (2): headline numbers, low-confidence caveat, and API error state.
 - `src/components/TradeDrawer.test.tsx` (2): saving notes sends a PATCH with only the changed fields, and Escape closes the drawer.
-- Existing: `tokens.test.ts`, `lib.test.ts`, `sampleCatalog.test.ts`.
+- Existing: `tokens.test.ts`, `lib.test.ts`.
 - API: 20 new workspace tests cover the trade page, edits, filter options, and saved views.
 
 ## Known gaps

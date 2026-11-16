@@ -20,7 +20,6 @@ const ROUTES: readonly Route[] = [
   "simulator",
   "trades",
   "import",
-  "samples",
   "settings",
 ];
 

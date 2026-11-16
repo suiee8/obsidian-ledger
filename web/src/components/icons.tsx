@@ -9,20 +9,6 @@ export function IconOverview() {
   );
 }
 
-export function IconSamples() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
-      <path
-        d="M7 3.5h7l5 5V20a1.5 1.5 0 0 1-1.5 1.5h-10.5A1.5 1.5 0 0 1 5.5 20V5A1.5 1.5 0 0 1 7 3.5Z"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.5"
-      />
-      <path d="M14 3.5V9h5.5" fill="none" stroke="currentColor" strokeWidth="1.5" />
-    </svg>
-  );
-}
-
 export function IconTrades() {
   return (
     <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">

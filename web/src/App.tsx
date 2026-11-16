@@ -20,7 +20,6 @@ const SimulatorScreen = lazy(() => import("./screens/Simulator"));
 const SettingsScreen = lazy(() => import("./screens/Settings"));
 const TradesScreen = lazy(() => import("./screens/Trades"));
 const ImportScreen = lazy(() => import("./screens/Import"));
-const SamplesScreen = lazy(() => import("./screens/Samples"));
 
 const EMPTY_OPTIONS = { accounts: [], symbols: [], setups: [], sides: [] };
 
@@ -96,10 +95,8 @@ export function App() {
       <SettingsScreen />
     ) : route === "trades" ? (
       <TradesScreen />
-    ) : route === "import" ? (
-      <ImportScreen />
     ) : (
-      <SamplesScreen />
+      <ImportScreen />
     );
 
   return (

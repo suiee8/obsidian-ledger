@@ -5,7 +5,6 @@ export type Route =
   | "simulator"
   | "trades"
   | "import"
-  | "samples"
   | "settings";
 
 export const ROUTE_LABELS: Record<Route, string> = {
@@ -15,6 +14,5 @@ export const ROUTE_LABELS: Record<Route, string> = {
   simulator: "Simulator",
   trades: "Trades",
   import: "Import",
-  samples: "Sample files",
   settings: "Settings",
 };
