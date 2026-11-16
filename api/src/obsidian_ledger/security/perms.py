@@ -7,7 +7,7 @@ from pathlib import Path
 
 
 def restrict_data_dir(data_dir: Path) -> None:
-    """POSIX: mode 700. Windows has no chmod equivalent; docs/security.md shows the icacls command."""
+    """POSIX: mode 700. On Windows see the icacls command in docs/security.md."""
     if os.name != "posix":
         return
     try:

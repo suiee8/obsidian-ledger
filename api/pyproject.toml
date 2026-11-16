@@ -50,7 +50,19 @@ target-version = "py312"
 src = ["src", "../benchmarks"]
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "UP", "B"]
+select = ["E", "F", "I", "UP", "B", "S"]
+
+[tool.ruff.lint.per-file-ignores]
+# Justified in docs/security.md ("Bandit findings"): S608 sites interpolate only constants,
+# allow-listed column names or WHERE/ORDER fragments built from allow-lists; values are bound.
+"src/obsidian_ledger/store/db.py" = ["S608"]
+"src/obsidian_ledger/store/raw.py" = ["S608"]
+# S101: asserts only narrow types for the checker; S105: a mode name, not a secret.
+"src/obsidian_ledger/ingest/*.py" = ["S101"]
+"src/obsidian_ledger/settings.py" = ["S105"]
+"src/obsidian_ledger/workspace/data_routes.py" = ["S112"]
+"tests/**" = ["S"]
+"../benchmarks/**" = ["S"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["obsidian_ledger", "ledger_samples"]

@@ -51,9 +51,7 @@ def run_isolated_probe(
     try:
         result = json.loads(lines[-1])
     except (IndexError, ValueError) as exc:
-        raise IngestError(
-            "parse_failed", "The file crashed the reader and was refused."
-        ) from exc
+        raise IngestError("parse_failed", "The file crashed the reader and was refused.") from exc
     if not isinstance(result, dict) or result.get("ok") is not True:
         status = result.get("status", 422) if isinstance(result, dict) else 422
         raise IngestError(

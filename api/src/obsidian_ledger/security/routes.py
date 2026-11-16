@@ -38,9 +38,7 @@ def _error(status: int, code: str, message: str, retry_after: float = 0.0) -> JS
 def status(request: Request) -> dict[str, bool]:
     settings = request.app.state.settings
     sessions: SessionStore = request.app.state.sessions
-    authenticated = (not settings.public) or sessions.validate(
-        request.cookies.get(SESSION_COOKIE)
-    )
+    authenticated = (not settings.public) or sessions.validate(request.cookies.get(SESSION_COOKIE))
     return {
         "public": settings.public,
         "authenticated": authenticated,

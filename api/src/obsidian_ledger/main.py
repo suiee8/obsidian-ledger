@@ -31,8 +31,8 @@ from obsidian_ledger.middleware import (
 )
 from obsidian_ledger.security.auth import LoginThrottle, SessionStore
 from obsidian_ledger.security.events import SecurityLog
-from obsidian_ledger.security.routes import router as auth_router
 from obsidian_ledger.security.perms import restrict_data_dir
+from obsidian_ledger.security.routes import router as auth_router
 from obsidian_ledger.settings import Settings, get_settings
 from obsidian_ledger.store.db import Store
 from obsidian_ledger.workspace.data_routes import router as data_router
@@ -148,7 +148,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         ]
         return JSONResponse(
             status_code=422,
-            content={"error": {"code": "invalid_request", "message": "Invalid request."}, "detail": problems},
+            content={
+                "error": {"code": "invalid_request", "message": "Invalid request."},
+                "detail": problems,
+            },
         )
 
     @app.exception_handler(Exception)

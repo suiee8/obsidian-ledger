@@ -88,7 +88,9 @@ def _header(scope: Scope, name: bytes) -> str | None:
 class GuardMiddleware:
     """Host allow-list, Origin allow-list, method allow-list, and the required client header."""
 
-    def __init__(self, app: ASGIApp, *, allowed_hosts: list[str], allowed_origins: list[str]) -> None:
+    def __init__(
+        self, app: ASGIApp, *, allowed_hosts: list[str], allowed_origins: list[str]
+    ) -> None:
         self.app = app
         self.hosts = frozenset(allowed_hosts)
         self.origins = frozenset(allowed_origins)
@@ -146,8 +148,10 @@ class AccessControlMiddleware:
         method = str(scope.get("method", "GET")).upper()
         path = str(scope.get("path", ""))
         if method != "OPTIONS":
-            if self.public and path not in PUBLIC_PATHS and not self.sessions.validate(
-                self._cookie(scope)
+            if (
+                self.public
+                and path not in PUBLIC_PATHS
+                and not self.sessions.validate(self._cookie(scope))
             ):
                 _note(scope, "auth_failure", "login_required")
                 await _reject(send, 401, "auth_required", "Sign in to continue.")

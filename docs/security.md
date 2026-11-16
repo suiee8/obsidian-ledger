@@ -63,3 +63,31 @@ The full audit output remains nonzero because Zod and the lower-severity advisor
 - The current provider catalog has no Ollama adapter; installing Ollama does not connect it to this app.
 - Browser printing an exported HTML report to PDF is controlled by the browser and is not an application-generated PDF export.
 - Optional cloud AI use sends selected result data to the chosen provider only after consent. Review that provider's own retention and billing terms before enabling it.
+
+## Security phase — defense in depth
+
+Opt-in settings (all off by default; local use is unchanged):
+
+| Setting | Effect |
+| --- | --- |
+| `LEDGER_PUBLIC=1` | Login required, `/docs` and `/openapi.json` off, needs `LEDGER_PASSWORD_HASH` and `LEDGER_CORS_ORIGINS` |
+| `LEDGER_DEMO_READONLY=1` | Import, edit, delete, wipe, key storage and settings writes refused; read-only banner in the UI |
+| `LEDGER_SCANNER=clamd` or `defender` | Scan the quarantined upload before parsing |
+
+Data folder permissions: on Linux and macOS the API sets mode `700`. On Windows run
+`icacls .ledger-data /inheritance:r /grant:r "%USERNAME%:(OI)(CI)F"`.
+
+### Bandit findings (Ruff `S` rules)
+
+- `S608` in `store/db.py` and `store/raw.py`: interpolated parts are constants, table names from fixed
+  tuples, column names checked against an allow-list, or WHERE/ORDER fragments built from allow-listed
+  fields. Every value is bound as a parameter.
+- `S101`: `assert` only narrows types for the checker; no security decision depends on it.
+- `S105`: `llm_secret_store` is a mode name (`keyring` or `memory`), not a secret.
+- `S112`: a keychain failure must not undo a data wipe.
+
+### CI exceptions policy
+
+CI fails on any high or critical `pnpm audit` finding and on any `pip-audit` finding. An
+exception is allowed only when it is recorded in this file with the package, advisory, reason and
+review date.

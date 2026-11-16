@@ -201,7 +201,10 @@ def _rows_from_objects(items: list[dict[str, Any]]) -> list[list[str]]:
     rows: list[list[str]] = [names]
     for item in items:
         rows.append(
-            [_json_text(item.get(name[:-1] if name[:-1] in UNSAFE_KEYS else name)) for name in names]
+            [
+                _json_text(item.get(name[:-1] if name[:-1] in UNSAFE_KEYS else name))
+                for name in names
+            ]
         )
     return rows
 

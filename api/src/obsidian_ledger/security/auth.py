@@ -1,4 +1,4 @@
-"""Single-user password login for public mode. scrypt from the standard library, no new dependency."""
+"""Single-user password login for public mode (stdlib scrypt, no new dependency)."""
 
 from __future__ import annotations
 

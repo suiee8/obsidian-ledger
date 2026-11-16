@@ -74,9 +74,7 @@ async def preview_import(
     staged = service.staged_path(preview_id)
     size, digest = await _save_stream(request, service, staged)
     try:
-        return await asyncio.to_thread(
-            service.preview, preview_id, staged, filename, digest, size
-        )
+        return await asyncio.to_thread(service.preview, preview_id, staged, filename, digest, size)
     except BaseException:
         staged.unlink(missing_ok=True)
         staged.with_suffix(".json").unlink(missing_ok=True)

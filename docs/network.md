@@ -83,3 +83,12 @@ This app is designed for one user on one machine. If it were ever hosted, the mi
 7. Rate limiting at the proxy in addition to the API limits.
 8. Scheduled backups of `.ledger-data`, stored off the machine and encrypted.
 9. A free uptime monitor (for example UptimeRobot) polling `GET /health`.
+
+## Request policy
+
+- Host allow-list: `127.0.0.1` and `localhost` (`LEDGER_ALLOWED_HOSTS`).
+- Origin allow-list and exact-origin CORS (`LEDGER_CORS_ORIGINS`); public mode requires it to be set.
+- Methods: GET, HEAD, OPTIONS, POST, PUT, PATCH, DELETE only; every non-GET request needs `X-Ledger-Client: web`.
+- Limits: body size, request time, per-client rate limit, and a concurrency cap for imports and exports.
+- Rejections are written to `.ledger-data/logs/security.log` without trade data, notes or keys.
+- Public mode adds an HttpOnly, Secure, SameSite=Strict session cookie and turns `/docs` off.

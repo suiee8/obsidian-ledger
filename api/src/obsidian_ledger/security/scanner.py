@@ -1,4 +1,4 @@
-"""Optional malware scanner hook. Off by default; uses a scanner already installed on this machine."""
+"""Optional malware scanner hook. Off by default; uses a locally installed scanner."""
 
 from __future__ import annotations
 

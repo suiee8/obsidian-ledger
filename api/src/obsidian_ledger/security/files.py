@@ -64,7 +64,11 @@ DDE_XML: Final = re.compile(
     rb"(?i)<f[^>]{0,200}>[ \t]*(?:cmd|powershell|mshta|msexcel|dde\w*)[ \t]*\||<ddeLink"
 )
 OLE_BAD_MARKERS: Final[tuple[tuple[bytes, str, str], ...]] = (
-    ("_VBA_PROJECT".encode("utf-16-le"), "macro_enabled", "Workbooks with macros are not accepted."),
+    (
+        "_VBA_PROJECT".encode("utf-16-le"),
+        "macro_enabled",
+        "Workbooks with macros are not accepted.",
+    ),
     (b"_VBA_PROJECT", "macro_enabled", "Workbooks with macros are not accepted."),
     (
         "Ole10Native".encode("utf-16-le"),
@@ -99,9 +103,7 @@ def scan_file(path: Path, pattern: re.Pattern[bytes] | bytes) -> bool:
 def reject_forbidden_signature(head: bytes) -> None:
     for signature, label in FORBIDDEN_SIGNATURES:
         if head.startswith(signature):
-            raise IngestError(
-                "unsupported_file_type", f"A {label} cannot be imported.", status=415
-            )
+            raise IngestError("unsupported_file_type", f"A {label} cannot be imported.", status=415)
 
 
 def reject_markup(head: bytes) -> None:
@@ -176,10 +178,15 @@ def _check_members(archive: zipfile.ZipFile, infos: list[zipfile.ZipInfo]) -> No
     for info in infos:
         name = info.filename
         posix = PurePosixPath(name.replace("\\", "/"))
-        if posix.is_absolute() or ".." in posix.parts or name.startswith(("/", "\\")) or (
-            len(name) > 1 and name[1] == ":"
+        if (
+            posix.is_absolute()
+            or ".." in posix.parts
+            or name.startswith(("/", "\\"))
+            or (len(name) > 1 and name[1] == ":")
         ):
-            raise IngestError("archive_path_traversal", "The archive contains illegal member paths.")
+            raise IngestError(
+                "archive_path_traversal", "The archive contains illegal member paths."
+            )
         if _is_symlink(info):
             raise IngestError("archive_symlink", "The archive contains a symbolic link.")
         if info.file_size > MAX_MEMBER_UNCOMPRESSED:
