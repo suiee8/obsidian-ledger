@@ -64,7 +64,7 @@ def test_request_from_unlisted_origin_is_rejected(tmp_path: Path) -> None:
 
     response = client.get("/health", headers={"Origin": "http://evil.com"})
     assert response.status_code == 403
-    assert b"Disallowed origin" in response.content
+    assert response.json()["error"]["code"] == "forbidden_origin"
 
     response_attacker = client.post(
         "/api/llm/config",

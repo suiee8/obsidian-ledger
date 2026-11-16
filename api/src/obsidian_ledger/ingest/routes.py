@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
+import os
 from datetime import UTC, datetime
 from pathlib import Path as FilePath
 from typing import Annotated, Any
@@ -54,6 +56,10 @@ async def _save_stream(
         destination.unlink(missing_ok=True)
         destination.with_suffix(".json").unlink(missing_ok=True)
         raise
+    try:
+        os.chmod(destination, 0o600)  # the quarantined file is private to this user
+    except OSError:
+        pass
     return total, digest.hexdigest()
 
 
@@ -68,7 +74,9 @@ async def preview_import(
     staged = service.staged_path(preview_id)
     size, digest = await _save_stream(request, service, staged)
     try:
-        return service.preview(preview_id, staged, filename, digest, size)
+        return await asyncio.to_thread(
+            service.preview, preview_id, staged, filename, digest, size
+        )
     except BaseException:
         staged.unlink(missing_ok=True)
         staged.with_suffix(".json").unlink(missing_ok=True)

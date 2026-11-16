@@ -30,6 +30,26 @@ class Settings(BaseSettings):
     # Tests only: an OpenAI-compatible mock on this computer, offered as an extra provider.
     llm_test_provider_url: str | None = None
 
+    # Hosts the API answers to. The default is loopback only.
+    allowed_hosts: str = "127.0.0.1,localhost"
+    # Opt-in public mode: login required, docs off, explicit origins required.
+    public: bool = False
+    # scrypt hash from `pnpm hash:password`. Never a plain password.
+    password_hash: str | None = None
+    session_idle_minutes: int = Field(default=30, ge=1, le=1440)
+    # Opt-in read-only demo: every write is refused at the API layer.
+    demo_readonly: bool = False
+    # Optional malware scanner already installed on this computer: "off", "clamd", or "defender".
+    scanner: Literal["off", "clamd", "defender"] = "off"
+    # Untrusted files are read in a child process with these limits.
+    parse_isolation: bool = True
+    parse_timeout_seconds: int = Field(default=60, ge=1, le=600)
+    parse_memory_mb: int = Field(default=4096, ge=256, le=32768)
+
+    @property
+    def allowed_host_list(self) -> list[str]:
+        return [host.strip().lower() for host in self.allowed_hosts.split(",") if host.strip()]
+
     @property
     def cors_origin_list(self) -> list[str]:
         return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]

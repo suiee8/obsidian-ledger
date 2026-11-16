@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import csv
 import json
-import zipfile
 from collections.abc import Iterator
 from datetime import date, datetime, time
 from pathlib import Path
@@ -14,49 +13,25 @@ from python_calamine import CalamineWorkbook
 
 from obsidian_ledger.ingest.errors import IngestError
 from obsidian_ledger.ingest.sniff import HEAD_LINES, SNIFF_BYTES, sniff_encoding
+from obsidian_ledger.security.files import (
+    MAX_COLUMNS,
+    MAX_ROWS,
+    OLE_MAGIC,
+    ZIP_MAGIC,
+    check_archive,
+    check_ole_workbook,
+    reject_dde_text,
+    reject_forbidden_signature,
+    reject_markup,
+    reject_polyglot,
+)
 
 Kind = Literal["text", "json", "xlsx", "xls"]
 
-ZIP_MAGIC: Final = b"PK\x03\x04"
-OLE_MAGIC: Final = bytes.fromhex("d0cf11e0a1b11ae1")
-MAX_ARCHIVE_UNCOMPRESSED: Final = 500 * 1024 * 1024
-MAX_COMPRESSION_RATIO: Final = 100
-MAX_ARCHIVE_MEMBERS: Final = 5000
-
-
-def _check_archive(path: Path) -> None:
-    """Refuse zip files that expand too much, contain path traversal, or are not XLSX workbooks."""
-    try:
-        with zipfile.ZipFile(path) as archive:
-            infos = archive.infolist()
-            names = {info.filename for info in infos}
-    except zipfile.BadZipFile as exc:
-        raise IngestError(
-            "bad_archive", "The file looks like a zip archive but cannot be read."
-        ) from exc
-    if len(infos) > MAX_ARCHIVE_MEMBERS:
-        raise IngestError("archive_too_many_members", "The archive has too many entries.")
-    if sum(info.file_size for info in infos) > MAX_ARCHIVE_UNCOMPRESSED:
-        raise IngestError("archive_too_large", "The archive would expand beyond 500 MB.")
-    for info in infos:
-        p = Path(info.filename)
-        if p.is_absolute() or ".." in p.parts or info.filename.startswith(("/", "\\")):
-            raise IngestError(
-                "archive_path_traversal",
-                "The archive contains illegal member paths.",
-            )
-        if info.file_size and (
-            info.compress_size == 0 or info.file_size / info.compress_size > MAX_COMPRESSION_RATIO
-        ):
-            raise IngestError(
-                "archive_compression_ratio", "The archive has a suspicious compression ratio."
-            )
-    if "xl/workbook.xml" not in names:
-        raise IngestError("unsupported_archive", "Zip files are accepted only as XLSX workbooks.")
+_check_archive = check_archive
 
 
 SUPPORTED_EXTENSIONS: Final = {".csv", ".tsv", ".txt", ".xlsx", ".xls", ".json"}
-BINARY_SIGNATURES: Final = (b"MZ", b"\x7fELF", b"\x89PNG", b"\xff\xd8\xff", b"%PDF")
 
 
 def validate_extension_and_content(path: Path, filename: str) -> None:
@@ -75,6 +50,7 @@ def validate_extension_and_content(path: Path, filename: str) -> None:
     elif ext == ".xls":
         if not head.startswith(OLE_MAGIC):
             raise IngestError("extension_mismatch", "File content does not match .xls extension.")
+        check_ole_workbook(path)
     elif ext == ".json":
         if head.startswith(ZIP_MAGIC) or head.startswith(OLE_MAGIC):
             raise IngestError("extension_mismatch", "File content does not match .json extension.")
@@ -88,12 +64,18 @@ def validate_extension_and_content(path: Path, filename: str) -> None:
             ) from exc
         if not decoded or decoded[0] not in ("[", "{"):
             raise IngestError("extension_mismatch", "File content does not match .json extension.")
+        reject_polyglot(path, head)
+        reject_dde_text(path)
     elif ext in (".csv", ".tsv", ".txt"):
         if head.startswith(ZIP_MAGIC) or head.startswith(OLE_MAGIC):
             raise IngestError("extension_mismatch", "Archive file uploaded with text extension.")
-        for sig in BINARY_SIGNATURES:
-            if head.startswith(sig):
-                raise IngestError("extension_mismatch", "Binary file detected with text extension.")
+        try:
+            reject_forbidden_signature(head)
+        except IngestError as exc:
+            raise IngestError(
+                "extension_mismatch", "Binary file detected with text extension."
+            ) from exc
+        reject_markup(head)
         if b"\x00" in head and not head.startswith((b"\xff\xfe", b"\xfe\xff")):
             raise IngestError("extension_mismatch", "Binary null bytes detected in text file.")
         encoding = sniff_encoding(head)
@@ -103,6 +85,8 @@ def validate_extension_and_content(path: Path, filename: str) -> None:
                 raise IngestError("extension_mismatch", "JSON content uploaded with CSV extension.")
         except UnicodeDecodeError as exc:
             raise IngestError("extension_mismatch", "Text file decoding failed.") from exc
+        reject_polyglot(path, head)
+        reject_dde_text(path)
 
 
 def detect_kind(path: Path) -> Kind:
@@ -131,7 +115,17 @@ def head_lines(text: str) -> list[str]:
 def iter_text_records(path: Path, encoding: str, delimiter: str) -> Iterator[tuple[int, list[str]]]:
     """Stream CSV records. Record numbers start at 1 and match the row number in the file."""
     with path.open("r", encoding=encoding, errors="replace", newline="") as handle:
-        yield from enumerate(csv.reader(handle, delimiter=delimiter), start=1)
+        try:
+            for number, record in enumerate(csv.reader(handle, delimiter=delimiter), start=1):
+                if number > MAX_ROWS:
+                    raise IngestError("too_many_rows", f"The file has more than {MAX_ROWS:,} rows.")
+                if len(record) > MAX_COLUMNS:
+                    raise IngestError(
+                        "too_many_columns", f"A row has more than {MAX_COLUMNS:,} columns."
+                    )
+                yield number, record
+        except csv.Error as exc:
+            raise IngestError("bad_csv", "The file has a cell or row that is too large.") from exc
 
 
 def _cell_text(value: object) -> str:
@@ -156,7 +150,18 @@ def load_workbook_rows(path: Path) -> list[list[str]]:
     if not workbook.sheet_names:
         raise IngestError("empty_workbook", "The workbook has no sheets.")
     values = cast(list[list[object]], workbook.get_sheet_by_index(0).to_python())
+    _check_grid(values)
     return [[_cell_text(cell) for cell in row] for row in values]
+
+
+def _check_grid(values: list[Any]) -> None:
+    if len(values) > MAX_ROWS:
+        raise IngestError("too_many_rows", f"The file has more than {MAX_ROWS:,} rows.")
+    if any(isinstance(row, list) and len(cast(list[Any], row)) > MAX_COLUMNS for row in values):
+        raise IngestError("too_many_columns", f"A row has more than {MAX_COLUMNS:,} columns.")
+
+
+UNSAFE_KEYS: Final = frozenset({"__proto__", "constructor", "prototype"})
 
 
 def _json_text(value: Any) -> str:
@@ -172,6 +177,7 @@ def _json_text(value: Any) -> str:
 
 
 def _rows_from_lists(values: list[Any]) -> list[list[str]]:
+    _check_grid(values)
     rows: list[list[str]] = []
     for row in values:
         if isinstance(row, list):
@@ -182,14 +188,21 @@ def _rows_from_lists(values: list[Any]) -> list[list[str]]:
 
 
 def _rows_from_objects(items: list[dict[str, Any]]) -> list[list[str]]:
+    if len(items) > MAX_ROWS:
+        raise IngestError("too_many_rows", f"The file has more than {MAX_ROWS:,} rows.")
     headers: dict[str, None] = {}
     for item in items:
         for key in item:
-            headers.setdefault(str(key), None)
+            name = str(key)
+            headers.setdefault(name + "_" if name in UNSAFE_KEYS else name, None)
     names = list(headers)
+    if len(names) > MAX_COLUMNS:
+        raise IngestError("too_many_columns", f"The file has more than {MAX_COLUMNS:,} columns.")
     rows: list[list[str]] = [names]
     for item in items:
-        rows.append([_json_text(item.get(name)) for name in names])
+        rows.append(
+            [_json_text(item.get(name[:-1] if name[:-1] in UNSAFE_KEYS else name)) for name in names]
+        )
     return rows
 
 
@@ -200,6 +213,8 @@ def load_json_rows(path: Path, encoding: str) -> list[list[str]]:
         payload: Any = json.loads(text)
     except json.JSONDecodeError as exc:
         raise IngestError("bad_json", f"Invalid JSON at line {exc.lineno}: {exc.msg}.") from exc
+    except RecursionError as exc:
+        raise IngestError("json_too_deep", "The JSON is nested too deeply.") from exc
     if isinstance(payload, dict):
         values = cast(dict[str, Any], payload).get("values")
         if isinstance(values, list):

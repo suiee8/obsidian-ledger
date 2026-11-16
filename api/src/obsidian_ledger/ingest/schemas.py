@@ -82,6 +82,7 @@ class PreviewOut(BaseModel):
     assumptions: list[AssumptionOut]
     sample_rows: list[dict[str, str]]
     fingerprint: str
+    scan: Literal["clean", "not_scanned"] = "not_scanned"
 
 
 class CommitOut(BaseModel):

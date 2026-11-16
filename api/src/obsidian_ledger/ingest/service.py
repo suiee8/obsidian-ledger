@@ -25,6 +25,9 @@ from obsidian_ledger.ingest.schemas import (
     PreviewOut,
     QuestionOut,
 )
+from obsidian_ledger.security.events import SecurityLog
+from obsidian_ledger.security.sandbox import run_isolated_probe
+from obsidian_ledger.security.scanner import scan_file
 from obsidian_ledger.store.db import Store
 from obsidian_ledger.store.raw import write_raw
 
@@ -44,10 +47,50 @@ def _assumption_out(analysis: Analysis) -> list[AssumptionOut]:
 
 
 class ImportService:
-    def __init__(self, store: Store, default_timezone: str, max_upload_bytes: int) -> None:
+    def __init__(
+        self,
+        store: Store,
+        default_timezone: str,
+        max_upload_bytes: int,
+        *,
+        scanner: str = "off",
+        isolate_parsing: bool = True,
+        parse_timeout_seconds: int = 60,
+        parse_memory_mb: int = 4096,
+        security_log: SecurityLog | None = None,
+    ) -> None:
         self.store = store
         self.default_timezone = default_timezone
         self.max_upload_bytes = max_upload_bytes
+        self.scanner = scanner
+        self.isolate_parsing = isolate_parsing
+        self.parse_timeout_seconds = parse_timeout_seconds
+        self.parse_memory_mb = parse_memory_mb
+        self.security_log = security_log
+
+    def _refuse(self, reason: str) -> None:
+        if self.security_log is not None:
+            self.security_log.record("rejected_upload", path="/api/imports", reason=reason)
+
+    def _quarantine_checks(self, path: Path, filename: str) -> str:
+        """Validate, scan, and parse the staged file in a child process. Returns the scan status."""
+        try:
+            validate_extension_and_content(path, filename)
+            scan = scan_file(path, self.scanner)
+            if scan.status == "infected":
+                raise IngestError("malware_detected", "The scanner flagged this file.", status=422)
+            if self.isolate_parsing:
+                run_isolated_probe(
+                    path,
+                    filename,
+                    timezone=self.default_timezone,
+                    timeout_seconds=self.parse_timeout_seconds,
+                    memory_mb=self.parse_memory_mb,
+                )
+        except IngestError as exc:
+            self._refuse(exc.code)
+            raise
+        return scan.status
 
     def _analyze(self, path: Path, options: ImportOptions) -> Analysis:
         return analyze(
@@ -63,7 +106,7 @@ class ImportService:
     def preview(
         self, preview_id: str, path: Path, filename: str, sha256: str, size: int
     ) -> PreviewOut:
-        validate_extension_and_content(path, filename)
+        scan_status = self._quarantine_checks(path, filename)
         analysis = self._analyze(path, ImportOptions())
         meta = {"filename": filename, "sha256": sha256, "size_bytes": size}
         with atomic_path(path.with_suffix(".json")) as temporary:
@@ -123,6 +166,7 @@ class ImportService:
             assumptions=_assumption_out(analysis),
             sample_rows=analysis.preview_rows,
             fingerprint=analysis.fingerprint,
+            scan="clean" if scan_status == "clean" else "not_scanned",
         )
 
     def commit(self, preview_id: str, options: ImportOptions) -> CommitOut:

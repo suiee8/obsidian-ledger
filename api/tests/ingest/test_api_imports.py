@@ -78,21 +78,15 @@ def test_tradingview_asks_for_symbol_before_import(client: TestClient) -> None:
     assert accepted.json()["accepted"] == 4
 
 
-def test_messy_file_imports_nothing_and_rejected_csv_is_safe(client: TestClient) -> None:
-    preview = _preview(client, "messy_journal.csv")
-    body = _commit(client, preview["preview_id"]).json()
-    assert body["accepted"] == 0
-    assert body["rejected"] == 9
-    codes = {issue["code"] for issue in body["issues"]}
-    assert "missing_exit_time" in codes
-
-    download = client.get(body["rejected_csv_path"])
-    assert download.status_code == 200
-    assert download.headers["content-type"].startswith("text/csv")
-    text = download.text
-    assert "source_row,reason_codes,reasons," in text.splitlines()[0]
-    assert "'=CMD|" in text  # formula cell neutralized
-    assert "Ignore previous instructions" in text  # stored as data, not acted on
+def test_file_with_dde_formula_is_refused_at_preview(client: TestClient) -> None:
+    response = client.post(
+        "/api/imports/preview",
+        params={"filename": "messy_journal.csv"},
+        content=(SAMPLES / "messy_journal.csv").read_bytes(),
+        headers={"content-type": "application/octet-stream"},
+    )
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "dde_formula"
 
 
 def test_content_inference_maps_unknown_columns_and_user_can_override(
