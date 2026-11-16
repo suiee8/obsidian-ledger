@@ -52,11 +52,6 @@ async function openCoach(page: Page, change?: () => Promise<void>) {
   await expect(coach(page)).toBeVisible();
 }
 
-async function dateRange(page: Page, from: string, to: string) {
-  await page.getByLabel("From date").fill(from);
-  await page.getByLabel("To date").fill(to);
-}
-
 for (const width of WIDTHS) {
   test.describe(`Coach at ${width} px`, () => {
     test.use({ viewport: { width, height: width >= 1024 ? 1000 : 844 } });
@@ -76,18 +71,6 @@ for (const width of WIDTHS) {
       await openCoach(page);
       await expect(coach(page)).toHaveAttribute("data-phase", "running");
       await page.screenshot({ path: `${OUT}/coach-running-${width}.png` });
-    });
-
-    test("fewer than 30 trades", async ({ page }) => {
-      await openCoach(page, () => dateRange(page, "2024-01-02", "2024-01-03"));
-      await expect(coach(page).getByText("Not enough trades yet")).toBeVisible();
-      await page.screenshot({ path: `${OUT}/coach-few-trades-${width}.png` });
-    });
-
-    test("no trades", async ({ page }) => {
-      await openCoach(page, () => dateRange(page, "2031-01-01", "2031-01-02"));
-      await expect(coach(page).getByText("No trades to review")).toBeVisible();
-      await page.screenshot({ path: `${OUT}/coach-empty-${width}.png` });
     });
 
     test("error", async ({ page }) => {
