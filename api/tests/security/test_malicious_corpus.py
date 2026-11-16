@@ -1,4 +1,4 @@
-"""Malicious-file corpus. Every file must be refused or handled with a structured error, never a 500."""
+"""Malicious-file corpus. Each file is refused or gets a structured error, never a 500."""
 
 from __future__ import annotations
 

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import re
 import time
 from collections import defaultdict, deque
 
@@ -26,6 +27,9 @@ READ_ONLY_POST = (
     "/api/coach/ai/summary",
 )
 PUBLIC_PATHS = frozenset({"/health", "/health/ready", "/api/auth/status", "/api/auth/login"})
+
+
+_HOST_PATTERN = re.compile(r"(?P<host>\[[0-9a-f:.]+\]|[a-z0-9.-]+)(?::\d{1,5})?")
 
 
 class RequestBodyTooLarge(Exception):
@@ -100,7 +104,8 @@ class GuardMiddleware:
             await self.app(scope, receive, send)
             return
         method = str(scope.get("method", "GET")).upper()
-        host = (_header(scope, b"host") or "").rsplit(":", 1)[0].lower().strip("[]")
+        match = _HOST_PATTERN.fullmatch((_header(scope, b"host") or "").lower())
+        host = match.group("host").strip("[]") if match else ""
         if host not in self.hosts:
             _note(scope, "rejected_host", "host_not_allowed")
             await _reject(send, 400, "invalid_host", "Request refused.")

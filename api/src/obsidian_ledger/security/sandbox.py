@@ -7,6 +7,7 @@ import os
 import subprocess
 import sys
 from pathlib import Path
+from typing import Any, cast
 
 from obsidian_ledger.ingest.errors import IngestError
 
@@ -49,15 +50,18 @@ def run_isolated_probe(
         raise IngestError("parse_failed", "The file could not be read.") from exc
     lines = [line for line in completed.stdout.decode("utf-8", "replace").splitlines() if line]
     try:
-        result = json.loads(lines[-1])
+        parsed: object = json.loads(lines[-1])
     except (IndexError, ValueError) as exc:
         raise IngestError("parse_failed", "The file crashed the reader and was refused.") from exc
-    if not isinstance(result, dict) or result.get("ok") is not True:
-        status = result.get("status", 422) if isinstance(result, dict) else 422
+    result: dict[str, Any] = (
+        {str(key): value for key, value in cast("dict[Any, Any]", parsed).items()}
+        if isinstance(parsed, dict)
+        else {}
+    )
+    if result.get("ok") is not True:
+        status = result.get("status", 422)
         raise IngestError(
-            str(result.get("code", "parse_failed")) if isinstance(result, dict) else "parse_failed",
-            str(result.get("message", "The file could not be read."))
-            if isinstance(result, dict)
-            else "The file could not be read.",
-            status=int(status) if isinstance(status, int) else 422,
+            str(result.get("code", "parse_failed")),
+            str(result.get("message", "The file could not be read.")),
+            status=status if isinstance(status, int) else 422,
         )

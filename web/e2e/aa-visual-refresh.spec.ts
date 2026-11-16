@@ -221,6 +221,7 @@ test.describe("Pause background", () => {
 
   test("is also in the command palette", async ({ page }) => {
     await page.goto("/");
+    await expect(page.getByRole("button", { name: "Import", exact: true })).toBeVisible();
     await page.keyboard.press("Control+k");
     await page.getByRole("option", { name: "Pause background" }).click();
     await expect(page.getByRole("button", { name: "Pause background" })).toHaveAttribute("aria-pressed", "true");

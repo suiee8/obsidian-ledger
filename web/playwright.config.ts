@@ -17,6 +17,8 @@ export default defineConfig({
   reporter: [["list"]],
   use: {
     baseURL: "http://127.0.0.1:5173",
+    // The API refuses writes without this header, for the browser and for direct API calls alike.
+    extraHTTPHeaders: { "X-Ledger-Client": "web" },
     // Uses the Microsoft Edge that is already installed, so no browser download is needed.
     // E2E_BROWSER_CHANNEL=chrome selects Chrome on machines without Edge (for example Linux CI).
     channel: process.env.E2E_BROWSER_CHANNEL ?? "msedge",
