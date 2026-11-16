@@ -150,7 +150,7 @@ async function toApiError(response: Response): Promise<ApiError> {
 /** GET or other JSON request. The response is parsed with the schema, so a shape change fails loudly. */
 export async function requestJson<T>(
   path: string,
-  schema: z.ZodType<T, z.ZodTypeDef, unknown>,
+  schema: z.ZodType<T>,
   init?: RequestInit,
 ): Promise<T> {
   const response = await apiFetch(path, init);

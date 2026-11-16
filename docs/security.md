@@ -42,21 +42,21 @@ pnpm audit
 
 `pip-audit` reported no known vulnerabilities in the installed API environment. The first JavaScript audit found two critical Tinypool advisories, one high Zod advisory, five moderate advisories, and one low advisory. Tinypool was `1.1.1`; it is now pinned to patched `2.1.2` via `pnpm-workspace.yaml`. A repeat audit removed both critical findings.
 
-### High finding retained with reason
+### High finding resolved
 
 | Package | Finding | Current version | Patched version | Reason and mitigation |
 | --- | --- | --- | --- | --- |
-| zod | GHSA-mrhx-c7xc-m3w5: memory exhaustion while validating oversized constrained collections | 3.25.76 | 4.6.6 or later | The advisory lists no patched Zod 3 release; the project uses Zod throughout the web response-validation schemas. Moving to Zod 4 is a major-version migration that needs a dedicated compatibility pass rather than a lockfile-only update. The API is intended for loopback use and the app validates local API responses, but this does not remove the finding. Track a tested Zod 4 migration; until then the high finding remains open. |
+| zod | GHSA-mrhx-c7xc-m3w5: memory exhaustion while validating oversized constrained collections | 3.25.76 | 4.6.6 or later | Resolved 2026-11-17: migrated to Zod 4.6.7. The only code change was the `parseWith` schema type in `web/src/lib/api.ts`; lint, typecheck, 62 unit tests and the production build pass. |
 
 ### Remaining lower-severity advisories
 
-The repeat `pnpm audit` reported five moderate advisories and one low advisory:
+Before the 2026-11-17 upgrades the audit reported five moderate advisories and one low advisory:
 
-- Vitest 3.2.7 and `@vitest/mocker` have advisories whose patched versions are Vitest 4.1.11/4.1.12 or later. These are development/test-only; upgrading Vitest is a major change and should be validated separately.
+- Vitest and `@vitest/mocker` advisories are resolved by upgrading to Vitest 4.1.12 (2026-11-17).
 - `glob` and `minimatch` advisories arrive transitively through `vite-plugin-pwa`/`workbox-build` and `typescript-eslint`; the published patched ranges require major versions. They are build/development dependencies.
 - `deepmerge` 4.3.1 has a low-severity advisory with no patched version listed, through `workbox-build`.
 
-The full audit output remains nonzero because Zod and the lower-severity advisories are unresolved. Do not treat the tool's nonzero exit as a clean audit.
+A repeat audit on 2026-11-17 reported no high or critical findings. The remaining two moderate (`glob`, `minimatch`) and one low (`deepmerge`) advisory need major versions of build-only packages. Do not treat the tool's nonzero exit as a clean audit.
 
 ## Known limitations
 
@@ -91,3 +91,10 @@ Data folder permissions: on Linux and macOS the API sets mode `700`. On Windows 
 CI fails on any high or critical `pnpm audit` finding and on any `pip-audit` finding. An
 exception is allowed only when it is recorded in this file with the package, advisory, reason and
 review date.
+
+## Verification (part 7)
+
+- `api/tests/security/test_malicious_corpus.py`: zip bombs, zip-slip, macro and external-link workbooks, wrong magic bytes, polyglots, DDE formulas, oversized rows and columns, nested JSON, prototype keys, and seeded fuzzing. Every file is refused or gets a structured error, never a 500. The EICAR case runs only when ClamAV is installed.
+- `api/tests/security/test_request_attacks.py`: spoofed Host and Origin, missing client header, rate limiting, path traversal, SQL injection strings in every filter and sort, and error bodies that never show internals.
+- `web/e2e/zz-security.spec.ts`: hostile symbols render as text, the web app sends `X-Ledger-Client`, strict page headers, and forged requests are refused.
+- Known limits: `style-src` keeps `'unsafe-inline'` because charts and React inline styles need it. The dev server also allows inline scripts for the Vite refresh preamble; `vite preview` and production builds do not.

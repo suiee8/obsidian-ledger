@@ -11,7 +11,7 @@ The project is MIT licensed. Apache-2.0 packages require that their `NOTICE` fil
 | react | 19.3.1 | MIT | UI rendering |
 | react-dom | 19.3.1 | MIT | DOM rendering |
 | cmdk | 1.1.1 | MIT | Command palette |
-| zod | 3.25.76 | MIT | Runtime validation of API responses |
+| zod | 4.6.7 | MIT | Runtime validation of API responses |
 | clsx | 2.1.1 | MIT | Class name composition |
 | tailwind-merge | 3.7.0 | MIT | Tailwind class conflict resolution |
 | @fontsource/sora | 5.3.0 | OFL-1.1 | Self-hosted display font |
@@ -30,7 +30,7 @@ The project is MIT licensed. Apache-2.0 packages require that their `NOTICE` fil
 | tailwindcss | 4.3.5 | MIT |
 | @tailwindcss/vite | 4.3.5 | MIT |
 | typescript | 5.9.3 | Apache-2.0 |
-| vitest | 3.2.7 | MIT |
+| vitest | 4.1.12 | MIT |
 | eslint | 9.39.5 | MIT |
 | @eslint/js | 9.39.5 | MIT |
 | typescript-eslint | 8.72.2 | MIT |

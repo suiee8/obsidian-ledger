@@ -57,7 +57,7 @@ CSV exports prefix spreadsheet-formula-like values with an apostrophe after seri
 ## Known issues
 
 - The app does not currently have an Ollama adapter. Installing Ollama and `qwen2.5:7b` does not connect a local model to this build.
-- The npm audit retains one high Zod advisory and lower-severity advisories; details and mitigation rationale are in [security notes](docs/security.md).
+- The npm audit has no high or critical findings; two moderate and one low build-only advisory remain, and details and mitigation rationale are in [security notes](docs/security.md).
 - Lighthouse and 10,000-trade performance measurements, including their ranges and limitations, are recorded in [benchmark results](benchmarks/RESULTS.md).
 
 ## Samples and project map
