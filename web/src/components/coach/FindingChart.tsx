@@ -40,7 +40,7 @@ export default function FindingChart({ finding }: FindingChartProps) {
         backgroundColor: palette.surface,
         borderColor: palette.line,
         textStyle: { color: palette.ink },
-        extraCssText: "backdrop-filter: blur(12px); border-radius: 12px; box-shadow: 0 12px 32px rgba(0, 0, 0, 0.3);",
+        extraCssText: "backdrop-filter: blur(12px); border-radius: 14px; box-shadow: 0 12px 32px rgba(0, 0, 0, 0.3);",
       },
       series: [
         {

@@ -6,38 +6,44 @@ test.beforeEach(async ({ page }) => {
   });
 });
 
-test("the black frame has equal sides and balanced header insets", async ({ page }) => {
+test("the black frame is 1.2 cm on all four sides with concentric corners", async ({ page }) => {
   await page.goto("/");
-  for (const width of [1440, 390, 320]) {
+  for (const width of [1440, 900, 390, 320]) {
     await page.setViewportSize({ width, height: 900 });
     if (width <= 800) await expect(page.getByRole("button", { name: "Filters", exact: true })).toBeVisible();
     const geometry = await page.locator(".shell").evaluate((shell) => {
-      const style = getComputedStyle(shell);
+      const inner = getComputedStyle(shell, "::after");
+      const outer = getComputedStyle(shell, "::before");
       const header = shell.querySelector<HTMLElement>(".topbar")!;
-      const brand = header.querySelector<HTMLElement>(".brand")!;
       const coach = header.querySelector<HTMLElement>(".coach-toggle")!;
-      const opening = getComputedStyle(shell.querySelector("main")!);
+      const brand = header.querySelector<HTMLElement>(".mark")!;
       const bounds = header.getBoundingClientRect();
+      const toggle = coach.getBoundingClientRect();
       return {
-        edges: [style.borderTopWidth, style.borderRightWidth, style.borderBottomWidth, style.borderLeftWidth],
-        color: style.borderTopColor,
-        innerRadius: parseFloat(opening.borderRadius),
-        outerRadius: parseFloat(style.borderRadius),
+        edges: [inner.top, inner.right, inner.bottom, inner.left].map(parseFloat),
+        color: getComputedStyle(shell, "::after").boxShadow,
+        innerRadius: parseFloat(inner.borderTopLeftRadius),
+        innerRadii: [inner.borderTopLeftRadius, inner.borderTopRightRadius, inner.borderBottomRightRadius, inner.borderBottomLeftRadius],
+        outerRadius: parseFloat(outer.borderTopLeftRadius),
+        headerHeight: bounds.height,
+        topGap: toggle.top - bounds.top,
+        bottomGap: bounds.bottom - toggle.bottom,
         leftInset: brand.getBoundingClientRect().left - bounds.left,
-        rightInset: bounds.right - coach.getBoundingClientRect().right,
+        rightInset: bounds.right - toggle.right,
         pageWidth: document.documentElement.scrollWidth,
       };
     });
-    const edge = parseFloat(geometry.edges[0]!);
-    expect(geometry.edges.every((width) => width === geometry.edges[0])).toBe(true);
-    expect(Math.abs(edge - (1.2 * 96) / 25.4)).toBeLessThan(1);
-    expect(geometry.color).toBe("rgb(0, 0, 0)");
-    expect(Math.abs(geometry.outerRadius - geometry.innerRadius - edge)).toBeLessThan(1);
+    const edge = (1.2 * 96) / 2.54;
+    for (const side of geometry.edges) expect(Math.abs(side - edge)).toBeLessThan(0.5);
+    expect(geometry.color).toContain("rgb(0, 0, 0)");
+    expect(new Set(geometry.innerRadii).size).toBe(1);
+    expect(Math.abs(geometry.outerRadius - geometry.innerRadius - edge)).toBeLessThan(0.5);
+    expect(Math.abs(geometry.headerHeight - edge)).toBeLessThan(0.5);
+    expect(Math.abs(geometry.topGap - geometry.bottomGap)).toBeLessThan(0.5);
     expect(Math.abs(geometry.leftInset - geometry.rightInset)).toBeLessThan(1);
     expect(geometry.pageWidth).toBe(width);
   }
 });
-
 test("the cursor stays visible over Coach and native form controls keep their cursor", async ({ page }) => {
   await page.goto("/");
   const arrow = page.locator(".cursor-arrow");

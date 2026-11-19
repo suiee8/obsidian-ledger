@@ -24,12 +24,19 @@ SOFTWARE.
 
 :root {
   --shell-black: #000000;
-  --frame-edge: 1.2mm;
-  --frame-radius: 20px;
+  /* One thickness for the top, right, bottom and left bands. The header, the rail and the footer
+     sit inside the bands, so the black frame is the same width on every side. */
+  --frame-edge: 1.2cm;
+  /* Inner (window) corner. The outer corner is concentric, so its radius is the band plus this. */
+  --frame-radius: var(--radius-lg);
+  --frame-outer-radius: calc(var(--frame-edge) + var(--frame-radius));
+  /* Controls in a band get the same gap to both band edges. */
+  --frame-control: 32px;
+  --frame-gap: calc((var(--frame-edge) - var(--frame-control)) / 2);
+  --frame-corner-fill: var(--palette-surface3);
   --frame-content-inset: clamp(12px, 2.2vw, 32px);
-  --frame-header-height: 56px;
   --frame-pulse-height: 2px;
-  --frame-content-top: calc(var(--frame-edge) + var(--frame-header-height) + var(--frame-pulse-height));
+  --frame-content-top: var(--frame-edge);
   --frame-coach-max: calc(100vw - 160px - 2 * var(--frame-edge));
   --frame-coach-width: min(var(--coach-offset, 0px), var(--frame-coach-max));
   --cursor-artwork: url("/cursor-arrow.svg");
@@ -104,33 +111,95 @@ html[data-ledger-cursor="active"] :not(:is(
 }
 
 .shell {
-  /* Concentric corners keep the frame thickness even around the opening. */
-  border: var(--frame-edge) solid var(--shell-black);
-  border-radius: calc(var(--frame-edge) + var(--frame-radius));
-  background: var(--shell-black);
-  grid-template-columns: 72px minmax(0, 1fr);
-  grid-template-rows: var(--frame-pulse-height) var(--frame-header-height) 1fr auto;
-  grid-template-areas:
-    "pulse pulse"
-    "top top"
-    "rail main"
-    "rail social";
+  /* The window sits between four bands of equal width. The page scrolls under the frame, and the
+     header, rail and footer are fixed inside the bands. */
+  box-sizing: border-box;
+  padding: var(--frame-edge);
+  background: transparent;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+  grid-template-areas: "main";
 }
 
-.shell > :is(.topbar, .rail, .shell-social-footer) {
-  background: var(--shell-black);
+/* Inner curve: a rounded window cut out of a black sheet. Its radius is --frame-radius. */
+.shell::after {
+  content: "";
+  position: fixed;
+  inset: var(--frame-edge);
+  z-index: 5;
+  border-radius: var(--frame-radius);
+  box-shadow: 0 0 0 100vmax var(--shell-black);
+  pointer-events: none;
+}
+
+/* Outer curve: concentric with the inner one, so the band keeps its width around every corner. */
+.shell::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 5;
+  border-radius: var(--frame-outer-radius);
+  box-shadow: 0 0 0 100vmax var(--frame-corner-fill);
+  pointer-events: none;
+}
+
+.shell > :is(.topbar, .rail, .shell-social-footer, .pulse-bar) {
+  position: fixed;
+  z-index: 6;
+  background: transparent;
   border: 0;
-}
-
-.shell > .topbar {
-  z-index: 2;
   backdrop-filter: none;
-  padding-inline: var(--frame-content-inset);
 }
 
+/* Top band. The side inset puts the first and last control on the straight part of the curve, so
+   every control is the same distance from the frame edge. */
+.shell > .topbar {
+  inset: 0 0 auto 0;
+  height: var(--frame-edge);
+  padding: 0 var(--frame-outer-radius);
+  gap: 12px;
+}
+
+.shell > .topbar :is(.coach-toggle, .health-badge, .filters-toggle, .filter-bar button, .filter-bar select, .filter-bar input):not(.filter-sheet *) {
+  box-sizing: border-box;
+  height: var(--frame-control);
+  padding-block: 0;
+  /* A resting lift would put the control closer to the top edge than the bottom one. */
+  transform: none;
+}
+
+.shell > .topbar .filter-bar:not(.filter-sheet *) {
+  flex-wrap: nowrap;
+}
+
+.shell > .pulse-bar {
+  inset: calc(var(--frame-edge) - var(--frame-pulse-height)) var(--frame-outer-radius) auto;
+  height: var(--frame-pulse-height);
+}
+
+/* Left band. The first and last button start where the inner curve ends. */
 .shell > .rail {
+  inset: var(--frame-edge) auto var(--frame-edge) 0;
+  width: var(--frame-edge);
   align-items: center;
-  padding: var(--frame-content-inset) 0;
+  gap: 6px;
+  padding: var(--frame-radius) 0;
+  overflow: hidden auto;
+  scrollbar-width: none;
+}
+
+.shell .rail-button {
+  width: var(--frame-control);
+  height: var(--frame-control);
+  flex: none;
+  border-radius: calc(var(--frame-control) / 3);
+}
+
+/* Bottom band. */
+.shell > .shell-social-footer {
+  inset: auto 0 0 0;
+  height: var(--frame-edge);
+  padding: 0;
 }
 
 .shell > .pulse-bar:not(.is-busy) {
@@ -141,8 +210,15 @@ html[data-ledger-cursor="active"] :not(:is(
   clip-path: inset(50%);
 }
 
+.shell > .skip-link:focus {
+  position: fixed;
+  z-index: 7;
+  top: var(--frame-gap);
+  left: var(--frame-outer-radius);
+}
+
 .shell > .main {
-  border-radius: var(--frame-radius);
+  border-radius: 0;
   background: var(--palette-background);
   padding: var(--frame-content-inset);
   margin-right: var(--frame-coach-width);
@@ -153,14 +229,13 @@ html[data-ledger-cursor="active"] :not(:is(
 }
 
 .main::before {
-  border-radius: var(--frame-radius) var(--frame-radius) 0 0;
+  border-radius: 0;
 }
 
 .main > .shell-ambient {
   position: absolute;
   inset: 0;
   z-index: -1;
-  clip-path: inset(0 round var(--frame-radius));
   pointer-events: none;
 }
 
@@ -174,11 +249,18 @@ html[data-ledger-cursor="active"] :not(:is(
 .coach-drawer {
   right: var(--frame-edge);
   max-width: var(--frame-coach-max);
+  /* The glow would spill onto the black band. */
+  box-shadow: none;
 }
 
 .main .drawer {
   right: calc(var(--frame-edge) + var(--frame-coach-width) + 12px);
   max-width: calc(100vw - 2 * var(--frame-edge) - 12px);
+}
+
+.undo-hint {
+  right: calc(var(--frame-edge) + 20px);
+  bottom: calc(var(--frame-edge) + 20px);
 }
 
 .filter-sheet-scrim {
@@ -308,18 +390,20 @@ html[data-ledger-cursor="active"] :not(:is(
   grid-area: social;
   display: grid;
   place-items: center;
-  padding: 14px 16px;
-  background: var(--shell-black);
 }
 
+/* The pill is exactly one control tall, so it has the same gap to the band edges as the header. */
 .shell-social-links {
   display: flex;
-  gap: 8px;
+  align-items: center;
+  box-sizing: border-box;
+  height: var(--frame-control);
+  gap: 6px;
   position: relative;
-  padding: 8px 16px;
+  padding: 0 10px;
   background: var(--shell-black);
   border: 1px solid var(--white-12);
-  border-radius: 16px;
+  border-radius: calc(var(--frame-control) / 2);
 }
 
 .shell-social-links::before,
@@ -345,9 +429,9 @@ html[data-ledger-cursor="active"] :not(:is(
 .shell-social-link {
   display: block;
   position: relative;
-  width: 40px;
-  height: 40px;
-  border-radius: 8px;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
   perspective: 1000px;
 }
 
@@ -370,19 +454,24 @@ html[data-ledger-cursor="active"] :not(:is(
   display: grid;
   place-items: center;
   border-radius: inherit;
-  font-size: 18px;
+  font-size: 13px;
   font-weight: 700;
   backface-visibility: hidden;
 }
 
+.shell-social-back svg {
+  width: 14px;
+  height: 14px;
+}
+
 .shell-social-front {
-  border-radius: 8px;
+  border-radius: 6px;
   color: var(--palette-white);
   background: var(--palette-surface1);
 }
 
 .shell-social-back {
-  border-radius: 8px;
+  border-radius: 6px;
   color: var(--shell-black);
   background: var(--palette-white);
   transform: rotateY(180deg);
@@ -422,22 +511,41 @@ html[data-ledger-cursor="active"] :not(:is(
 }
 
 @media (max-width: 800px) {
+  :root {
+    --frame-radius: 14px;
+    --frame-control: 30px;
+  }
+
   .shell {
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: var(--frame-pulse-height) var(--frame-header-height) 1fr auto auto;
-    grid-template-areas: "pulse" "top" "main" "rail" "social";
+    grid-template-rows: minmax(0, 1fr) auto;
+    grid-template-areas: "main" "social";
   }
 
+  /* The rail moves to the bottom band. The footer stays in the page flow, because the band is
+     taken. */
   .shell > .rail {
-    display: grid;
-    grid-template-columns: repeat(7, minmax(0, 40px));
+    inset: auto 0 0 0;
+    width: auto;
+    height: var(--frame-edge);
+    flex-direction: row;
     justify-content: center;
-    gap: 2px;
-    padding: 8px var(--frame-content-inset);
+    gap: 0;
+    padding: 0 var(--frame-outer-radius);
+    overflow: auto hidden;
   }
 
-  .shell .rail-button {
-    width: 100%;
+  .shell > .topbar {
+    padding-inline: var(--frame-edge);
+  }
+
+  .shell > .pulse-bar {
+    inset-inline: var(--frame-edge);
+  }
+
+  .shell > .shell-social-footer {
+    position: static;
+    height: auto;
+    padding: 14px 0 6px;
   }
 }
 
@@ -459,8 +567,11 @@ html[data-ledger-cursor="active"] :not(:is(
 }
 
 @media (max-width: 365px) {
+  :root {
+    --frame-control: 28px;
+  }
+
   .shell > .topbar {
-    padding-inline: 10px;
     gap: 4px;
   }
 }
@@ -484,7 +595,6 @@ html[data-ledger-cursor="active"] :not(:is(
   position: absolute;
   inset: 0;
   z-index: 0;
-  clip-path: inset(0 round var(--frame-radius));
   pointer-events: none;
 }
 

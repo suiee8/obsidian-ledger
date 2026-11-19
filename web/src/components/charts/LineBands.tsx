@@ -44,7 +44,7 @@ export function MonteCarloFan({ fan, label }: { fan: Fan; label: string }) {
         backgroundColor: palette.surface,
         borderColor: palette.line,
         textStyle: { color: palette.ink },
-        extraCssText: "backdrop-filter: blur(12px); border-radius: 12px; box-shadow: 0 12px 32px rgba(0, 0, 0, 0.3);",
+        extraCssText: "backdrop-filter: blur(12px); border-radius: 14px; box-shadow: 0 12px 32px rgba(0, 0, 0, 0.3);",
         formatter: (params: unknown) => {
           const index = (params as { dataIndex?: number }[])[0]?.dataIndex ?? 0;
           const row = fan[index];
@@ -112,7 +112,7 @@ export function SimulatorOverlay({ x, baseline, simulated, label }: OverlayProps
         backgroundColor: palette.surface,
         borderColor: palette.line,
         textStyle: { color: palette.ink },
-        extraCssText: "backdrop-filter: blur(12px); border-radius: 12px; box-shadow: 0 12px 32px rgba(0, 0, 0, 0.3);",
+        extraCssText: "backdrop-filter: blur(12px); border-radius: 14px; box-shadow: 0 12px 32px rgba(0, 0, 0, 0.3);",
         valueFormatter: (value: unknown) => (typeof value === "number" ? fmtMoney(value) : ""),
       },
       xAxis: {
