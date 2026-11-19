@@ -14,6 +14,7 @@ import {
   IconTrades,
 } from "./icons";
 
+const WaveGridBackground = lazy(() => import("./WaveGridBackground"));
 const SapphireAurora = lazy(() => import("../shader/SapphireAurora"));
 
 type ShellProps = {
@@ -135,6 +136,9 @@ export function Shell({
         ))}
       </nav>
       <main className="main" id="content">
+        <Suspense fallback={null}>
+          <WaveGridBackground />
+        </Suspense>
         {children}
       </main>
       <SocialFooter />

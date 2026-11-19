@@ -269,14 +269,14 @@ function LanguageModel({ settings }: { settings: SettingsData }) {
 
   if (status.isPending) {
     return (
-      <Panel title="AI provider" className="span-6">
+      <Panel title="AI provider" className="span-6 ai-provider-panel">
         <p className="muted">Loading…</p>
       </Panel>
     );
   }
   if (status.isError || !current) {
     return (
-      <Panel title="AI provider" className="span-6">
+      <Panel title="AI provider" className="span-6 ai-provider-panel">
         <p role="alert" className="muted">
           The AI settings could not be read: {status.error?.message}
         </p>
@@ -295,7 +295,7 @@ function LanguageModel({ settings }: { settings: SettingsData }) {
   const failure = save.error ?? saveKey.error ?? deleteKey.error ?? test.error;
 
   return (
-    <Panel title="AI provider" className="span-6">
+    <Panel title="AI provider" className="span-6 ai-provider-panel">
       <p className="card-note">{settings.llm.note}</p>
       <p className={current.ready ? "llm-status is-ready" : "llm-status"} role="status">
         {current.ready
