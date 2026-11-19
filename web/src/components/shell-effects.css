@@ -383,6 +383,12 @@ html[data-ledger-cursor="active"] :not(:is(
   pointer-events: none;
 }
 
+/* Keep the panel tint without reblurring the animated backdrop on every frame. */
+.main .glass {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
 :root[data-shader="off"] .main > .wave-grid-layer {
   display: none;
 }

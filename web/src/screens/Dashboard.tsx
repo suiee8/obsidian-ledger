@@ -25,6 +25,12 @@ const EdgeRadar = lazy(() =>
 );
 
 const DISCLAIMER = "Past performance review only. Obsidian Ledger does not give financial advice or trade signals.";
+const HIDDEN_CAVEATS = [
+  /^No starting equity is set, so Sharpe, Sortino, Calmar, and drawdown percentages are unavailable\.$/,
+  /^\d+ trades have no plan-followed value, so adherence uses the rest\.$/,
+  /^\d+ trades have no planned risk, so their R multiples are unavailable\.$/,
+  /^\d+ trades have no MFE, so exit efficiency uses the rest\.$/,
+];
 
 function DashboardSkeleton() {
   return (
@@ -65,6 +71,7 @@ function Headline({ data }: { data: DashboardData }) {
   const { core, risk, discipline, sample } = data.report;
   const drawdown = risk.drawdown;
   const ratios = risk.daily_ratios;
+  const ratioReason = sample.starting_equity ? ratios.reason : undefined;
   return (
     <>
       <div className="kpi-strip" role="region" aria-label="Headline numbers">
@@ -117,11 +124,12 @@ function Headline({ data }: { data: DashboardData }) {
           Sharpe {fmtNumber(ratios.sharpe ?? null, 2)} · Sortino {fmtNumber(ratios.sortino ?? null, 2)} · Calmar{" "}
           {fmtNumber(ratios.calmar ?? null, 2)} · SQN {fmtNumber(risk.sqn, 2)}
         </p>
-      ) : (
+      ) : ratioReason || risk.sqn != null ? (
         <p className="ratio-line muted">
-          {ratios.reason ?? "Set a starting equity to unlock daily-return ratios."} SQN {fmtNumber(risk.sqn, 2)}
+          {ratioReason}{ratioReason && risk.sqn != null ? " · " : ""}
+          {risk.sqn != null ? `SQN ${fmtNumber(risk.sqn, 2)}` : null}
         </p>
-      )}
+      ) : null}
     </>
   );
 }
@@ -170,6 +178,7 @@ export default function Dashboard() {
   }
 
   const low = data.report.sample.low_confidence;
+  const caveats = data.report.caveats.filter((note) => !HIDDEN_CAVEATS.some((pattern) => pattern.test(note)));
   return (
     <div className="dashboard">
       <header className="hero">
@@ -178,10 +187,10 @@ export default function Dashboard() {
         <p className="lede">Your edge, risk, and discipline for the trades in the current selection.</p>
       </header>
       <Headline data={data} />
-      {(low || data.report.caveats.length > 0) && (
+      {(low || caveats.length > 0) && (
         <ul className="caveats" aria-label="Data caveats">
           {low && <li className="chip chip-warn">Low confidence: fewer than 30 trades in this selection</li>}
-          {data.report.caveats.map((note) => (
+          {caveats.map((note) => (
             <li key={note} className="chip">
               {note}
             </li>

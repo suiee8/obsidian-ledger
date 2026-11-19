@@ -25,38 +25,40 @@ SOFTWARE.
 import { useEffect, useRef } from "react";
 import {
   BoxGeometry,
-  DataTexture,
-  FloatType,
   InstancedBufferAttribute,
   InstancedMesh,
   MathUtils,
   Matrix4,
+  Mesh,
+  OrthographicCamera,
   PerspectiveCamera,
   Plane,
+  PlaneGeometry,
   Raycaster,
-  RGBAFormat,
+  RedFormat,
   Scene,
   ShaderMaterial,
   Vector2,
   Vector3,
+  Vector4,
   WebGLRenderer,
+  WebGLRenderTarget,
 } from "three";
 
-const GRID_SIZE = 40;
-const CUBE_WIDTH = 0.8;
-const CUBE_HEIGHT = 3;
-const SPACING = CUBE_WIDTH + 0.01;
-const MAX_TRAIL = 128;
-const FADE_TIME = 2;
-const TRAIL_LIFETIME = FADE_TIME * 4;
+const GRID_SIZE = 80;
+const CUBE_WIDTH = 0.4;
+const CUBE_HEIGHT = 1.5;
+const SPACING = 0.405;
+const GRID_RADIUS = (GRID_SIZE * SPACING) / 2;
+const MAX_TRAIL = 30;
+const SAMPLE_INTERVAL_MS = 40;
+const TRAIL_LIFETIME = 1.15;
+const MAX_RENDER_PIXELS = 500_000;
 
-const vertexShader = /* glsl */ `
-  attribute vec2 aOffset;
-  uniform sampler2D uTrail;
+// Calculate one height per box, then share it with all its vertices.
+const heightShader = /* glsl */ `
+  uniform vec4 uTrail[${MAX_TRAIL}];
   uniform int uCount;
-  uniform float uFadeTime;
-  varying float vHeight;
-  varying float vFace;
 
   vec2 hash2(vec2 p) {
     p = vec2(dot(p, vec2(127.1, 311.7)), dot(p, vec2(269.5, 183.3)));
@@ -64,30 +66,40 @@ const vertexShader = /* glsl */ `
   }
 
   void main() {
-    vec3 displaced = position;
-    vHeight = 0.0;
-    vFace = 0.65 + 0.35 * max(normal.y, 0.0);
-
-    // The reference uses a cosine wave inside a moving Gaussian ring.
-    if (position.y > 0.0) {
-      vec2 worldXZ = aOffset + hash2(aOffset) * 0.2;
-      float height = 0.0;
-      float totalWeight = 0.0;
-      for (int i = 0; i < uCount; i++) {
-        vec4 source = texture2D(uTrail, vec2((float(i) + 0.5) / 128.0, 0.5));
-        float dist = length(worldXZ - source.rg);
-        float relativeDist = dist - 6.0 * source.b;
-        float windowWeight = exp(-(relativeDist * relativeDist) / 9.0);
-        float fade = exp(-source.b / uFadeTime);
-        float attenuation = 1.0 / (1.0 + dist * 0.1);
-        float weight = fade * windowWeight * attenuation * source.a;
-        height += weight * cos(1.2 * relativeDist);
-        totalWeight += weight;
-      }
-      vHeight = clamp(height / max(totalWeight, 1.0) * 0.4, -0.4, 0.4);
-      displaced.y += vHeight;
+    vec2 cell = gl_FragCoord.xy * ${SPACING} - ${GRID_RADIUS.toFixed(3)};
+    vec2 worldXZ = cell + hash2(cell) * 0.1;
+    float height = 0.0;
+    float totalWeight = 0.0;
+    for (int i = 0; i < uCount; i++) {
+      vec4 source = uTrail[i];
+      float dist = length(worldXZ - source.xy);
+      float relativeDist = dist - 6.0 * source.z;
+      if (abs(relativeDist) > 7.0) continue;
+      float windowWeight = exp(-(relativeDist * relativeDist) / 9.0);
+      float weight = windowWeight * source.w / (1.0 + dist * 0.1);
+      height += weight * cos(1.2 * relativeDist);
+      totalWeight += weight;
     }
+    float normalizedHeight = clamp(height / max(totalWeight, 1.0), -1.0, 1.0);
+    gl_FragColor = vec4(normalizedHeight * 0.5 + 0.5, 0.0, 0.0, 1.0);
+  }
+`;
 
+const vertexShader = /* glsl */ `
+  attribute vec2 aCell;
+  uniform sampler2D uHeights;
+  varying float vHeight;
+  varying float vFace;
+
+  void main() {
+    vHeight = texture2D(uHeights, aCell).r * 2.0 - 1.0;
+    if (vHeight <= 0.08) {
+      gl_Position = vec4(2.0, 2.0, 2.0, 1.0);
+      return;
+    }
+    vFace = 0.65 + 0.35 * max(normal.y, 0.0);
+    vec3 displaced = position;
+    if (position.y > 0.0) displaced.y += vHeight * 0.2;
     gl_Position = projectionMatrix * modelViewMatrix * instanceMatrix * vec4(displaced, 1.0);
   }
 `;
@@ -97,13 +109,8 @@ const fragmentShader = /* glsl */ `
   varying float vFace;
 
   void main() {
-    float crest = smoothstep(0.015, 0.23, vHeight);
-    float baseOpacity = 0.18 * vFace;
-    float alpha = mix(baseOpacity, 1.0, crest);
-    // Composite white over a faint dark grid. Solid crests are exactly white.
-    vec3 base = vec3(0.02, 0.035, 0.08) * vFace;
-    vec3 color = mix(base * baseOpacity, vec3(1.0), crest) / alpha;
-    gl_FragColor = vec4(color, alpha);
+    float crest = smoothstep(0.08, 0.55, vHeight);
+    gl_FragColor = vec4(1.0, 1.0, 1.0, crest * vFace);
   }
 `;
 
@@ -119,15 +126,14 @@ export default function WaveGridBackground() {
     const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)");
 
     function mount(canvas: HTMLCanvasElement, main: HTMLElement) {
-      const context = canvas.getContext("webgl2", { alpha: true, antialias: true });
+      const context = canvas.getContext("webgl2", { alpha: true, antialias: false });
       if (!context) return;
 
-      const renderer = new WebGLRenderer({ canvas, context, alpha: true, antialias: true });
+      const renderer = new WebGLRenderer({ canvas, context, alpha: true, antialias: false });
       renderer.setClearColor(0x000000, 0);
 
       const scene = new Scene();
       const camera = new PerspectiveCamera(40, 1, 0.1, 500);
-      const bounds = GRID_SIZE * SPACING;
       const pointer = new Vector2();
       const orbit = new Vector2();
       const raycaster = new Raycaster();
@@ -135,27 +141,53 @@ export default function WaveGridBackground() {
       const hit = new Vector3();
       const trail: Ripple[] = [];
       let previous: Ripple | undefined;
+      let pendingPoint = false;
+      let viewportWidth = 1;
+      let viewportHeight = 1;
       let cameraRadius = 12;
       let frame = 0;
+      let lastDraw = 0;
       let contextLost = false;
 
-      const trailData = new Float32Array(MAX_TRAIL * 4);
-      const texture = new DataTexture(trailData, MAX_TRAIL, 1, RGBAFormat, FloatType);
-      texture.needsUpdate = true;
-      const uniforms = { uTrail: { value: texture }, uCount: { value: 0 }, uFadeTime: { value: FADE_TIME } };
+      const heights = new WebGLRenderTarget(GRID_SIZE, GRID_SIZE, { format: RedFormat, depthBuffer: false });
+      const heightScene = new Scene();
+      const heightCamera = new OrthographicCamera(-1, 1, 1, -1, 0, 1);
+      const heightGeometry = new PlaneGeometry(2, 2);
+      const uniforms = {
+        uTrail: { value: Array.from({ length: MAX_TRAIL }, () => new Vector4()) },
+        uCount: { value: 0 },
+      };
+      const heightMaterial = new ShaderMaterial({
+        uniforms,
+        vertexShader: "void main() { gl_Position = vec4(position.xy, 0.0, 1.0); }",
+        fragmentShader: heightShader,
+        depthTest: false,
+        depthWrite: false,
+      });
+      const heightPlane = new Mesh(heightGeometry, heightMaterial);
+      heightPlane.frustumCulled = false;
+      heightScene.add(heightPlane);
+
       const geometry = new BoxGeometry(CUBE_WIDTH, CUBE_HEIGHT, CUBE_WIDTH);
       const count = GRID_SIZE * GRID_SIZE;
-      const offsets = new InstancedBufferAttribute(new Float32Array(count * 2), 2);
-      geometry.setAttribute("aOffset", offsets);
-      const material = new ShaderMaterial({ uniforms, vertexShader, fragmentShader, transparent: true });
+      const cells = new InstancedBufferAttribute(new Float32Array(count * 2), 2);
+      geometry.setAttribute("aCell", cells);
+      const material = new ShaderMaterial({
+        uniforms: { uHeights: { value: heights.texture } },
+        vertexShader,
+        fragmentShader,
+        transparent: true,
+      });
       const grid = new InstancedMesh(geometry, material, count);
       const transform = new Matrix4();
       const offset = ((GRID_SIZE - 1) * SPACING) / 2;
       for (let i = 0; i < count; i++) {
-        const x = Math.floor(i / GRID_SIZE) * SPACING - offset;
-        const z = (i % GRID_SIZE) * SPACING - offset;
+        const col = Math.floor(i / GRID_SIZE);
+        const row = i % GRID_SIZE;
+        const x = col * SPACING - offset;
+        const z = row * SPACING - offset;
         grid.setMatrixAt(i, transform.makeTranslation(x, 0, z));
-        offsets.setXY(i, x, z);
+        cells.setXY(i, (col + 0.5) / GRID_SIZE, (row + 0.5) / GRID_SIZE);
       }
       scene.add(grid);
 
@@ -172,23 +204,50 @@ export default function WaveGridBackground() {
         camera.updateMatrixWorld();
       }
 
+      function samplePointer(now: number) {
+        if (!pendingPoint || (previous && now - previous.born < SAMPLE_INTERVAL_MS)) return;
+        pendingPoint = false;
+        raycaster.setFromCamera(pointer, camera);
+        if (!raycaster.ray.intersectPlane(plane, hit) || Math.max(Math.abs(hit.x), Math.abs(hit.z)) > GRID_RADIUS) {
+          previous = undefined;
+          return;
+        }
+        const distance = previous ? Math.hypot(hit.x - previous.x, hit.z - previous.z) : 0.7;
+        if (distance < 0.1) return;
+        if (trail.length === MAX_TRAIL) trail.shift();
+        previous = { x: hit.x, z: hit.z, born: now, distance: Math.min(distance, 3) };
+        trail.push(previous);
+      }
+
       function draw(now: number) {
         frame = 0;
+        const elapsed = lastDraw ? now - lastDraw : 1000 / 60;
+        lastDraw = now;
+        orbit.lerp(pointer, 1 - Math.exp(-Math.min(elapsed, 50) / 140));
+        positionCamera();
+        samplePointer(now);
+
         while (trail[0] && (now - trail[0].born) / 1000 > TRAIL_LIFETIME) trail.shift();
+        if (trail.length === 0) {
+          renderer.clear();
+          lastDraw = 0;
+          if (pendingPoint) schedule();
+          return;
+        }
+
         for (let i = 0; i < trail.length; i++) {
           const point = trail[i]!;
-          trailData[i * 4] = point.x;
-          trailData[i * 4 + 1] = point.z;
-          trailData[i * 4 + 2] = (now - point.born) / 1000;
-          trailData[i * 4 + 3] = point.distance;
+          const age = (now - point.born) / 1000;
+          const fade = 1 - MathUtils.smoothstep(age, 0.55, TRAIL_LIFETIME);
+          uniforms.uTrail.value[i]!.set(point.x, point.z, age, point.distance * fade);
         }
-        texture.needsUpdate = trail.length > 0;
         uniforms.uCount.value = trail.length;
 
-        orbit.lerp(pointer, 0.04);
-        positionCamera();
+        renderer.setRenderTarget(heights);
+        renderer.render(heightScene, heightCamera);
+        renderer.setRenderTarget(null);
         renderer.render(scene, camera);
-        if (trail.length || orbit.distanceToSquared(pointer) > 0.000001) schedule();
+        schedule();
       }
 
       function schedule() {
@@ -196,43 +255,35 @@ export default function WaveGridBackground() {
       }
 
       function resize() {
-        const width = Math.max(1, canvas.clientWidth);
-        const height = Math.max(1, canvas.clientHeight);
+        viewportWidth = Math.max(1, canvas.clientWidth);
+        viewportHeight = Math.max(1, canvas.clientHeight);
         const vertical = MathUtils.degToRad(camera.fov) / 2;
-        camera.aspect = width / height;
+        camera.aspect = viewportWidth / viewportHeight;
         const horizontal = Math.atan(Math.tan(vertical) * camera.aspect);
-        cameraRadius = Math.min(bounds / (2 * Math.tan(vertical)), bounds / (2 * Math.tan(horizontal))) * 0.9
+        cameraRadius = Math.min(GRID_RADIUS / Math.tan(vertical), GRID_RADIUS / Math.tan(horizontal)) * 0.9
           + CUBE_HEIGHT * 0.5;
         camera.updateProjectionMatrix();
         positionCamera();
-        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
-        renderer.setSize(width, height, false);
+        // This layer is decorative. Cap its framebuffer independently of the display density.
+        const scale = Math.min(0.75, Math.sqrt(MAX_RENDER_PIXELS / (viewportWidth * viewportHeight)));
+        renderer.setDrawingBufferSize(viewportWidth, viewportHeight, scale);
         schedule();
       }
 
       function move(event: PointerEvent) {
         if (event.pointerType === "touch" || contextLost) return;
-        const rect = canvas.getBoundingClientRect();
-        if (!rect.width || !rect.height) return;
         pointer.set(
-          ((event.clientX - rect.left) / rect.width) * 2 - 1,
-          1 - ((event.clientY - rect.top) / rect.height) * 2,
+          (event.clientX / viewportWidth) * 2 - 1,
+          1 - (event.clientY / viewportHeight) * 2,
         );
-        raycaster.setFromCamera(pointer, camera);
-        if (raycaster.ray.intersectPlane(plane, hit) && Math.max(Math.abs(hit.x), Math.abs(hit.z)) <= bounds / 2) {
-          const distance = previous ? Math.hypot(hit.x - previous.x, hit.z - previous.z) : 0;
-          if (!previous || distance >= 0.1) {
-            if (trail.length === MAX_TRAIL) trail.shift();
-            previous = { x: hit.x, z: hit.z, born: performance.now(), distance };
-            trail.push(previous);
-          }
-        }
+        pendingPoint = true;
         schedule();
       }
 
       function leave() {
         pointer.set(0, 0);
         previous = undefined;
+        pendingPoint = false;
         schedule();
       }
 
@@ -270,7 +321,9 @@ export default function WaveGridBackground() {
         grid.dispose();
         geometry.dispose();
         material.dispose();
-        texture.dispose();
+        heightGeometry.dispose();
+        heightMaterial.dispose();
+        heights.dispose();
         renderer.dispose();
       };
     }

@@ -30,11 +30,20 @@ const PAYLOAD = {
     },
     risk: {
       drawdown: { max_drawdown: -162.05, max_drawdown_pct: null, recovered: false },
-      daily_ratios: { available: false, reason: "Set a starting equity." },
+      daily_ratios: {
+        available: false,
+        reason: "Enter a starting equity to compute daily-return ratios. Without it, only P&L-based and R-based figures are shown.",
+      },
       sqn: null,
     },
     discipline: { score: null, components_used: 0, components_total: 5, formula: "weights" },
-    caveats: ["Only 4 trades in this selection."],
+    caveats: [
+      "Only 4 trades in this selection.",
+      "No starting equity is set, so Sharpe, Sortino, Calmar, and drawdown percentages are unavailable.",
+      "4 trades have no plan-followed value, so adherence uses the rest.",
+      "3 trades have no planned risk, so their R multiples are unavailable.",
+      "2 trades have no MFE, so exit efficiency uses the rest.",
+    ],
   },
   equity: {
     points: [
@@ -87,6 +96,10 @@ describe("Dashboard", () => {
     expect(screen.getByLabelText("Win rate: 50.0%")).toBeTruthy();
     expect(screen.getByText(/Low confidence/)).toBeTruthy();
     expect(screen.getByText("Only 4 trades in this selection.")).toBeTruthy();
+    expect(screen.queryByText(/Enter a starting equity to compute/)).toBeNull();
+    for (const notice of PAYLOAD.report.caveats.slice(1)) {
+      expect(screen.queryByText(notice)).toBeNull();
+    }
   });
 
   it("explains an API failure instead of showing empty panels", async () => {
