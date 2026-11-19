@@ -40,7 +40,7 @@ import {
   Plane,
   PlaneGeometry,
   Raycaster,
-  RedFormat,
+  RGFormat,
   Scene,
   ShaderMaterial,
   Vector2,
@@ -61,6 +61,8 @@ const TRAIL_LIFETIME = FADE_SECONDS * 4;
 const IDLE_AFTER_MS = 3000;
 const IDLE_INTERVAL_MS = 1500;
 const MAX_RENDER_PIXELS = 500_000;
+const CAMERA_EASE_MS = 360;
+const RIPPLE_ATTACK_SECONDS = 0.06;
 
 // Calculate one height per box, then share it with all its vertices.
 const heightShader = /* glsl */ `
@@ -81,13 +83,18 @@ const heightShader = /* glsl */ `
       vec4 source = uTrail[i];
       float dist = length(worldXZ - source.xy);
       float relativeDist = dist - 6.0 * source.z;
+      // Beyond this distance the Gaussian contributes less than 0.002% of its peak.
+      if (abs(relativeDist) > 10.0) continue;
       float windowWeight = exp(-(relativeDist * relativeDist) / 9.0);
       float weight = windowWeight * source.w / (1.0 + dist * 0.1);
       height += weight * cos(1.2 * relativeDist);
       totalWeight += weight;
     }
     float normalizedHeight = clamp(height / max(totalWeight, 1.0), -1.0, 1.0);
-    gl_FragColor = vec4(normalizedHeight * 0.5 + 0.5, 0.0, 0.0, 1.0);
+    // Store a 16-bit height across two channels to avoid visible displacement steps.
+    float encodedHeight = floor((normalizedHeight * 0.5 + 0.5) * 65535.0 + 0.5);
+    float highByte = floor(encodedHeight / 256.0);
+    gl_FragColor = vec4(highByte / 255.0, (encodedHeight - highByte * 256.0) / 255.0, 0.0, 1.0);
   }
 `;
 
@@ -103,7 +110,8 @@ function displaceCubes(vertexShader: string) {
     .replace("#include <begin_vertex>", /* glsl */ `#include <begin_vertex>
       vWaveHeight = 0.0;
       if (position.y > 0.0) {
-        vWaveHeight = texture2D(uHeights, aCell).r * 2.0 - 1.0;
+        vec2 heightBytes = texture2D(uHeights, aCell).rg;
+        vWaveHeight = dot(heightBytes, vec2(65280.0, 255.0)) / 65535.0 * 2.0 - 1.0;
         transformed.y += vWaveHeight * 0.4;
       }`);
 }
@@ -133,8 +141,8 @@ export default function WaveGridBackground() {
       const key = new DirectionalLight(0xffffff, 4);
       key.position.set(-20, 10, 6);
       key.castShadow = true;
-      key.shadow.mapSize.set(1024, 1024);
-      key.shadow.radius = 6;
+      key.shadow.mapSize.set(512, 512);
+      key.shadow.radius = 3;
       key.shadow.bias = 0.0001;
       Object.assign(key.shadow.camera, { near: 0.1, far: 60, left: -22, right: 22, top: 22, bottom: -22 });
       key.shadow.camera.updateProjectionMatrix();
@@ -154,10 +162,11 @@ export default function WaveGridBackground() {
       let viewportHeight = 1;
       let cameraRadius = 12;
       let frame = 0;
+      let lastFrameTime: number | undefined;
       let idleTimer = 0;
       let contextLost = false;
 
-      const heights = new WebGLRenderTarget(GRID_SIZE, GRID_SIZE, { format: RedFormat, depthBuffer: false });
+      const heights = new WebGLRenderTarget(GRID_SIZE, GRID_SIZE, { format: RGFormat, depthBuffer: false });
       const heightScene = new Scene();
       const heightCamera = new OrthographicCamera(-1, 1, 1, -1, 0, 1);
       const heightGeometry = new PlaneGeometry(2, 2);
@@ -254,7 +263,9 @@ export default function WaveGridBackground() {
 
       function draw(now: number) {
         frame = 0;
-        orbit.lerp(pointer, 0.04);
+        const elapsed = lastFrameTime === undefined ? 1000 / 60 : Math.min(now - lastFrameTime, 50);
+        lastFrameTime = now;
+        orbit.lerp(pointer, 1 - Math.exp(-elapsed / CAMERA_EASE_MS));
         positionCamera();
 
         while (trail[0] && (now - trail[0].born) / 1000 > TRAIL_LIFETIME) trail.shift();
@@ -262,7 +273,7 @@ export default function WaveGridBackground() {
         for (let i = 0; i < trail.length; i++) {
           const point = trail[i]!;
           const age = Math.max(0, (now - point.born) / 1000);
-          const fade = Math.exp(-age / FADE_SECONDS);
+          const fade = MathUtils.smoothstep(age, 0, RIPPLE_ATTACK_SECONDS) * Math.exp(-age / FADE_SECONDS);
           uniforms.uTrail.value[i]!.set(point.x, point.z, age, point.distance * fade);
         }
         uniforms.uCount.value = trail.length;
@@ -272,6 +283,7 @@ export default function WaveGridBackground() {
         renderer.setRenderTarget(null);
         renderer.render(scene, camera);
         if (trail.length || orbit.distanceToSquared(pointer) > 0.000001) schedule();
+        else lastFrameTime = undefined;
       }
 
       function schedule() {
