@@ -303,28 +303,99 @@ function LanguageModel({ settings }: { settings: SettingsData }) {
           : `Off. ${current.message ?? ""}`}
       </p>
 
-      <div className="provider-fields">
-        <label className="field">
-          <span>Provider</span>
-          <select
-            value={current.provider}
-            disabled={busy}
-            onChange={(event) => {
-              setKeyDraft("");
-              test.reset();
-              save.mutate({ provider: event.target.value });
-            }}
-          >
-            <option value="none">None (AI off)</option>
-            {current.providers.map((item) => (
-              <option key={item.id} value={item.id}>
-                {item.name}
-              </option>
-            ))}
-          </select>
-        </label>
+      <label className="field">
+        <span>Provider</span>
+        <select
+          value={current.provider}
+          disabled={busy}
+          onChange={(event) => {
+            setKeyDraft("");
+            test.reset();
+            save.mutate({ provider: event.target.value });
+          }}
+        >
+          <option value="none">None (AI off)</option>
+          {current.providers.map((item) => (
+            <option key={item.id} value={item.id}>
+              {item.name}
+            </option>
+          ))}
+        </select>
+      </label>
 
-        {chosen && (
+      {chosen && (
+        <>
+          <p className="card-note">
+            {chosen.note}{" "}
+            {chosen.key_page && (
+              <a href={chosen.key_page} target="_blank" rel="noreferrer">
+                Get an API key
+              </a>
+            )}
+          </p>
+
+          {current.key_saved ? (
+            <div className="control-row">
+              <p className="muted">API key saved in Windows Credential Manager ({current.key_hint}).</p>
+              <button
+                type="button"
+                className="btn"
+                disabled={busy}
+                onClick={() => {
+                  test.reset();
+                  deleteKey.mutate(chosen.id);
+                }}
+              >
+                Remove key
+              </button>
+            </div>
+          ) : (
+            <form
+              className="control-row"
+              onSubmit={(event) => {
+                event.preventDefault();
+                const key = keyDraft.trim();
+                if (key) saveKey.mutate({ provider: chosen.id, api_key: key }, { onSuccess: () => setKeyDraft("") });
+              }}
+            >
+              <label className="field">
+                <span>API key for {chosen.name}</span>
+                <input
+                  type="password"
+                  value={keyDraft}
+                  autoComplete="off"
+                  spellCheck={false}
+                  onChange={(event) => setKeyDraft(event.target.value)}
+                />
+              </label>
+              <button type="submit" className="btn btn-primary" disabled={busy || keyDraft.trim().length < 8}>
+                Save key
+              </button>
+            </form>
+          )}
+
+          <div className="control-row">
+            <button
+              type="button"
+              className="btn"
+              disabled={test.isPending || (!current.key_saved && keyDraft.trim().length < 8)}
+              onClick={() =>
+                test.mutate({
+                  provider: chosen.id,
+                  model: current.model,
+                  api_key: current.key_saved ? undefined : keyDraft.trim(),
+                })
+              }
+            >
+              {test.isPending ? "Testing…" : "Test connection"}
+            </button>
+            <span className="muted" aria-live="polite">
+              {tested
+                ? `${tested.message}${tested.milliseconds !== undefined ? ` (${tested.milliseconds} ms)` : ""}`
+                : "Sends one short test message. No journal data."}
+            </span>
+          </div>
+
           <label className="field">
             <span>Model</span>
             <select
@@ -341,80 +412,6 @@ function LanguageModel({ settings }: { settings: SettingsData }) {
               ))}
             </select>
           </label>
-        )}
-      </div>
-
-      {chosen && (
-        <>
-          <p className="card-note">
-            {chosen.note}{" "}
-            {chosen.key_page && (
-              <a href={chosen.key_page} target="_blank" rel="noreferrer">
-                Get an API key
-              </a>
-            )}
-          </p>
-
-          <div className="provider-connection">
-            {current.key_saved ? (
-              <div className="control-row">
-                <p className="muted">API key saved in Windows Credential Manager ({current.key_hint}).</p>
-                <button
-                  type="button"
-                  className="btn"
-                  disabled={busy}
-                  onClick={() => {
-                    test.reset();
-                    deleteKey.mutate(chosen.id);
-                  }}
-                >
-                  Remove key
-                </button>
-              </div>
-            ) : (
-              <form
-                className="control-row"
-                onSubmit={(event) => {
-                  event.preventDefault();
-                  const key = keyDraft.trim();
-                  if (key) saveKey.mutate({ provider: chosen.id, api_key: key }, { onSuccess: () => setKeyDraft("") });
-                }}
-              >
-                <label className="field">
-                  <span>API key for {chosen.name}</span>
-                  <input
-                    type="password"
-                    value={keyDraft}
-                    autoComplete="off"
-                    spellCheck={false}
-                    onChange={(event) => setKeyDraft(event.target.value)}
-                  />
-                </label>
-                <button type="submit" className="btn btn-primary" disabled={busy || keyDraft.trim().length < 8}>
-                  Save key
-                </button>
-              </form>
-            )}
-            <button
-              type="button"
-              className="btn"
-              disabled={test.isPending || (!current.key_saved && keyDraft.trim().length < 8)}
-              onClick={() =>
-                test.mutate({
-                  provider: chosen.id,
-                  model: current.model,
-                  api_key: current.key_saved ? undefined : keyDraft.trim(),
-                })
-              }
-            >
-              {test.isPending ? "Testing…" : "Test connection"}
-            </button>
-            <span className="muted provider-test-note" aria-live="polite">
-              {tested
-                ? `${tested.message}${tested.milliseconds !== undefined ? ` (${tested.milliseconds} ms)` : ""}`
-                : "Sends one short test message. No journal data."}
-            </span>
-          </div>
 
           <fieldset className="check-group">
             <legend>What leaves this computer</legend>

@@ -230,7 +230,7 @@ html[data-ledger-cursor="active"] :not(:is(
   grid-area: social;
   display: grid;
   place-items: center;
-  padding: 24px 16px;
+  padding: 13.5px 16px;
   background: var(--shell-black);
   border-top: 1px solid var(--white-12);
 }
@@ -239,7 +239,7 @@ html[data-ledger-cursor="active"] :not(:is(
   display: flex;
   gap: 8px;
   position: relative;
-  padding: 16px;
+  padding: 8px 16px;
   background: var(--shell-black);
   border: 1px solid var(--white-12);
   border-radius: 16px;
@@ -398,63 +398,7 @@ html[data-ledger-cursor="active"] :not(:is(
   text-shadow: 0 1px 4px var(--shell-black);
 }
 
-.panel.ai-provider-panel {
-  display: grid;
-  align-self: start;
-  gap: 4px;
+.ai-provider-panel {
   width: 100%;
   max-width: 32rem;
-  padding: 10px 14px;
-}
-
-.ai-provider-panel :is(.panel-title, .card-note, .llm-status, .control-row) {
-  margin: 0;
-}
-
-.ai-provider-panel :is(.panel-title, .llm-status, .muted) {
-  line-height: 1.3;
-}
-
-.ai-provider-panel .card-note {
-  line-height: 1.35;
-}
-
-.ai-provider-panel .control-row,
-.provider-connection {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: end;
-  gap: 6px;
-}
-
-.provider-fields {
-  display: grid;
-  grid-auto-columns: minmax(0, 1fr);
-  grid-auto-flow: column;
-  gap: 8px;
-}
-
-.ai-provider-panel .field {
-  gap: 3px;
-  line-height: 1.3;
-}
-
-.ai-provider-panel :is(.btn, .field input, .field select) {
-  min-height: 32px;
-  padding: 5px 8px;
-  font-size: 13px;
-  line-height: 1.25;
-}
-
-.provider-test-note {
-  grid-column: 1 / -1;
-  font-size: 13px;
-}
-
-.ai-provider-panel .check-group {
-  padding: 4px 8px 6px;
-}
-
-.ai-provider-panel .check-group .card-note {
-  margin-top: 4px;
 }
