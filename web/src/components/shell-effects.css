@@ -27,16 +27,19 @@ SOFTWARE.
   /* One thickness for the top, right, bottom and left bands. The header, the rail and the footer
      sit inside the bands, so the black frame is the same width on every side. */
   --frame-edge: 1.5cm;
+  /* The top band is thicker than the other three. */
+  --frame-edge-top: 1.8cm;
   /* Inner (window) corner. The outer corner is concentric, so its radius is the band plus this. */
   --frame-radius: var(--radius-lg);
   --frame-outer-radius: calc(var(--frame-edge) + var(--frame-radius));
+  --frame-outer-radius-top: calc(var(--frame-edge-top) + var(--frame-radius));
   /* Controls in a band get the same gap to both band edges. */
   --frame-control: 36px;
-  --frame-gap: calc((var(--frame-edge) - var(--frame-control)) / 2);
+  --frame-gap: calc((var(--frame-edge-top) - var(--frame-control)) / 2);
   --frame-corner-fill: var(--palette-surface3);
   --frame-content-inset: clamp(12px, 2.2vw, 32px);
   --frame-pulse-height: 2px;
-  --frame-content-top: var(--frame-edge);
+  --frame-content-top: var(--frame-edge-top);
   --frame-coach-max: calc(100vw - 160px - 2 * var(--frame-edge));
   --frame-coach-width: min(var(--coach-offset, 0px), var(--frame-coach-max));
   --cursor-artwork: url("/cursor-arrow.svg");
@@ -114,7 +117,7 @@ html[data-ledger-cursor="active"] :not(:is(
   /* The window sits between four bands of equal width. The page scrolls under the frame, and the
      header, rail and footer are fixed inside the bands. */
   box-sizing: border-box;
-  padding: var(--frame-edge);
+  padding: var(--frame-edge-top) var(--frame-edge) var(--frame-edge);
   background: transparent;
   grid-template-columns: minmax(0, 1fr);
   grid-template-rows: minmax(0, 1fr);
@@ -125,7 +128,7 @@ html[data-ledger-cursor="active"] :not(:is(
 .shell::after {
   content: "";
   position: fixed;
-  inset: var(--frame-edge);
+  inset: var(--frame-edge-top) var(--frame-edge) var(--frame-edge);
   z-index: 5;
   border-radius: var(--frame-radius);
   /* The hairline and the soft inner shade make the window edge read as one clean curve. */
@@ -142,7 +145,10 @@ html[data-ledger-cursor="active"] :not(:is(
   position: fixed;
   inset: 0;
   z-index: 5;
-  border-radius: var(--frame-outer-radius);
+  /* Elliptical corners stay concentric with the inner curve when the bands differ in width. */
+  border-radius:
+    var(--frame-outer-radius) var(--frame-outer-radius) var(--frame-outer-radius) var(--frame-outer-radius)
+    / var(--frame-outer-radius-top) var(--frame-outer-radius-top) var(--frame-outer-radius) var(--frame-outer-radius);
   box-shadow: 0 0 0 100vmax var(--frame-corner-fill);
   pointer-events: none;
 }
@@ -159,7 +165,7 @@ html[data-ledger-cursor="active"] :not(:is(
    every control is the same distance from the frame edge. */
 .shell > .topbar {
   inset: 0 0 auto 0;
-  height: var(--frame-edge);
+  height: var(--frame-edge-top);
   padding: 0 var(--frame-outer-radius);
   gap: 12px;
 }
@@ -179,13 +185,13 @@ html[data-ledger-cursor="active"] :not(:is(
 }
 
 .shell > .pulse-bar {
-  inset: calc(var(--frame-edge) - var(--frame-pulse-height)) var(--frame-outer-radius) auto;
+  inset: calc(var(--frame-edge-top) - var(--frame-pulse-height)) var(--frame-outer-radius) auto;
   height: var(--frame-pulse-height);
 }
 
 /* Left band. The first and last button start where the inner curve ends. */
 .shell > .rail {
-  inset: var(--frame-edge) auto var(--frame-edge) 0;
+  inset: var(--frame-edge-top) auto var(--frame-edge) 0;
   width: var(--frame-edge);
   align-items: center;
   gap: 6px;
@@ -270,7 +276,7 @@ html[data-ledger-cursor="active"] :not(:is(
 }
 
 .filter-sheet-scrim {
-  inset: var(--frame-edge);
+  inset: var(--frame-edge-top) var(--frame-edge) var(--frame-edge);
   border-radius: var(--frame-radius);
 }
 
@@ -665,7 +671,7 @@ html[data-ledger-cursor="active"] :not(:is(
   display: none;
   position: fixed;
   z-index: 6;
-  top: calc(var(--frame-edge) + var(--frame-radius));
+  top: calc(var(--frame-edge-top) + var(--frame-radius));
   bottom: calc(var(--frame-edge) + var(--frame-radius));
   right: calc((var(--frame-edge) - 3px) / 2);
   width: 3px;
