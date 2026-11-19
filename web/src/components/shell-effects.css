@@ -1,0 +1,368 @@
+/*
+MIT License
+
+Copyright (c) 2025-2026 Ashutoshx7
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+*/
+
+:root {
+  --shell-black: #000000;
+  --cursor-artwork: url("/cursor-arrow.svg");
+  cursor: var(--cursor-artwork) 3 2, default;
+}
+
+:where(button, a[href]) {
+  cursor: var(--cursor-artwork) 3 2, pointer;
+}
+
+:where(input, textarea, [contenteditable]) {
+  cursor: text;
+}
+
+:where(select) {
+  cursor: default;
+}
+
+:where(:disabled, [aria-disabled="true"]) {
+  cursor: not-allowed;
+}
+
+html[data-ledger-cursor="active"] :not(:is(
+  input, textarea, select, select *, [contenteditable], [contenteditable] *,
+  [role="separator"], [role="separator"] *, .resize-handle, .coach-resize, :disabled, :disabled *,
+  [aria-disabled="true"], [aria-disabled="true"] *
+)) {
+  cursor: none;
+}
+
+.cursor-trail,
+.cursor-pulse,
+.cursor-arrow {
+  position: fixed;
+  pointer-events: none;
+}
+
+.cursor-trail {
+  z-index: 9997;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.cursor-pulse {
+  z-index: 9998;
+  width: 24px;
+  height: 24px;
+  margin: -12px 0 0 -12px;
+  border: 1px solid var(--palette-white);
+  border-radius: 50%;
+}
+
+.cursor-arrow {
+  z-index: 9999;
+  top: 0;
+  left: 0;
+  width: 22px;
+  height: 24px;
+}
+
+.cursor-arrow > span {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: var(--cursor-artwork) center / contain no-repeat;
+  transform-origin: 3px 2px;
+}
+
+.cursor-arrow[data-hover="true"] > span {
+  filter: drop-shadow(0 0 3px var(--white-24));
+}
+
+.shell {
+  grid-template-columns: 72px minmax(0, 1fr);
+  grid-template-rows: 2px 56px 1fr auto;
+  grid-template-areas:
+    "pulse pulse"
+    "top top"
+    "rail main"
+    "rail social";
+}
+
+.shell > :is(.topbar, .rail) {
+  background: var(--shell-black);
+}
+
+.shell > .topbar {
+  backdrop-filter: none;
+}
+
+.shell-liquid-filter {
+  position: absolute;
+  pointer-events: none;
+}
+
+.rail-button {
+  color: var(--palette-white);
+}
+
+.rail-button[aria-current="page"] {
+  color: var(--shell-black);
+  background: var(--palette-white);
+  box-shadow: none;
+}
+
+.rail-button[aria-current="page"][data-liquid-click] {
+  color: var(--palette-white);
+  background: var(--shell-black);
+}
+
+:is(.rail .rail-button, .topbar :is(.coach-toggle, .health-badge, .filters-toggle, .filter-bar button)) {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+:is(.rail .rail-button, .topbar :is(.coach-toggle, .health-badge, .filters-toggle, .filter-bar button))[data-liquid-click]::before {
+  display: block;
+  content: "";
+  position: absolute;
+  z-index: 4;
+  inset: 0;
+  width: auto;
+  height: auto;
+  border-radius: inherit;
+  background: var(--palette-white);
+  mix-blend-mode: difference;
+  filter: url(#ledger-liquid-edge);
+  pointer-events: none;
+  animation: shell-liquid-click 520ms ease-out both;
+}
+
+.rail .rail-button[aria-current="page"][data-liquid-click]::before {
+  --liquid-end-opacity: 1;
+}
+
+@keyframes shell-liquid-click {
+  0% {
+    clip-path: circle(0 at var(--liquid-x) var(--liquid-y));
+    opacity: 1;
+  }
+
+  24% {
+    clip-path: circle(calc(var(--liquid-radius) * 0.73) at var(--liquid-x) var(--liquid-y));
+  }
+
+  53%, 100% {
+    clip-path: circle(var(--liquid-radius) at var(--liquid-x) var(--liquid-y));
+  }
+
+  65% { opacity: 1; }
+  100% { opacity: var(--liquid-end-opacity, 0); }
+}
+
+/* Character stagger and two rotating faces follow the VengeanceUI FlipText reference. */
+.shell-flip-brand {
+  display: inline-block;
+  line-height: 1;
+  white-space: nowrap;
+  perspective: 1000px;
+  transform-style: preserve-3d;
+}
+
+.shell-flip-brand > span {
+  display: inline-block;
+  position: relative;
+  height: 1.2em;
+  line-height: 1.2;
+  vertical-align: middle;
+  -webkit-text-fill-color: transparent;
+  transform-style: preserve-3d;
+  animation: shell-brand-flip 2.2s var(--flip-delay) infinite ease;
+}
+
+.shell-flip-brand > span::before,
+.shell-flip-brand > span::after {
+  content: attr(data-char);
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  -webkit-text-fill-color: currentColor;
+  backface-visibility: hidden;
+  animation: shell-brand-fade 2.2s var(--flip-delay) infinite ease;
+}
+
+.shell-flip-brand > span::after { transform: translateZ(0.6em); }
+
+.shell-flip-brand > span::before {
+  transform: rotateX(-90deg) translateZ(0.6em);
+  --flip-face-opacity: 1;
+}
+
+@keyframes shell-brand-flip {
+  0% { transform: rotateX(0deg); }
+  25%, 100% { transform: rotateX(90deg); }
+}
+
+@keyframes shell-brand-fade {
+  0% { opacity: 1; }
+  30%, 100% { opacity: var(--flip-face-opacity, 0); }
+}
+
+.shell-social-footer {
+  grid-area: social;
+  display: grid;
+  place-items: center;
+  padding: 24px 16px;
+  background: var(--shell-black);
+  border-top: 1px solid var(--white-12);
+}
+
+.shell-social-links {
+  display: flex;
+  gap: 8px;
+  position: relative;
+  padding: 16px;
+  background: var(--shell-black);
+  border: 1px solid var(--white-12);
+  border-radius: 16px;
+}
+
+.shell-social-links::before,
+.shell-social-links::after {
+  content: "";
+  position: absolute;
+  inset-inline: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--white-24), transparent) no-repeat;
+  background-size: 60% 100%;
+  pointer-events: none;
+  animation: shell-social-shimmer 2.5s linear infinite;
+}
+
+.shell-social-links::before { top: 0; }
+.shell-social-links::after { bottom: 0; animation-direction: reverse; }
+
+@keyframes shell-social-shimmer {
+  from { background-position: -150% 0; }
+  to { background-position: 250% 0; }
+}
+
+.shell-social-link {
+  display: block;
+  position: relative;
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  perspective: 1000px;
+}
+
+.shell-social-card {
+  display: block;
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+  transition: transform 800ms var(--social-delay) linear(0, 0.07, 0.23, 0.43, 0.61, 0.77, 0.89, 0.96, 1.01, 1.04, 1.05, 1.05, 1.04, 1.03, 1.02, 1.01, 1);
+}
+
+.shell-social-links:is(:hover, :focus-within) .shell-social-card {
+  transform: rotateY(180deg);
+}
+
+.shell-social-front,
+.shell-social-back {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  border-radius: inherit;
+  font-size: 18px;
+  font-weight: 700;
+  backface-visibility: hidden;
+}
+
+.shell-social-front {
+  border-radius: 8px;
+  color: var(--palette-white);
+  background: var(--palette-surface1);
+}
+
+.shell-social-back {
+  border-radius: 8px;
+  color: var(--shell-black);
+  background: var(--palette-white);
+  transform: rotateY(180deg);
+}
+
+.shell-social-tooltip {
+  z-index: 1;
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  padding: 6px 10px;
+  border-radius: 8px;
+  color: var(--shell-black);
+  background: var(--palette-white);
+  font-size: 12px;
+  font-weight: 600;
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, -4px) scale(0.95);
+  transition: opacity 200ms ease-out, transform 200ms ease-out;
+}
+
+.shell-social-tooltip::after {
+  content: "";
+  position: absolute;
+  bottom: -3px;
+  left: calc(50% - 3px);
+  width: 6px;
+  height: 6px;
+  background: inherit;
+  transform: rotate(45deg);
+}
+
+.shell-social-link:is(:hover, :focus-visible) .shell-social-tooltip {
+  opacity: 1;
+  transform: translate(-50%, -10px) scale(1);
+}
+
+@media (max-width: 800px) {
+  .shell {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: 2px 56px 1fr auto auto;
+    grid-template-areas: "pulse" "top" "main" "rail" "social";
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shell-flip-brand > span {
+    -webkit-text-fill-color: currentColor;
+    animation: none;
+  }
+
+  .shell-flip-brand > span::before,
+  .shell-flip-brand > span::after,
+  .shell-social-links::before,
+  .shell-social-links::after { display: none; }
+
+  .shell-social-card,
+  .shell-social-tooltip { transition: none; }
+}

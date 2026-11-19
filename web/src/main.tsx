@@ -5,6 +5,7 @@ import "@fontsource/manrope/500.css";
 import "@fontsource/manrope/600.css";
 import "@fontsource/sora/600.css";
 import "./index.css";
+import "./components/shell-effects.css";
 
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";

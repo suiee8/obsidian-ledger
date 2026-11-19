@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="22" height="24" viewBox="0 0 22 24">
+  <style>
+    :root { --white: #FFFFFF; --z-black: #000000; }
+    path { fill: var(--white); stroke: var(--z-black); }
+    feDropShadow { flood-color: var(--z-black); }
+  </style>
+  <defs>
+    <filter id="shadow" x="-30%" y="-25%" width="175%" height="165%">
+      <feDropShadow dx="0" dy="1" stdDeviation="1" flood-opacity=".45"/>
+    </filter>
+  </defs>
+  <path d="M3 2 19 13.5 11.7 14.2 8.1 21Z" stroke-width="1.25" stroke-linejoin="round" filter="url(#shadow)"/>
+</svg>
