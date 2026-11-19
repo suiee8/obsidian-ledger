@@ -11,7 +11,7 @@ Phases 0–6 are implemented. The app includes CSV, TSV, text, XLSX, XLS, and JS
 ### Current interface
 
 - **Filters:** the top bar filters by account, symbol, and side. Date-range pickers, setup, and tag or emotion filters are not shown in the interface.
-- **Dashboard:** equity curve, strengths and leaks, P&L calendar, edge radar by setup, and weekday-and-hour heatmap. There is no R distribution panel.
+- **Dashboard:** equity curve, P&L calendar, edge radar by setup, and weekday-and-hour heatmap. There is no R distribution panel.
 - **Analytics:** segment explorer (symbol, side, session, weekday, hour, holding time, position size, account), Trade Constellation, MAE and MFE, streaks, fee drag, and a Monte Carlo fan. With no file imported, or filters that match nothing, it shows a guided empty state with an Import or Clear filters action.
 - **Import:** when trades are already in the journal, the screen says a file is already uploaded and lists its symbols and accounts. Dropping another file adds only trades that are not already present.
 - **Coach tools:** `get_metrics`, `compare_segments`, `find_leaks`, `find_strengths`, `get_trade`, `list_trades`, and `simulate_rule`. The Coach explains numbers the app computed and never calculates its own. Futures journals (symbol, long or short side, leverage, margin, fees, realized P&L) are supported.

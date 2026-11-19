@@ -12,14 +12,16 @@ from pathlib import Path
 
 
 def _limit(memory_mb: int, cpu_seconds: int) -> None:
+    if sys.platform == "win32":
+        return
     try:
         import resource  # POSIX only
     except ImportError:
         return
     limit = memory_mb * 1024 * 1024
     try:
-        resource.setrlimit(resource.RLIMIT_AS, (limit, limit))
-        resource.setrlimit(resource.RLIMIT_CPU, (cpu_seconds, cpu_seconds + 2))
+        resource.setrlimit(resource.RLIMIT_AS, (limit, limit))  # pyright: ignore[reportAttributeAccessIssue,reportUnknownMemberType]
+        resource.setrlimit(resource.RLIMIT_CPU, (cpu_seconds, cpu_seconds + 2))  # pyright: ignore[reportAttributeAccessIssue,reportUnknownMemberType]
     except (ValueError, OSError):
         return
 

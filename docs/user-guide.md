@@ -26,7 +26,7 @@ Missing prices, fees, stops, and P&L stay unavailable; the app never substitutes
 ## Read the results and Coach
 
 - **Filters** at the top of the screen narrow every view by account, symbol, and side. Use **Clear** to remove them. There are no date-range, setup, or tag filters in the interface.
-- **Dashboard** summarizes the current journal: key figures, equity curve, strengths and leaks, P&L calendar, edge radar by setup, and a weekday-and-hour heatmap.
+- **Dashboard** summarizes the current journal: key figures, equity curve, P&L calendar, edge radar by setup, and a weekday-and-hour heatmap.
 - **Trades** shows imported trades and supports editing journal fields such as notes and tags.
 - **Analytics** has the segment explorer (symbol, side, session, weekday, entry hour, holding time, position size, account), the Trade Constellation, MAE and MFE, streaks, fee drag, and a Monte Carlo fan. Before a file is imported, or when filters match nothing, it shows an empty state with an **Import a file** or **Clear filters** button.
 - **Behavior** and **Simulator** provide deterministic summaries and what-if calculations. Small samples and multiple comparisons are marked to avoid overstating evidence.

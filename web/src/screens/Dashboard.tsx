@@ -11,7 +11,6 @@ import { ActivityOnly } from "../components/Availability";
 import { ChartFallback, Panel } from "../components/Panel";
 import { DisciplineRing } from "../components/DisciplineRing";
 import { Illustration } from "../components/Illustration";
-import { Findings } from "../components/Findings";
 import { DailyCalendar } from "../components/charts/DailyCalendar";
 import { WeekdayHour } from "../components/charts/WeekdayHour";
 import type { DashboardData } from "../lib/dashboard";
@@ -36,8 +35,7 @@ function DashboardSkeleton() {
         ))}
       </div>
       <div className="bento">
-        <div className="glass panel span-8 skeleton skeleton-tall" />
-        <div className="glass panel span-4 skeleton skeleton-tall" />
+        <div className="glass panel span-12 skeleton skeleton-tall" />
       </div>
     </div>
   );
@@ -191,12 +189,11 @@ export default function Dashboard() {
         </ul>
       )}
       <div className="bento">
-        <Panel title="Equity" className="span-8 panel-fill">
+        <Panel title="Equity" className="span-12 panel-fill">
           <Suspense fallback={<ChartFallback sizeClass="chart-equity" />}>
             {chartsReady ? <EquityAurora equity={data.equity} /> : <ChartFallback sizeClass="chart-equity" />}
           </Suspense>
         </Panel>
-        <Findings findings={data.findings} />
         <Panel title="P&L calendar" className="span-7 panel-hug">
           <DailyCalendar days={data.daily} />
         </Panel>
