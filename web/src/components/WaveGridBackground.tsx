@@ -57,6 +57,7 @@ const CUBE_WIDTH = 0.4;
 const CUBE_HEIGHT = 1.5;
 const SPACING = CUBE_WIDTH + 0.005;
 const WAVE_AMPLITUDE = 0.2;
+const WAVE_WIDTH = 1.5;
 const GRID_RADIUS = (GRID_SIZE * SPACING) / 2;
 const MAX_TRAIL = 128;
 const FADE_SECONDS = 2;
@@ -66,9 +67,9 @@ const IDLE_INTERVAL_MS = 1500;
 const MAX_RENDER_PIXELS = 500_000;
 const CAMERA_EASE_MS = 360;
 const RIPPLE_ATTACK_SECONDS = 0.06;
-// CSS uses 96 pixels per inch. Use viewport pixels so the radius survives resizing.
-const RIPPLE_RADIUS_PX = 5 * 96 / 2.54;
-const RIPPLE_FEATHER_PX = 38;
+// A radius scaled by 1/√2 gives half the area of the previous 5 cm footprint.
+const RIPPLE_RADIUS_PX = (5 * 96 / 2.54) * Math.SQRT1_2;
+const RIPPLE_FEATHER_PX = 38 * Math.SQRT1_2;
 
 // Calculate one height per box, then share it with all its vertices.
 const heightShader = /* glsl */ `
@@ -102,15 +103,16 @@ const heightShader = /* glsl */ `
 
       vec4 source = texture2D(uTrail, vec2(column, 0.25));
       float dist = length(worldXZ - source.xy);
-      float relativeDist = dist - 6.0 * source.z;
+      // Narrow the profile on either side of the wavefront without changing its speed.
+      float relativeDist = (dist - 6.0 * source.z) / ${WAVE_WIDTH};
       // Beyond this distance the Gaussian contributes less than 0.002% of its peak.
-      if (abs(relativeDist) > 10.0) continue;
-      float windowWeight = exp(-(relativeDist * relativeDist) / 9.0);
+      if (abs(relativeDist) > 3.3333) continue;
+      float windowWeight = exp(-relativeDist * relativeDist);
       float edgeFade = 1.0 - smoothstep(
         ${(RIPPLE_RADIUS_PX - RIPPLE_FEATHER_PX).toFixed(3)}, ${RIPPLE_RADIUS_PX.toFixed(3)}, screenDistance
       );
       float weight = windowWeight * edgeFade * source.w / (1.0 + dist * 0.1);
-      height += weight * cos(1.2 * relativeDist);
+      height += weight * cos(3.6 * relativeDist);
       totalWeight += weight;
     }
     float normalizedHeight = clamp(height / max(totalWeight, 1.0), -1.0, 1.0);
