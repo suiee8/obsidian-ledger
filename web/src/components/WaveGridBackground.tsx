@@ -50,8 +50,12 @@ const CUBE_WIDTH = 0.4;
 const CUBE_HEIGHT = 1.5;
 const SPACING = 0.405;
 const GRID_RADIUS = (GRID_SIZE * SPACING) / 2;
+// Halving a circle's area scales its radius by 1/√2. Stretch time to halve the outward speed too.
+const WAVE_RADIUS_SCALE = Math.SQRT1_2;
+const WAVE_SPEED_SCALE = 0.5;
+const WAVE_TIME_SCALE = WAVE_RADIUS_SCALE / WAVE_SPEED_SCALE;
 const MAX_TRAIL = 30;
-const SAMPLE_INTERVAL_MS = 40;
+const SAMPLE_INTERVAL_MS = 40 * WAVE_TIME_SCALE;
 const TRAIL_LIFETIME = 1.15;
 const MAX_RENDER_PIXELS = 500_000;
 
@@ -72,7 +76,7 @@ const heightShader = /* glsl */ `
     float totalWeight = 0.0;
     for (int i = 0; i < uCount; i++) {
       vec4 source = uTrail[i];
-      float dist = length(worldXZ - source.xy);
+      float dist = length(worldXZ - source.xy) / ${WAVE_RADIUS_SCALE};
       float relativeDist = dist - 6.0 * source.z;
       if (abs(relativeDist) > 7.0) continue;
       float windowWeight = exp(-(relativeDist * relativeDist) / 9.0);
@@ -227,7 +231,7 @@ export default function WaveGridBackground() {
         positionCamera();
         samplePointer(now);
 
-        while (trail[0] && (now - trail[0].born) / 1000 > TRAIL_LIFETIME) trail.shift();
+        while (trail[0] && (now - trail[0].born) / 1000 > TRAIL_LIFETIME * WAVE_TIME_SCALE) trail.shift();
         if (trail.length === 0) {
           renderer.clear();
           lastDraw = 0;
@@ -237,7 +241,7 @@ export default function WaveGridBackground() {
 
         for (let i = 0; i < trail.length; i++) {
           const point = trail[i]!;
-          const age = (now - point.born) / 1000;
+          const age = (now - point.born) / (1000 * WAVE_TIME_SCALE);
           const fade = 1 - MathUtils.smoothstep(age, 0.55, TRAIL_LIFETIME);
           uniforms.uTrail.value[i]!.set(point.x, point.z, age, point.distance * fade);
         }
