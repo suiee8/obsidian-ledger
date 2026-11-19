@@ -24,7 +24,7 @@ SOFTWARE.
 
 :root {
   --shell-black: #000000;
-  --frame-edge: 1.2cm;
+  --frame-edge: 1.2mm;
   --frame-radius: 20px;
   --frame-content-inset: clamp(12px, 2.2vw, 32px);
   --frame-header-height: 56px;

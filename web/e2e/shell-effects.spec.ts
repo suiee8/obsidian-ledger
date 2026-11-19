@@ -30,7 +30,7 @@ test("the black frame has equal sides and balanced header insets", async ({ page
     });
     const edge = parseFloat(geometry.edges[0]!);
     expect(geometry.edges.every((width) => width === geometry.edges[0])).toBe(true);
-    expect(Math.abs(edge - (1.2 * 96) / 2.54)).toBeLessThan(1);
+    expect(Math.abs(edge - (1.2 * 96) / 25.4)).toBeLessThan(1);
     expect(geometry.color).toBe("rgb(0, 0, 0)");
     expect(Math.abs(geometry.outerRadius - geometry.innerRadius - edge)).toBeLessThan(1);
     expect(Math.abs(geometry.leftInset - geometry.rightInset)).toBeLessThan(1);
