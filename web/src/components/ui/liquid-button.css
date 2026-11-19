@@ -1,0 +1,128 @@
+/*
+Liquid button styles, ported from the Tailwind classes of VengeanceUI's liquid-button.
+
+MIT License
+
+Copyright (c) 2025-2026 Ashutoshx7
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+*/
+
+.liquid-button {
+  /* The "dark" variant: white ink on a transparent button, dark label where the ink covers it. */
+  --liquid-fill: var(--palette-white);
+  --liquid-text: var(--palette-white);
+  --liquid-active-text: var(--shell-black);
+  --liquid-border: var(--palette-white);
+
+  position: relative;
+  isolation: isolate;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border: 1.5px solid var(--liquid-border);
+  border-radius: 9999px;
+  background: transparent;
+  color: var(--liquid-text);
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    transform 150ms ease-out,
+    box-shadow 150ms ease-out,
+    border-color 150ms ease-out;
+}
+
+.liquid-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 28px -14px color-mix(in srgb, var(--shell-black) 38%, transparent);
+}
+
+.liquid-button[data-pressed] {
+  transform: scale(0.96);
+  box-shadow: inset 0 2px 4px color-mix(in srgb, var(--shell-black) 5%, transparent);
+  transition-duration: 75ms;
+}
+
+.liquid-button:focus-visible {
+  outline: 2px solid var(--focus-outer);
+  outline-offset: 4px;
+}
+
+.liquid-button:disabled {
+  pointer-events: none;
+  opacity: 0.5;
+}
+
+.liquid-button-ink {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.liquid-button-blob {
+  fill: var(--liquid-fill);
+}
+
+.liquid-button-ring {
+  fill: none;
+  stroke: var(--liquid-active-text);
+  stroke-width: 2.4px;
+}
+
+.liquid-button-content,
+.liquid-button-inverted {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  pointer-events: none;
+  transition: transform 100ms;
+}
+
+.liquid-button-content {
+  position: relative;
+  z-index: 10;
+  color: var(--liquid-text);
+}
+
+.liquid-button-inverted {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  padding-inline: inherit;
+  color: var(--liquid-active-text);
+  clip-path: var(--liquid-clip);
+  -webkit-clip-path: var(--liquid-clip);
+}
+
+.liquid-button-inverted [data-liquid-text]::before {
+  content: attr(data-liquid-text);
+}
+
+.liquid-button[data-pressed] :is(.liquid-button-content, .liquid-button-inverted) {
+  transform: scale(0.98);
+}

@@ -284,28 +284,51 @@ html[data-ledger-cursor="active"] :not(:is(
   pointer-events: none;
 }
 
-.rail-button {
-  color: var(--palette-white);
-}
-
-.rail-button[aria-current="page"] {
-  color: var(--shell-black);
-  background: var(--palette-white);
+/* Rail: the seven sections use the VengeanceUI liquid button (components/ui/liquid-button). White
+   ink fills the button under the pointer, and a ring bursts out on press. */
+.shell .rail-button.liquid-button {
+  width: var(--frame-control);
+  height: var(--frame-control);
+  flex: none;
+  padding: 0;
+  border: 1.5px solid var(--liquid-border);
+  border-radius: 9999px;
+  background: transparent;
+  color: var(--liquid-text);
   box-shadow: none;
 }
 
-.rail-button[aria-current="page"][data-liquid-click] {
-  color: var(--palette-white);
-  background: var(--shell-black);
+.shell .rail-button.liquid-button:hover {
+  background: transparent;
+  transform: translateY(-2px);
+  box-shadow: 0 12px 28px -14px color-mix(in srgb, var(--shell-black) 38%, transparent);
 }
 
-:is(.rail .rail-button, .topbar :is(.coach-toggle, .health-badge, .filters-toggle, .filter-bar button)) {
+.shell .rail-button.liquid-button[data-pressed] {
+  transform: scale(0.96);
+  box-shadow: inset 0 2px 4px color-mix(in srgb, var(--shell-black) 5%, transparent);
+}
+
+/* The current section is the inverse: a white button whose ink is black. */
+.shell .rail-button.liquid-button[aria-current="page"] {
+  --liquid-fill: var(--shell-black);
+  --liquid-text: var(--shell-black);
+  --liquid-active-text: var(--palette-white);
+  background: var(--palette-white);
+}
+
+.shell .rail-button.liquid-button svg:not(.liquid-button-ink) {
+  width: 18px;
+  height: 18px;
+}
+
+.topbar :is(.coach-toggle, .health-badge, .filters-toggle, .filter-bar button) {
   position: relative;
   overflow: hidden;
   isolation: isolate;
 }
 
-:is(.rail .rail-button, .topbar :is(.coach-toggle, .health-badge, .filters-toggle, .filter-bar button))[data-liquid-click]::before {
+.topbar :is(.coach-toggle, .health-badge, .filters-toggle, .filter-bar button)[data-liquid-click]::before {
   display: block;
   content: "";
   position: absolute;
@@ -321,9 +344,6 @@ html[data-ledger-cursor="active"] :not(:is(
   animation: shell-liquid-click 520ms ease-out both;
 }
 
-.rail .rail-button[aria-current="page"][data-liquid-click]::before {
-  --liquid-end-opacity: 1;
-}
 
 @keyframes shell-liquid-click {
   0% {
@@ -712,21 +732,6 @@ body {
   box-shadow: var(--elev-3);
 }
 
-.shell .rail-button {
-  transition:
-    color var(--motion-fast) var(--motion-ease),
-    background-color var(--motion-fast) var(--motion-ease),
-    box-shadow var(--motion-fast) var(--motion-ease),
-    transform var(--motion-fast) var(--motion-ease);
-}
-
-.shell .rail-button:hover:not([aria-current="page"]) {
-  transform: scale(1.06);
-}
-
-.shell .rail-button:active {
-  transform: scale(0.94);
-}
 
 /* Each screen settles in from just below. Transform only, so contrast never dips mid-animation. */
 .main > :is(.dashboard, .page, .import-screen, .trades) {
@@ -743,10 +748,4 @@ body {
     animation: none;
   }
 
-  .shell .rail-button,
-  .shell .rail-button:hover,
-  .shell .rail-button:active {
-    transition: none;
-    transform: none;
-  }
 }

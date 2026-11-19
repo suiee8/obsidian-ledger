@@ -84,12 +84,12 @@ test("the black shell animates on click and the footer opens the requested conta
   await expect(rail).toHaveCSS("background-color", "rgb(0, 0, 0)");
   await expect(top).toHaveCSS("background-color", "rgb(0, 0, 0)");
   await expect(page.locator(".shell-flip-brand > span").first()).toHaveCSS("animation-name", "shell-brand-flip");
-  for (const button of [rail.getByRole("button", { name: "Analytics" }), top.getByRole("button", { name: "Coach" })]) {
-    expect(await button.evaluate((element: HTMLButtonElement) => {
-      element.click();
-      return getComputedStyle(element, "::before").animationName;
-    })).toBe("shell-liquid-click");
-  }
+  await expect(rail.locator("[data-liquid-button]")).toHaveCount(7);
+  const coachButton = top.getByRole("button", { name: "Coach" });
+  expect(await coachButton.evaluate((element: HTMLButtonElement) => {
+    element.click();
+    return getComputedStyle(element, "::before").animationName;
+  })).toBe("shell-liquid-click");
 
   const socials = page.getByRole("navigation", { name: "Social links" });
   await expect(socials.getByRole("link", { name: "GitHub" })).toHaveAttribute("href", "https://github.com/suiee8");

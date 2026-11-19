@@ -3,6 +3,7 @@ import { lazy, Suspense, useEffect, useState, type MouseEvent, type ReactNode } 
 import { AgentPresence, type AgentActivity } from "./AgentPresence";
 import { CursorEffects } from "./CursorEffects";
 import { FlipBrand, LiquidFilter, SocialFooter } from "./ShellEffects";
+import { LiquidButton } from "./ui/liquid-button";
 import { ROUTE_LABELS, type Route } from "../routes";
 import {
   IconAnalytics,
@@ -39,7 +40,7 @@ const NAV: readonly { id: Route; icon: ReactNode }[] = [
   { id: "settings", icon: <IconSettings /> },
 ];
 
-const LIQUID_CONTROL = ".rail-button, .coach-toggle, .health-badge, .filters-toggle, .filter-bar button";
+const LIQUID_CONTROL = ".coach-toggle, .health-badge, .filters-toggle, .filter-bar button";
 
 function animateShellClick(event: MouseEvent<HTMLElement>) {
   if (matchMedia("(prefers-reduced-motion: reduce)").matches || !(event.target instanceof Element)) return;
@@ -115,11 +116,10 @@ export function Shell({
           </button>
         </div>
       </header>
-      <nav className="rail" aria-label="Primary" onClickCapture={animateShellClick}>
+      <nav className="rail" aria-label="Primary">
         {NAV.map((item) => (
-          <button
+          <LiquidButton
             key={item.id}
-            type="button"
             className="rail-button"
             aria-label={ROUTE_LABELS[item.id]}
             title={ROUTE_LABELS[item.id]}
@@ -127,7 +127,7 @@ export function Shell({
             onClick={() => onNavigate(item.id)}
           >
             {item.icon}
-          </button>
+          </LiquidButton>
         ))}
       </nav>
       <main className="main" id="content">
