@@ -1,4 +1,4 @@
-import { useEffect, useState, type KeyboardEvent, type PointerEvent, type ReactNode } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent, type PointerEvent, type ReactNode } from "react";
 
 import { apiBase } from "../../lib/api";
 import { useCoachRun, type CoachRun } from "../../lib/coach";
@@ -245,17 +245,19 @@ function Body({
 function Resizer() {
   const width = useUi((state) => state.coachWidth);
   const setWidth = useUi((state) => state.setCoachWidth);
+  const rightEdge = useRef<number>(0);
   const onPointerDown = (event: PointerEvent<HTMLDivElement>) => {
+    rightEdge.current = event.currentTarget.closest(".coach-drawer")?.getBoundingClientRect().right ?? window.innerWidth;
     event.currentTarget.setPointerCapture(event.pointerId);
   };
   const onPointerMove = (event: PointerEvent<HTMLDivElement>) => {
     if (!event.currentTarget.hasPointerCapture(event.pointerId)) return;
-    setWidth(window.innerWidth - event.clientX);
+    setWidth(rightEdge.current - event.clientX);
   };
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
-    if (event.key === "ArrowLeft") setWidth(width + KEY_STEP);
-    else if (event.key === "ArrowRight") setWidth(width - KEY_STEP);
-    else return;
+    if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+    const visibleWidth = event.currentTarget.closest(".coach-drawer")?.getBoundingClientRect().width || width;
+    setWidth(visibleWidth + (event.key === "ArrowLeft" ? KEY_STEP : -KEY_STEP));
     event.preventDefault();
   };
   return (

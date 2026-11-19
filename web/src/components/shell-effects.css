@@ -24,6 +24,14 @@ SOFTWARE.
 
 :root {
   --shell-black: #000000;
+  --frame-edge: 1.2cm;
+  --frame-radius: 20px;
+  --frame-content-inset: clamp(12px, 2.2vw, 32px);
+  --frame-header-height: 56px;
+  --frame-pulse-height: 2px;
+  --frame-content-top: calc(var(--frame-edge) + var(--frame-header-height) + var(--frame-pulse-height));
+  --frame-coach-max: calc(100vw - 160px - 2 * var(--frame-edge));
+  --frame-coach-width: min(var(--coach-offset, 0px), var(--frame-coach-max));
   --cursor-artwork: url("/cursor-arrow.svg");
   cursor: var(--cursor-artwork) 3 2, default;
 }
@@ -96,8 +104,12 @@ html[data-ledger-cursor="active"] :not(:is(
 }
 
 .shell {
+  /* Concentric corners keep the frame thickness even around the opening. */
+  border: var(--frame-edge) solid var(--shell-black);
+  border-radius: calc(var(--frame-edge) + var(--frame-radius));
+  background: var(--shell-black);
   grid-template-columns: 72px minmax(0, 1fr);
-  grid-template-rows: 2px 56px 1fr auto;
+  grid-template-rows: var(--frame-pulse-height) var(--frame-header-height) 1fr auto;
   grid-template-areas:
     "pulse pulse"
     "top top"
@@ -105,12 +117,78 @@ html[data-ledger-cursor="active"] :not(:is(
     "rail social";
 }
 
-.shell > :is(.topbar, .rail) {
+.shell > :is(.topbar, .rail, .shell-social-footer) {
   background: var(--shell-black);
+  border: 0;
 }
 
 .shell > .topbar {
+  z-index: 2;
   backdrop-filter: none;
+  padding-inline: var(--frame-content-inset);
+}
+
+.shell > .rail {
+  align-items: center;
+  padding: var(--frame-content-inset) 0;
+}
+
+.shell > .pulse-bar:not(.is-busy) {
+  background: transparent;
+}
+
+.shell > .skip-link:not(:focus) {
+  clip-path: inset(50%);
+}
+
+.shell > .main {
+  border-radius: var(--frame-radius);
+  background: var(--palette-background);
+  padding: var(--frame-content-inset);
+  margin-right: var(--frame-coach-width);
+}
+
+.main > :is(.dashboard, .page, .import-screen) {
+  margin-inline: auto;
+}
+
+.main::before {
+  border-radius: var(--frame-radius) var(--frame-radius) 0 0;
+}
+
+.main > .shell-ambient {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  clip-path: inset(0 round var(--frame-radius));
+  pointer-events: none;
+}
+
+.coach-drawer,
+.main .drawer {
+  top: var(--frame-content-top);
+  bottom: var(--frame-edge);
+  border-radius: var(--frame-radius);
+}
+
+.coach-drawer {
+  right: var(--frame-edge);
+  max-width: var(--frame-coach-max);
+}
+
+.main .drawer {
+  right: calc(var(--frame-edge) + var(--frame-coach-width) + 12px);
+  max-width: calc(100vw - 2 * var(--frame-edge) - 12px);
+}
+
+.filter-sheet-scrim {
+  inset: var(--frame-edge);
+  border-radius: var(--frame-radius);
+}
+
+.filter-sheet {
+  border-radius: var(--frame-radius);
+  border-bottom: 1px solid var(--palette-border);
 }
 
 .shell-liquid-filter {
@@ -230,9 +308,8 @@ html[data-ledger-cursor="active"] :not(:is(
   grid-area: social;
   display: grid;
   place-items: center;
-  padding: 13.5px 16px;
+  padding: 14px 16px;
   background: var(--shell-black);
-  border-top: 1px solid var(--white-12);
 }
 
 .shell-social-links {
@@ -347,8 +424,44 @@ html[data-ledger-cursor="active"] :not(:is(
 @media (max-width: 800px) {
   .shell {
     grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: 2px 56px 1fr auto auto;
+    grid-template-rows: var(--frame-pulse-height) var(--frame-header-height) 1fr auto auto;
     grid-template-areas: "pulse" "top" "main" "rail" "social";
+  }
+
+  .shell > .rail {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 40px));
+    justify-content: center;
+    gap: 2px;
+    padding: 8px var(--frame-content-inset);
+  }
+
+  .shell .rail-button {
+    width: 100%;
+  }
+}
+
+@media (max-width: 900px) {
+  .shell > .main {
+    margin-right: 0;
+  }
+
+  .coach-drawer {
+    left: var(--frame-edge);
+    width: auto !important;
+    max-width: none;
+  }
+
+  .main .drawer {
+    right: var(--frame-edge);
+    max-width: calc(100vw - 2 * var(--frame-edge));
+  }
+}
+
+@media (max-width: 365px) {
+  .shell > .topbar {
+    padding-inline: 10px;
+    gap: 4px;
   }
 }
 
@@ -371,7 +484,7 @@ html[data-ledger-cursor="active"] :not(:is(
   position: absolute;
   inset: 0;
   z-index: 0;
-  clip-path: inset(0);
+  clip-path: inset(0 round var(--frame-radius));
   pointer-events: none;
 }
 

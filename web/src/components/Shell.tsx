@@ -92,11 +92,6 @@ export function Shell({
     <div className="shell" data-route={route} data-coach-open={coachOpen ? "true" : "false"}>
       <CursorEffects />
       <LiquidFilter />
-      {shaderReady && (
-        <Suspense fallback={<div className="aurora-layer" aria-hidden="true" />}>
-          <SapphireAurora />
-        </Suspense>
-      )}
       <a className="skip-link" href="#content">
         Skip to content
       </a>
@@ -136,6 +131,13 @@ export function Shell({
         ))}
       </nav>
       <main className="main" id="content">
+        {shaderReady && (
+          <div className="shell-ambient" aria-hidden="true">
+            <Suspense fallback={<div className="aurora-layer" />}>
+              <SapphireAurora />
+            </Suspense>
+          </div>
+        )}
         <Suspense fallback={null}>
           <WaveGridBackground />
         </Suspense>

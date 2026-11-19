@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 
 
 // Below this width the filter bar moves into a sheet opened from a "Filters" button. The bar is
 // rendered in only one place at a time, so its labels never appear twice in the page.
-const NARROW_QUERY = "(max-width: 639px)";
+const NARROW_QUERY = "(max-width: 800px)";
 
 const FOCUSABLE = [
   "a[href]",

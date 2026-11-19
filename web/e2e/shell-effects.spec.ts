@@ -1,5 +1,43 @@
 import { expect, test } from "@playwright/test";
 
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => {
+    document.documentElement.dataset.shader = "off";
+  });
+});
+
+test("the black frame has equal sides and balanced header insets", async ({ page }) => {
+  await page.goto("/");
+  for (const width of [1440, 390, 320]) {
+    await page.setViewportSize({ width, height: 900 });
+    if (width <= 800) await expect(page.getByRole("button", { name: "Filters", exact: true })).toBeVisible();
+    const geometry = await page.locator(".shell").evaluate((shell) => {
+      const style = getComputedStyle(shell);
+      const header = shell.querySelector<HTMLElement>(".topbar")!;
+      const brand = header.querySelector<HTMLElement>(".brand")!;
+      const coach = header.querySelector<HTMLElement>(".coach-toggle")!;
+      const opening = getComputedStyle(shell.querySelector("main")!);
+      const bounds = header.getBoundingClientRect();
+      return {
+        edges: [style.borderTopWidth, style.borderRightWidth, style.borderBottomWidth, style.borderLeftWidth],
+        color: style.borderTopColor,
+        innerRadius: parseFloat(opening.borderRadius),
+        outerRadius: parseFloat(style.borderRadius),
+        leftInset: brand.getBoundingClientRect().left - bounds.left,
+        rightInset: bounds.right - coach.getBoundingClientRect().right,
+        pageWidth: document.documentElement.scrollWidth,
+      };
+    });
+    const edge = parseFloat(geometry.edges[0]!);
+    expect(geometry.edges.every((width) => width === geometry.edges[0])).toBe(true);
+    expect(Math.abs(edge - (1.2 * 96) / 2.54)).toBeLessThan(1);
+    expect(geometry.color).toBe("rgb(0, 0, 0)");
+    expect(Math.abs(geometry.outerRadius - geometry.innerRadius - edge)).toBeLessThan(1);
+    expect(Math.abs(geometry.leftInset - geometry.rightInset)).toBeLessThan(1);
+    expect(geometry.pageWidth).toBe(width);
+  }
+});
+
 test("the cursor stays visible over Coach and native form controls keep their cursor", async ({ page }) => {
   await page.goto("/");
   const arrow = page.locator(".cursor-arrow");
