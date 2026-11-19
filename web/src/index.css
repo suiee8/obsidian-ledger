@@ -133,10 +133,14 @@ body,
   background: var(--palette-background);
 }
 
-/* The window scrollbar sits beside the right band, so it takes the band's colour. */
+/* A window scrollbar would add width beside the right band and make it look thicker than the other
+   three. The page still scrolls with the wheel, touch, trackpad and keyboard. */
 html {
-  scrollbar-width: thin;
-  scrollbar-color: var(--palette-border) var(--shell-black);
+  scrollbar-width: none;
+}
+
+html::-webkit-scrollbar {
+  display: none;
 }
 
 body {

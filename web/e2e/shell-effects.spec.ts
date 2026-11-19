@@ -6,7 +6,7 @@ test.beforeEach(async ({ page }) => {
   });
 });
 
-test("the black frame is 1.2 cm on all four sides with concentric corners", async ({ page }) => {
+test("the black frame is 1.5 cm on all four sides with concentric corners", async ({ page }) => {
   await page.goto("/");
   for (const width of [1440, 900, 390, 320]) {
     await page.setViewportSize({ width, height: 900 });
@@ -33,7 +33,7 @@ test("the black frame is 1.2 cm on all four sides with concentric corners", asyn
         pageWidth: document.documentElement.scrollWidth,
       };
     });
-    const edge = (1.2 * 96) / 2.54;
+    const edge = (1.5 * 96) / 2.54;
     for (const side of geometry.edges) expect(Math.abs(side - edge)).toBeLessThan(0.5);
     expect(geometry.color).toContain("rgb(0, 0, 0)");
     expect(new Set(geometry.innerRadii).size).toBe(1);

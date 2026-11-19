@@ -26,12 +26,12 @@ SOFTWARE.
   --shell-black: #000000;
   /* One thickness for the top, right, bottom and left bands. The header, the rail and the footer
      sit inside the bands, so the black frame is the same width on every side. */
-  --frame-edge: 1.2cm;
+  --frame-edge: 1.5cm;
   /* Inner (window) corner. The outer corner is concentric, so its radius is the band plus this. */
   --frame-radius: var(--radius-lg);
   --frame-outer-radius: calc(var(--frame-edge) + var(--frame-radius));
   /* Controls in a band get the same gap to both band edges. */
-  --frame-control: 32px;
+  --frame-control: 36px;
   --frame-gap: calc((var(--frame-edge) - var(--frame-control)) / 2);
   --frame-corner-fill: var(--palette-surface3);
   --frame-content-inset: clamp(12px, 2.2vw, 32px);
@@ -128,7 +128,11 @@ html[data-ledger-cursor="active"] :not(:is(
   inset: var(--frame-edge);
   z-index: 5;
   border-radius: var(--frame-radius);
-  box-shadow: 0 0 0 100vmax var(--shell-black);
+  /* The hairline and the soft inner shade make the window edge read as one clean curve. */
+  box-shadow:
+    0 0 0 100vmax var(--shell-black),
+    inset 0 0 0 1px var(--white-6),
+    inset 0 0 28px color-mix(in srgb, var(--shell-black) 35%, transparent);
   pointer-events: none;
 }
 
@@ -164,6 +168,8 @@ html[data-ledger-cursor="active"] :not(:is(
   box-sizing: border-box;
   height: var(--frame-control);
   padding-block: 0;
+  /* Pills echo the frame curve. */
+  border-radius: calc(var(--frame-control) / 2);
   /* A resting lift would put the control closer to the top edge than the bottom one. */
   transform: none;
 }
@@ -574,6 +580,11 @@ html[data-ledger-cursor="active"] :not(:is(
   .shell > .topbar {
     gap: 4px;
   }
+
+  .shell > .topbar :is(.coach-toggle, .filters-toggle) {
+    padding-inline: 8px;
+    font-size: 12px;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -624,4 +635,118 @@ html[data-ledger-cursor="active"] :not(:is(
 .ai-provider-panel {
   width: 100%;
   max-width: 32rem;
+}
+
+/* ---------------------------------------------------------------------------------------------
+   Right band: scroll progress. The window scrollbar is hidden so it cannot widen the right band;
+   this slim track gives the same cue and mirrors the rail in the left band.
+   --------------------------------------------------------------------------------------------- */
+.frame-scroll {
+  display: none;
+  position: fixed;
+  z-index: 6;
+  top: calc(var(--frame-edge) + var(--frame-radius));
+  bottom: calc(var(--frame-edge) + var(--frame-radius));
+  right: calc((var(--frame-edge) - 3px) / 2);
+  width: 3px;
+  border-radius: 3px;
+  background: var(--white-6);
+  pointer-events: none;
+}
+
+.frame-scroll > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(180deg, var(--palette-royal300), var(--palette-royal500));
+  box-shadow: 0 0 10px var(--glow-royal);
+  transform: scaleY(0);
+  transform-origin: top;
+}
+
+@supports (animation-timeline: scroll()) {
+  .frame-scroll {
+    display: block;
+  }
+
+  .frame-scroll > span {
+    animation: frame-scroll-progress linear both;
+    animation-timeline: scroll(root block);
+  }
+}
+
+@keyframes frame-scroll-progress {
+  from { transform: scaleY(0); }
+  to { transform: scaleY(1); }
+}
+
+/* ---------------------------------------------------------------------------------------------
+   Polish
+   --------------------------------------------------------------------------------------------- */
+body {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+:is(h1, h2, h3, .screen-title, .panel-title) {
+  text-wrap: balance;
+}
+
+:is(p, .lede, .card-note) {
+  text-wrap: pretty;
+}
+
+::selection {
+  color: var(--palette-white);
+  background: color-mix(in srgb, var(--palette-royal500) 55%, transparent);
+}
+
+/* Inner scroll areas (Coach, drawers, the trades grid) get a slim scrollbar in the palette. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--palette-border) transparent;
+}
+
+.main .glass.panel:hover {
+  box-shadow: var(--elev-3);
+}
+
+.shell .rail-button {
+  transition:
+    color var(--motion-fast) var(--motion-ease),
+    background-color var(--motion-fast) var(--motion-ease),
+    box-shadow var(--motion-fast) var(--motion-ease),
+    transform var(--motion-fast) var(--motion-ease);
+}
+
+.shell .rail-button:hover:not([aria-current="page"]) {
+  transform: scale(1.06);
+}
+
+.shell .rail-button:active {
+  transform: scale(0.94);
+}
+
+/* Each screen settles in from just below. Transform only, so contrast never dips mid-animation. */
+.main > :is(.dashboard, .page, .import-screen, .trades) {
+  animation: frame-screen-in 320ms var(--motion-ease) both;
+}
+
+@keyframes frame-screen-in {
+  from { transform: translateY(8px); }
+  to { transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .main > :is(.dashboard, .page, .import-screen, .trades) {
+    animation: none;
+  }
+
+  .shell .rail-button,
+  .shell .rail-button:hover,
+  .shell .rail-button:active {
+    transition: none;
+    transform: none;
+  }
 }

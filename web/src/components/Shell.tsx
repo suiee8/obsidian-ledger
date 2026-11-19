@@ -143,6 +143,9 @@ export function Shell({
         </Suspense>
         {children}
       </main>
+      <div className="frame-scroll" aria-hidden="true">
+        <span />
+      </div>
       <SocialFooter />
     </div>
   );
