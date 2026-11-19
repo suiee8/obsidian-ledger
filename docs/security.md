@@ -12,13 +12,13 @@
 - Provider keys are stored through `keyring` in the OS keychain. The API returns only a masked hint; the database, captured logs, exports, and every ZIP member are checked by a canary-key test.
 - ZIP exports are assembled locally and do not contain the provider key.
 
-## Phase 6B backend audit — 2026-11-13
+## Historical backend audit (2026-11-13)
 
 Each item was re-verified with a test run. "Fixed" means a test failed or the control was missing and was changed in this phase.
 
 | # | Control | Result | Evidence |
 | --- | --- | --- | --- |
-| 1 | API binds only to 127.0.0.1; TrustedHost allows `127.0.0.1` and `localhost` | Verified | `test_api_binds_only_to_localhost_by_default`, `test_api_host_setting_rejects_non_loopback_bind_addresses`, `test_wrong_host_is_rejected` |
+| 1 | API binds only to 127.0.0.1; Host guard allows `127.0.0.1` and `localhost` | Verified | `test_api_binds_only_to_localhost_by_default`, `test_api_host_setting_rejects_non_loopback_bind_addresses`, `test_wrong_host_is_rejected` |
 | 2 | Origin present and not allow-listed is rejected, including simple cross-origin POSTs and preflights | Fixed (middleware and tests tightened) | `test_request_from_unlisted_origin_is_rejected`, `test_cors_options_preflight_from_unlisted_origin_rejected` |
 | 3 | Body-size limits on every endpoint (small JSON cap, larger upload cap, streamed bodies without Content-Length cut off); archive traversal and zip-bomb rejection | Fixed (limits applied to every endpoint) / archive checks verified | `test_global_request_body_limit_rejects_non_upload_endpoint`, `test_json_endpoints_use_a_small_body_cap_below_the_upload_limit`, `test_streamed_body_without_content_length_is_cut_off`, existing XLSX archive tests |
 | 4 | Security headers on API responses | Verified | `test_all_api_responses_have_security_headers` |
@@ -29,9 +29,9 @@ Each item was re-verified with a test run. "Fixed" means a test failed or the co
 | 7 | `pip-audit` and `pnpm audit` | See the dependency audit below | |
 | 8 | SQL path accepting model-written queries | None exists. Coach tools take typed arguments only. | `test_coach_tools_expose_no_free_form_sql_or_query_argument`, `test_coach_tool_call_rejects_unknown_arguments`. A SELECT-only guard is therefore not needed; if a SQL tool is ever added it must ship with one. |
 
-## Dependency audit — 2026-11-12 (repeated 2026-11-13)
+## Dated dependency audit results
 
-The 2026-11-13 repeat gave the same result: `pip-audit` reports no known vulnerabilities, and `pnpm audit` reports 7 findings (1 high, 5 moderate, 1 low), all listed below. There are no critical findings.
+The November 12–13, 2026 runs provide historical evidence. On November 13, `pip-audit` reports no known vulnerabilities, and `pnpm audit` reports 7 findings (1 high, 5 moderate, 1 low), all listed below. There are no critical findings.
 
 Commands:
 
@@ -56,7 +56,7 @@ Before the 2026-11-17 upgrades the audit reported five moderate advisories and o
 - `glob` and `minimatch` advisories arrive transitively through `vite-plugin-pwa`/`workbox-build` and `typescript-eslint`; the published patched ranges require major versions. They are build/development dependencies.
 - `deepmerge` 4.3.1 has a low-severity advisory with no patched version listed, through `workbox-build`.
 
-A repeat audit on 2026-11-17 reported no high or critical findings. The remaining two moderate (`glob`, `minimatch`) and one low (`deepmerge`) advisory need major versions of build-only packages. Do not treat the tool's nonzero exit as a clean audit.
+The November 17, 2026 run reported two moderate findings (`glob` and `minimatch`) and one low finding (`deepmerge`) through build dependencies. Consult the [current CI workflow](../.github/workflows/ci.yml) for the checks run on each revision.
 
 ## Known limitations
 
@@ -64,17 +64,17 @@ A repeat audit on 2026-11-17 reported no high or critical findings. The remainin
 - Browser printing an exported HTML report to PDF is controlled by the browser and is not an application-generated PDF export.
 - Optional cloud AI use sends selected result data to the chosen provider only after consent. Review that provider's own retention and billing terms before enabling it.
 
-## Security phase — defense in depth
+## Security settings
 
-Opt-in settings (all off by default; local use is unchanged):
+These settings are opt-in.
 
 | Setting | Effect |
 | --- | --- |
-| `LEDGER_PUBLIC=1` | Login required, `/docs` and `/openapi.json` off, needs `LEDGER_PASSWORD_HASH` and `LEDGER_CORS_ORIGINS` |
+| `LEDGER_PUBLIC=1` | Requires a scrypt `LEDGER_PASSWORD_HASH` and explicit `LEDGER_CORS_ORIGINS`. Enables login and disables the API documentation endpoints. |
 | `LEDGER_DEMO_READONLY=1` | Import, edit, delete, wipe, key storage and settings writes refused; read-only banner in the UI |
 | `LEDGER_SCANNER=clamd` or `defender` | Scan the quarantined upload before parsing |
 
-Data folder permissions: on Linux and macOS the API sets mode `700`. On Windows run
+In public mode the API sets the journal directory to mode `700` on POSIX systems. On Windows run
 `icacls .ledger-data /inheritance:r /grant:r "%USERNAME%:(OI)(CI)F"`.
 
 ### Bandit findings (Ruff `S` rules)
@@ -92,9 +92,9 @@ CI fails on any high or critical `pnpm audit` finding and on any `pip-audit` fin
 exception is allowed only when it is recorded in this file with the package, advisory, reason and
 review date.
 
-## Verification (part 7)
+## Test coverage
 
 - `api/tests/security/test_malicious_corpus.py`: zip bombs, zip-slip, macro and external-link workbooks, wrong magic bytes, polyglots, DDE formulas, oversized rows and columns, nested JSON, prototype keys, and seeded fuzzing. Every file is refused or gets a structured error, never a 500. The EICAR case runs only when ClamAV is installed.
 - `api/tests/security/test_request_attacks.py`: spoofed Host and Origin, missing client header, rate limiting, path traversal, SQL injection strings in every filter and sort, and error bodies that never show internals.
 - `web/e2e/zz-security.spec.ts`: hostile symbols render as text, the web app sends `X-Ledger-Client`, strict page headers, and forged requests are refused.
-- Known limits: `style-src` keeps `'unsafe-inline'` because charts and React inline styles need it. The dev server also allows inline scripts for the Vite refresh preamble; `vite preview` and production builds do not.
+- Known limits: `style-src` keeps `'unsafe-inline'` because charts and React inline styles need it. The dev server also allows inline scripts for the Vite refresh preamble; The configured Vite preview server uses a stricter script policy. Production hosting must serve the corresponding headers.

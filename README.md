@@ -1,86 +1,65 @@
 # Obsidian Ledger
 
-Obsidian Ledger is a local-first trading journal for importing completed trades, reviewing deterministic performance metrics, and optionally asking an AI Coach to explain its evidence. It does not predict markets or issue trade signals.
+Obsidian Ledger is a local-first trading journal for reviewing completed trades. Import a journal, examine performance and behavior, and use the Coach to explain the evidence. All calculations run locally. The journal is for historical review and education.
 
-![Obsidian Ledger overview with the local API online](docs/screenshots/overview.png)
+![Obsidian Ledger dashboard with 1,000 synthetic trades, the black navigation rail, headline metrics, and equity chart](docs/screenshots/overview.png)
 
-## Status
+## Features
 
-Phases 0–6 are implemented. The app includes CSV, TSV, text, XLSX, XLS, and JSON imports; broker-layout detection; FIFO pairing for IBKR fills; a local DuckDB/Parquet store; deterministic metrics, behavior analysis, and simulations; Dashboard, Analytics, Behavior, Simulator, Trades, Import, and Settings screens; and an optional tool-backed Coach. Phase 6 adds upload and export hardening, keychain credential storage, security and dependency auditing, documentation, and performance measurements up to 10,000 trades.
+- **Import and reconcile.** Import CSV, TSV, text, XLSX, XLS, or JSON. Review detected columns, assumptions, capabilities, and rejected rows before committing. IBKR execution imports can pair fills using FIFO.
+- **Review a journal.** Filter by account, symbol, and side. The Dashboard shows headline metrics, equity, a P&L calendar, an edge radar, and a weekday-by-hour heatmap. Use Trades to inspect individual records and edit journal fields.
+- **Investigate results.** Analytics includes segment comparisons, Trade Constellation, MAE/MFE, streaks, fee drag, and a Monte Carlo fan. Behavior and Simulator cover trading patterns and what-if rules.
+- **Use Coach with or without AI.** The rules-based report runs locally. Optional AI explains computed tool results through a provider you configure and authorize.
+- **Keep and export your data.** The local DuckDB and Parquet store holds the journal and source records. Export a workspace ZIP from Settings or export a Coach report and print the HTML to PDF.
 
-### Current interface
+## Get started
 
-- **Filters:** the top bar filters by account, symbol, and side. Date-range pickers, setup, and tag or emotion filters are not shown in the interface.
-- **Dashboard:** equity curve, P&L calendar, edge radar by setup, and weekday-and-hour heatmap. There is no R distribution panel.
-- **Analytics:** segment explorer (symbol, side, session, weekday, hour, holding time, position size, account), Trade Constellation, MAE and MFE, streaks, fee drag, and a Monte Carlo fan. With no file imported, or filters that match nothing, it shows a guided empty state with an Import or Clear filters action.
-- **Import:** when trades are already in the journal, the screen says a file is already uploaded and lists its symbols and accounts. Dropping another file adds only trades that are not already present.
-- **Coach tools:** `get_metrics`, `compare_segments`, `find_leaks`, `find_strengths`, `get_trade`, `list_trades`, and `simulate_rule`. The Coach explains numbers the app computed and never calculates its own. Futures journals (symbol, long or short side, leverage, margin, fees, realized P&L) are supported.
-- There is no command palette or background-pause control.
+**Requirements:** Node.js 22+, pnpm 12.18.0, Python 3.12, and [uv](https://docs.astral.sh/uv/).
 
-There is no Reports screen or application-generated PDF export. Exported HTML can be printed to PDF in a browser. Ollama is not connected to the current app; see the [user guide](docs/user-guide.md) for this limitation and other known issues.
+Run these commands from the repository root in PowerShell or a terminal:
 
-## Importing trade history
-
-Import detects file structure and infers column roles from headers and cell contents; selecting a broker is not required. Review the **What we found** card, capability checklist, confidence, samples, and warnings before committing. Low-confidence or ambiguous fields require a mapping choice. Files with missing prices or P&L retain those values as unavailable rather than filling them with zero; activity summaries remain available, and the Coach reports that performance cannot be assessed without P&L. See [the import guide](docs/ingestion.md) for supported formats, mapping, timestamps, and limitations.
-
-## Requirements
-
-- Node.js 22 or newer
-- pnpm 12.18.0
-- Python 3.12
-- [uv](https://docs.astral.sh/uv/)
-
-## Install and run
-
-From the repository root in PowerShell:
-
-```powershell
+```text
 pnpm bootstrap
-pnpm seed        # optional: load the 1,000-trade sample journal
 pnpm dev
 ```
 
-Open <http://127.0.0.1:5173>. The API listens only on `127.0.0.1:8000`; the web client remains usable when the API is offline. `pnpm dev:api` and `pnpm dev:web` start either service alone. Copy `.env.example` to `.env` only to change local ports or the allowed browser origins. No telemetry is configured.
+Open <http://127.0.0.1:5173>. The launcher starts Vite on port 5173 and FastAPI on port 8000, both on `127.0.0.1`. For a demo, run `pnpm seed` before starting the servers to load 1,000 synthetic trades. For your own data, open **Import**, review the preview, and confirm the import.
 
-See the [user guide](docs/user-guide.md) for importing files, using the Coach, privacy controls, and exports. The [architecture](docs/architecture.md), [ingestion notes](docs/ingestion.md), and [metrics definitions](docs/metrics-definitions.md) describe implementation details.
+The default setup works without an `.env` file. The development launcher uses fixed ports. See the [local configuration and troubleshooting guide](docs/user-guide.md#local-configuration) for settings and separate service commands.
 
-## Validation
+## Privacy
 
-```powershell
+The browser sends imports to the local API, which stores the journal on your machine. The app has no telemetry. AI is optional. If you consent to using a cloud provider, the provider receives the selected result data. Aggregate-only sharing is the default, and provider keys are stored in the operating system's keychain. See the [privacy guide](docs/user-guide.md#privacy-choices) and [security notes](docs/security.md).
+
+## Development
+
+Run the core GitHub Actions checks from the repository root:
+
+```text
 pnpm install --frozen-lockfile
-uv lock --check
-pnpm check       # web lint/typecheck/unit tests and API Ruff/Pyright/pytest
-pnpm test         # web checks/build plus API checks/tests
-pnpm test:e2e     # browser tests using installed Microsoft Edge
-pnpm bench        # ten runs at 1k, 5k, and 10k trades; never above 10k
+uv lock --check --directory api
+uv sync --directory api --frozen
+pnpm test
 ```
 
-The recorded Phase 6 validation run (332 API tests, 43 web unit tests, 78 browser tests) predates the interface changes above; the web unit suite is now 59 tests. `pnpm check` runs ESLint, TypeScript, Vitest, Ruff, Pyright, and pytest. Playwright runs serially with an isolated temporary API data directory and the installed Edge browser; it does not download a browser. The browser suite writes screenshots to ignored `docs/screens/`; committed reference images stay in `docs/screenshots/`. See [the test report](docs/test-report.txt) and [benchmark results](benchmarks/RESULTS.md).
+| Command | Use |
+| --- | --- |
+| `pnpm check` | Run lint, type checks, and unit/API tests. |
+| `pnpm test` | Run web and API checks and build the production frontend. |
+| `pnpm test:e2e` | Run Playwright with isolated sample data. Microsoft Edge is the default; set `E2E_BROWSER_CHANNEL=chrome` to use installed Google Chrome. Stop `pnpm dev` first so the runner can start its own services. |
+| `pnpm bench` | Run the performance harness for 1,000, 5,000, and 10,000 synthetic trades. |
 
-## Data and privacy boundary
+See the [validation report](docs/test-report.txt) for dated results and [CI](.github/workflows/ci.yml) for the workflow.
 
-Imports, the DuckDB database, Parquet files, and ZIP exports stay on this computer. The API accepts browser requests only from configured local origins. Provider keys are stored in the operating-system keychain, not in the database or exports. The Coach works with AI turned off; optional cloud AI requires user selection and consent, and sends only the selected result data to that provider. Review the provider's privacy and billing terms before enabling it. The app has no telemetry.
+## Documentation
 
-CSV exports prefix spreadsheet-formula-like values with an apostrophe after serialization; JSON numeric values remain numbers. ZIP exports are assembled locally and may contain financial and behavioral journal data, so keep them in a secure location.
+| If you want to… | Start here |
+| --- | --- |
+| Use the app or configure local services | [User guide](docs/user-guide.md) · [Accessibility](docs/accessibility.md) |
+| Prepare an import or try sample trades | [Import reference](docs/ingestion.md) · [Sample files](samples/README.md) |
+| Understand results or implementation | [Metrics definitions](docs/metrics-definitions.md) · [Architecture and decision records](docs/architecture.md) |
+| Review privacy, deployment boundaries, or dependencies | [Network](docs/network.md) · [Threat model](docs/threat-model.md) · [Dependencies and licenses](docs/dependencies.md) |
+| Reproduce performance measurements | [Benchmark commands](benchmarks/README.md) · [Recorded results](benchmarks/RESULTS.md) |
+| Report a vulnerability privately | [Security policy](SECURITY.md) |
 
-## Known issues
-
-- The app does not currently have an Ollama adapter. Installing Ollama and `qwen2.5:7b` does not connect a local model to this build.
-- The npm audit has no high or critical findings; two moderate and one low build-only advisory remain, and details and mitigation rationale are in [security notes](docs/security.md).
-- Lighthouse and 10,000-trade performance measurements, including their ranges and limitations, are recorded in [benchmark results](benchmarks/RESULTS.md).
-
-## Samples and project map
-
-The committed fixtures are under `samples/` and can be imported from the Import screen, including broker exports (Binance, Bybit, MEXC futures, IBKR, MT4, MT5, TradingView, Zerodha), a deliberately messy journal, Coach test files, a 1,000-row preview, and an intentional 100,000-row synthetic sample. See [samples/README.md](samples/README.md). The benchmark command is capped at 10,000 trades and stores generated inputs under ignored `benchmarks/out/`.
-
-- `web/` — React, TypeScript, and Vite client
-- `api/` — Python and FastAPI service
-- `samples/` — import fixtures and manifests
-- `benchmarks/` — deterministic generators, harness, and results
-- `docs/` — user guide, architecture, security notes, and ADRs
-
-The project is MIT licensed; dependency licenses are listed in [docs/dependencies.md](docs/dependencies.md).
-
-## License
-
-MIT; see [LICENSE](LICENSE).
+The project is licensed under the [MIT License](LICENSE).

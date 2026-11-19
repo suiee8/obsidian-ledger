@@ -135,7 +135,7 @@ Each issue in the report has a severity, a count, up to ten example source rows,
 
 ## API
 
-All routes are under `/api` and bind to the loopback address.
+These routes are available under `/api` on the local API. Write requests require `X-Ledger-Client: web`. The local [OpenAPI UI](http://127.0.0.1:8000/docs) lists the request and response schemas while the API is running.
 
 | Method and path | Purpose |
 | --- | --- |
@@ -149,7 +149,7 @@ All routes are under `/api` and bind to the loopback address.
 
 Errors use one shape: `{"error": {"code", "message", "details"}}`.
 
-`ImportOptions` fields: `mapping`, `shape`, `date_format`, `decimal`, `timezone`, `default_symbol`, `default_account`, `default_currency`, `base_currency` (default USD), `fx_rates`, `contract_sizes`, `starting_equity`, `template_name`. Unknown fields are refused.
+`ImportOptions` covers mapping, grouping, dates and decimal formats, symbol aliases, position side mode, account and currency defaults, FX rates, contract sizes, starting equity, and template names. The default base currency is USD. The API rejects unknown fields. See the [options schema](../api/src/obsidian_ledger/ingest/options.py).
 
 ## Storage
 
@@ -158,7 +158,7 @@ Errors use one shape: `{"error": {"code", "message", "details"}}`.
 - `.ledger-data/rejected/<import_id>.csv`: rejected rows.
 - `.ledger-data/staging/`: uploads waiting for commit. Removed on commit.
 
-The directory is set by `LEDGER_DATA_DIR` and is git-ignored.
+With the default launcher the directory is `api/.ledger-data/`. Set `LEDGER_DATA_DIR` to use another location. See the [local configuration guide](user-guide.md#local-configuration).
 
 ## Known limits
 
@@ -169,5 +169,5 @@ The directory is set by `LEDGER_DATA_DIR` and is git-ignored.
 - Headerless files do not contain enough evidence for reliable automatic role assignment. The Import screen requests an explicit mapping; this is intentional.
 - Date-only and hour-only values preserve their source precision. Holding-time and ordering interpretation is therefore less precise than full timestamps.
 - Notional value is not converted into P&L. Any formula-based P&L derivation requires explicit user confirmation and must not be inferred from equal open and close notionals.
-- `messy_journal.csv` has one timestamp column, so none of its rows has an exit time. Its README mentions a "close stamped before its open" row, which cannot be detected in this file. The negative-duration rule is covered by a test with inline data.
-- Performance: 100k rows ingest in about 10.6 seconds and 1M rows in about 129 seconds on the measured machine. See `benchmarks/README.md`.
+- `messy_journal.csv` has one timestamp column and does not provide the separate entry and exit times needed to evaluate trade duration. The negative-duration rule has a separate test.
+- The [benchmark guide](../benchmarks/README.md) records historical timings for larger fixtures and explains how to generate new measurements.

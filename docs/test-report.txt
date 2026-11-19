@@ -1,3 +1,28 @@
+Obsidian Ledger validation record
+=================================
+
+Current application revision
+----------------------------
+Source: 457c2bd (cursor effects and animated shell on main).
+
+Verified November 19, 2026:
+- uv lock --check --directory api confirmed the API lockfile is current.
+- pnpm check passed. Vitest ran 59 tests. API lint and type checks passed.
+  Pytest passed 409 tests and skipped the optional ClamAV case.
+- The overview screenshot was captured in Chromium with the 1,000-trade
+  synthetic journal, reduced motion, and the decorative shader disabled.
+
+Verified when the application revision was published:
+- pnpm test:web passed, including the production build.
+- A targeted Playwright run passed all 30 tests in Chromium. It covered
+  shell-effects.spec.ts, a11y.spec.ts, smoke.spec.ts, keyboard.spec.ts, and
+  zz-security.spec.ts.
+- That result covers the listed browser suites. The historical transcript below
+  is from a different application revision and includes older screens and tests.
+
+Historical transcript
+---------------------
+
 # pnpm check (Zod 4.6.7, Vitest 4.1.12) - 2026-11-16
 $ pnpm -C web lint && pnpm -C web typecheck && pnpm -C web test && pnpm lint:api && pnpm typecheck:api && uv run --directory api pytest -q
 $ eslint .

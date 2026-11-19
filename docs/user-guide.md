@@ -11,7 +11,25 @@ pnpm bootstrap
 pnpm dev
 ```
 
-Open <http://127.0.0.1:5173>. The API runs on <http://127.0.0.1:8000> and binds to loopback. `pnpm seed` optionally imports the 1,000-trade sample journal. See [ingestion.md](./ingestion.md) for accepted file formats and mapping details.
+Open <http://127.0.0.1:5173>. For a demo, run `pnpm seed` before starting the servers. See [ingestion.md](./ingestion.md) for accepted file formats and mapping details.
+
+## Local configuration
+
+| Item | Default or location |
+| --- | --- |
+| Web app | `http://127.0.0.1:5173` |
+| API | `http://127.0.0.1:8000` |
+| Journal directory | `api/.ledger-data/` when launched from the repository root |
+| API overrides | Set `LEDGER_*` in the process environment or `api/.env`. The API resolves a relative data directory from its working directory. Use an absolute `LEDGER_DATA_DIR` to choose a specific folder. |
+| Web API endpoint | Set `VITE_API_URL` in the frontend process environment or `web/.env`, then restart Vite or rebuild. |
+
+Use the values in [`.env.example`](../.env.example) as a reference. The standard `pnpm dev` launcher uses ports 5173 and 8000. `pnpm dev:web` and `pnpm dev:api` start the services separately on those defaults.
+
+If the badge reads **offline · stale**, check the API at <http://127.0.0.1:8000/health/ready> and review its terminal output. If the API reports a database lock, close the other Ledger API process before restarting.
+
+## Navigate the app
+
+Use the black navigation rail to switch screens and the top bar to filter the journal or open **Coach**. The arrow cursor leaves a short trail for fine pointers and uses the native cursor on text fields, selects, and resize handles. The app respects reduced motion for the cursor, wordmark, and footer effects. The social links are at the bottom of the page. See the [accessibility notes](accessibility.md).
 
 ## Import a journal
 
@@ -34,16 +52,7 @@ Missing prices, fees, stops, and P&L stay unavailable; the app never substitutes
 
 The Coach works with AI turned off. When using an AI provider, the current application offers optional cloud providers; each requires your own key and explicit consent. AI output is explanatory and does not change the underlying metrics.
 
-### Optional Ollama setup
-
-Ollama is the only local runtime selected for a future local-model adapter. To install it and download the documented model:
-
-```powershell
-ollama pull qwen2.5:7b
-ollama run qwen2.5:7b
-```
-
-**Current-build limitation:** the application does not yet include an Ollama provider adapter. These commands install and run Ollama independently; they do not connect it to Obsidian Ledger or make it appear in the provider selector. Do not enter an Ollama URL as a cloud-provider credential.
+The optional cloud catalog includes Z.ai, Moonshot, and OpenRouter. **Settings → AI provider** lists the models available in the app. Ollama is a planned adapter and currently runs independently of Ledger. See the [model-runtime decision](adr/0009-ollama-local-model-no-new-paid-providers.md).
 
 ## Privacy choices
 

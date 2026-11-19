@@ -1,15 +1,15 @@
 # Network structure and resilience
 
-Everything runs on one machine. The browser talks to a static web server and to an API that listens on loopback only.
+The web client and API run locally by default. Optional AI requests go from the local API to the configured cloud provider after consent.
 
 ```mermaid
 flowchart LR
     Browser["Browser<br/>fetch wrapper + health hook"]
     Web["Web server<br/>Vite dev / preview<br/>127.0.0.1:5173<br/>CSP + security headers"]
-    API["API (FastAPI)<br/>127.0.0.1:8000<br/>TrustedHost, Origin check,<br/>body limits, rate limits"]
+    API["API (FastAPI)<br/>127.0.0.1:8000<br/>Host and Origin checks,<br/>body limits, rate limits"]
     DB[("DuckDB + Parquet<br/>.ledger-data")]
     Logs[/"Rotating logs<br/>.ledger-data/logs"/]
-    Model["Local or chosen model<br/>(optional)"]
+    Model["Configured cloud provider<br/>(optional)"]
 
     Browser -- "static assets" --> Web
     Browser -- "JSON, SSE<br/>Origin allow-listed" --> API
@@ -25,10 +25,10 @@ flowchart LR
 | Layer | Control |
 | --- | --- |
 | Bind address | The API and web server bind to `127.0.0.1` only (`scripts/dev.mjs`, Playwright config). |
-| Host header | `TrustedHostMiddleware` allows `127.0.0.1` and `localhost`. Other hosts get 400, which blocks DNS rebinding. |
+| Host header | `GuardMiddleware` allows `127.0.0.1` and `localhost` by default. Other hosts get 400, which blocks DNS rebinding. |
 | Origin header | A request with an `Origin` that is not allow-listed is rejected with 403, including simple cross-origin POSTs. A request with no Origin (curl, tests) passes. |
 | Body size | Every endpoint has a limit; uploads have their own larger cap. Oversized bodies get 413. |
-| Heavy jobs | Report, simulate and import commit share a concurrency limit of 2. Extra callers get 503 `busy` at once instead of queueing. |
+| Heavy jobs | Report, simulation, import preview, and import commit share a concurrency limit of two. Extra callers get 503 `busy` at once instead of queueing. |
 | Rate limits | A per-client request budget stops runaway loops. Over the budget gets 429 with `Retry-After`. |
 | Timeouts | The API cancels a request after 120 s (504 `request_timeout`); the web fetch wrapper aborts after its own timeout via `AbortController`. |
 | Writes | Uploads and exports are written to a temp file and renamed. A crash leaves the old file intact. |
@@ -70,14 +70,14 @@ flowchart LR
 | Notes, trade ids and file names absent from logs; no free-form SQL tool | `api/tests/security/test_data_handling.py` |
 | API refused mid-session, stalled health probes, degraded, AI unavailable, version mismatch, dropped SSE stream, recovery | `web/e2e/chaos.spec.ts` |
 
-## If deployed publicly (documented only, not built)
+## Public deployments
 
-This app is designed for one user on one machine. If it were ever hosted, the minimum would be:
+The API has an opt-in single-user login mode. A public deployment also needs infrastructure controls around the app:
 
 1. A reverse proxy (Caddy or nginx) terminating HTTPS with an automatic certificate.
 2. The API stays bound to `127.0.0.1`, reachable only through the proxy.
 3. Firewall: only 443 open to the world, and 22 restricted to known addresses.
-4. An access-control layer in front of everything (SSO, or at least proxy basic auth with a strong password and a VPN or IP allow-list). The app has no accounts of its own.
+4. Use proxy authentication or a network allow-list as an additional boundary around the app's single-user login.
 5. No real trade data on a public instance; use synthetic samples.
 6. Set the allowed-origins setting to the public HTTPS origin and the trusted hosts to the public host name.
 7. Rate limiting at the proxy in addition to the API limits.
@@ -88,7 +88,7 @@ This app is designed for one user on one machine. If it were ever hosted, the mi
 
 - Host allow-list: `127.0.0.1` and `localhost` (`LEDGER_ALLOWED_HOSTS`).
 - Origin allow-list and exact-origin CORS (`LEDGER_CORS_ORIGINS`); public mode requires it to be set.
-- Methods: GET, HEAD, OPTIONS, POST, PUT, PATCH, DELETE only; every non-GET request needs `X-Ledger-Client: web`.
-- Limits: body size, request time, per-client rate limit, and a concurrency cap for imports and exports.
+- Methods: GET, HEAD, OPTIONS, POST, PUT, PATCH, and DELETE. POST, PUT, PATCH, and DELETE require `X-Ledger-Client: web`.
+- Limits: body size, request time, per-client rate limit, and a concurrency cap for reports, simulations, and imports.
 - Rejections are written to `.ledger-data/logs/security.log` without trade data, notes or keys.
-- Public mode adds an HttpOnly, Secure, SameSite=Strict session cookie and turns `/docs` off.
+- Public mode uses an HttpOnly, Secure, SameSite=Strict session cookie and disables `/docs`, `/redoc`, and `/openapi.json`. See the [security settings](security.md#security-settings).

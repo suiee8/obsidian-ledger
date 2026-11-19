@@ -1,14 +1,14 @@
-# ADR 0007: No animation library. CSS transitions and a count-up hook only
+# ADR 0007: Use browser APIs for interface motion
 
-Status: accepted (Phase 3)
+Status: accepted, with implementation notes updated for the current shell
 
 ## Context
 
-The master prompt lists Motion as the animation library. Its use so far is limited: KPI count-up, skeleton shimmer, and the working indicator.
+The original decision covered KPI count-up, loading states, and chart entry effects. The shell now also includes a wordmark flip, social links, and a pointer trail.
 
 ## Decision
 
-Animation uses CSS (`@keyframes` for the shimmer and the working pulse) and one small hook (`web/src/lib/useCountUp.ts`) for the count-up. Every animation is disabled under `prefers-reduced-motion`. The equity chart's entry animation is turned off when reduced motion is requested (`prefersReducedMotion` in `theme.ts`).
+Use CSS for the shell and loading effects, React hooks for count-up, and Pointer Events with a Canvas overlay for the cursor trail. Shell effects have reduced-motion alternatives and native cursor behavior on form controls. See the [accessibility notes](../accessibility.md).
 
 ## Consequences
 

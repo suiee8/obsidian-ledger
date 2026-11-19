@@ -1,10 +1,10 @@
 # Metrics definitions
 
-This document is the contract for deterministic calculations. Every UI metric will carry its sample size and, where applicable, a confidence interval.
+This document describes the deterministic calculations used by the API. The interface shows sample sizes, availability, and uncertainty where the underlying metric supports them.
 
 ## Trade-level values
 
-- **Net P&L** = `gross_pnl - fees - commission - swap_or_funding`.
+- **Net P&L** uses the reported net figure when available. When it can be derived from gross P&L, the API adds normalized signed costs, including fees, commission, and swap. A negative cost reduces P&L.
 - **R multiple** = `net_pnl / planned_risk` when planned risk is positive. If only a stop is available, planned risk is derived from entry, stop, quantity, and contract multiplier and shown as an import assumption.
 - **Holding time** = `exit_time - entry_time`.
 - **Win** = net P&L greater than zero. A zero result is flat and is not counted as a win or loss.
@@ -15,10 +15,10 @@ This document is the contract for deterministic calculations. Every UI metric wi
 - **Average win** = mean net P&L among winning trades.
 - **Average loss** = absolute mean net P&L among losing trades.
 - **Payoff ratio** = average win / average loss when both groups are non-empty.
-- **Profit factor** = gross winning P&L / absolute gross losing P&L when losses exist.
+- **Profit factor** = sum of positive net outcomes / absolute sum of negative net outcomes. It is unavailable when there are no losses.
 - **Expectancy** = mean net P&L per trade. R expectancy uses the mean R multiple.
 - **Median trade** = median net P&L.
-- **Fee drag** = total fees and commissions / absolute gross P&L, with an explicit undefined state when gross P&L is zero.
+- **Fee drag** = absolute total signed costs / absolute gross P&L. It is unavailable when gross P&L is zero.
 
 ## Risk and return
 
@@ -50,11 +50,9 @@ Each component is normalized to 0–100 only when its source fields exist. Missi
 
 These metrics review past behavior. They are not financial advice and do not predict future returns.
 
-## Implementation notes (Phase 2)
+## Implementation notes
 
-These notes describe what the code does. Where it differs from the definitions above, the difference is stated.
-
-- **Filters** apply to exit date in UTC. Trades without a base-currency value are left out and counted in `excluded_no_fx`.
+- **Date filters** in the API apply to exit dates in UTC. The current top bar exposes account, symbol, and side filters. Trades with missing base-currency conversions are counted in `excluded_no_fx`.
 - **Costs** are converted with the same rate as net P&L. Gross P&L is net minus costs. Fee drag is absolute costs over absolute gross P&L.
 - **Win rate** excludes flat trades (P&L exactly zero). Payoff, profit factor, and expectancy follow the formulas above.
 - **Best and worst** day, week, and month group on exit date. Weeks start on Monday, the default for truncation.
@@ -70,9 +68,8 @@ These notes describe what the code does. Where it differs from the definitions a
 - **Discipline score** uses the weights in the formula string returned with each score. Missing components are removed and the remaining weights rescaled. The count of components used is returned with the score.
 - **Simulator** replays trades in entry order. A trade's result updates its day's loss tally only at exit, so a decision never uses a result that was not yet known. Risk capping scales a trade's P&L by `cap / planned risk`, and leaves trades without planned risk unchanged. The change in expectancy is a paired bootstrap, with skipped trades counted as zero.
 
-### Not implemented in Phase 2
+### Calculation limits
 
-- **Tilt score.** No definition yet that is separate from the revenge flag. Deferred to the Behavior screen work.
-- **Note mining** (classifying free-text notes into FOMO, revenge, and similar tags) belongs to the Coach phase.
+- **Tilt and note classification.** Behavior uses explicit trade fields and deterministic flags, such as the revenge flag. Free-text notes remain journal entries.
 - **Closed-form risk of ruin.** Ruin is estimated by Monte Carlo instead.
 - **Position-sizing simulation on forex lots and option contracts** beyond the contract sizes entered by the user.

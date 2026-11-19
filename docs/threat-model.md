@@ -1,6 +1,6 @@
 # Threat model
 
-No layer here is a guarantee. This lists what we protect, how, and what remains.
+This document describes the local journal's assets, trust boundaries, controls, and residual risks.
 
 ## Assets
 
@@ -54,7 +54,9 @@ No layer here is a guarantee. This lists what we protect, how, and what remains.
 - **Windows permissions.** Folder restriction on Windows is documented, not enforced automatically.
 - **Accepted dependency findings** are listed with their exceptions in `docs/security.md`.
 
-## Deployment hardening checklist (document only, not built)
+## Deployment checklist
+
+For a containerized deployment, apply these controls in the hosting configuration.
 
 - [ ] Run as a non-root user in the container.
 - [ ] Read-only root filesystem; one writable volume for the data folder.

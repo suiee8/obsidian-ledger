@@ -26,7 +26,7 @@ flowchart LR
 
 ## Boundaries
 
-- The browser talks to a FastAPI process bound to `127.0.0.1`; default CORS allows only the local Vite origins.
+- The browser talks to a FastAPI process on `127.0.0.1`. Default CORS allows the local Vite origins.
 - Raw uploads and the DuckDB database stay on the user's machine. The browser does not send files to a hosted service.
 - Deterministic Python code owns parsing, normalization, arithmetic, confidence intervals, simulations, and report evidence.
 - Import inference uses file structure and content; broker layouts are optional hints. Missing financial values remain unavailable rather than being represented as zero.
@@ -35,12 +35,11 @@ flowchart LR
 - CSV cells are neutralized after serialization, including negative numeric-looking cells. JSON numeric values stay numeric.
 - ZIP exports are assembled locally and contain the selected data and original uploads.
 - The current provider catalog has no Ollama adapter. Installing Ollama does not connect it to this build.
-- `run_sql` will be a single-statement, `SELECT`-only interface over allow-listed views with row and time limits.
-- User-authored write actions such as notes and goals require explicit confirmation.
+- Coach tools use typed arguments against application-owned queries. Journal field edits run through explicit user actions in the web app.
 
-## Phase boundaries
+## Frontend shell
 
-Phases 0–5 provide the local shell, ingestion, deterministic metrics, analytics screens, Coach tools, and optional AI explanations. Phase 6 hardens upload and export boundaries, records validation and performance results, and documents the system. A Reports screen and application-generated PDF export are out of scope.
+The React shell owns navigation, filters, the Coach toggle, and the social footer. CSS handles the wordmark, liquid click effects, and social flips. A viewport-level portal renders the decorative cursor and Canvas trail above both the shell and the Coach drawer. The shader and charts stay separate from the shell animation code. See [ADR 0007](adr/0007-no-motion-library.md) and the [accessibility notes](accessibility.md).
 
 ## Architecture decision records
 
@@ -57,3 +56,4 @@ Phases 0–5 provide the local shell, ingestion, deterministic metrics, analytic
 - [0011 — Number checking for AI answers](adr/0011-number-checking-for-ai-answers.md)
 - [0012 — Control false discoveries in Coach findings](adr/0012-control-false-discoveries-in-coach-findings.md)
 - [0013 — PDF through the browser print dialog](adr/0013-pdf-through-the-browser-print-dialog.md)
+- [0014 — Import by content](adr/0014-import-by-content-not-by-broker.md)

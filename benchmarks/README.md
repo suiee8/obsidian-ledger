@@ -1,6 +1,6 @@
 # Benchmarks
 
-Synthetic journals live here so performance numbers and statistical fixtures share one generator. The model is documented in `ledger_samples.py`.
+The benchmark harness and ingestion fixtures share a deterministic generator. See the [generator implementation](ledger_samples.py) and [recorded results](RESULTS.md).
 
 ## Population edge, before the flat $1 fee
 
@@ -21,14 +21,14 @@ From the repo root, with the API environment installed:
 ```bash
 uv run --directory api python ../benchmarks/generate_trades.py --rows 1000 --out ../samples/synthetic_preview.csv
 uv run --directory api python ../benchmarks/generate_trades.py --rows 100000 --out ../samples/synthetic_100k.csv
-uv run --directory api python ../benchmarks/generate_trades.py --rows 1000000 --out benchmarks/out/synthetic_1m.csv
+uv run --directory api python ../benchmarks/generate_trades.py --rows 1000000 --out ../benchmarks/out/synthetic_1m.csv
 ```
 
 The 100k file is committed under `samples/` with its manifest, which records the SHA-256, the net P&L sum, and the win count. A 1M file can be generated into `benchmarks/out/`, which git ignores. The timings below are historical Phase 1/2 context; the Phase 6 performance run is limited to 10k trades.
 
-## Phase 6 performance run
+## Run the current harness
 
-`pnpm bench` measures only 1k, 5k, and 10k trades, with ten runs per size. `benchmarks/RESULTS.md` records medians and min–max ranges, machine details, payload and JavaScript bundle sizes, and the optional 10k browser measurement. Historical Phase 1 and Phase 2 timings above are retained for context; they are not rerun by the Phase 6 command.
+`pnpm bench` measures only 1k, 5k, and 10k trades, with ten runs per size. `benchmarks/RESULTS.md` records medians and min–max ranges, machine details, payload and JavaScript bundle sizes, and the optional 10k browser measurement. The larger ingestion and analysis measurements below come from dated runs with separate scripts.
 
 ## Ingestion timings (Phase 1)
 
@@ -43,9 +43,9 @@ Measured with `benchmarks/ingest_benchmark.py` on 2026-11-11. Machine: Intel Cor
 | First page of `trade_view` | 0.11 | 0.69 | 7.60 |
 | Total | 1.96 | 10.57 | 129.47 |
 
-Targets from the product specification, and where the build stands:
+Targets used for this historical ingestion run:
 
-- 100k rows to a rendered dashboard in under 3 seconds. Ingestion alone takes 10.6 seconds, so this is not met. The dashboard render is not built yet.
+- 100k rows to a rendered dashboard in under 3 seconds. Ingestion alone takes 10.6 seconds, so this is not met. The run measured ingestion and the first trade-view query.
 - 1M rows in under 15 seconds with progress shown. Not met: 129 seconds, with no progress reporting yet.
 
 Known causes, for the Phase 6 performance pass: row processing runs several Python checks per cell, and `trade_view` recomputes its window functions over the whole table on each query. Caching the view's results or moving the per-row checks into vectorized Polars expressions would address the two largest costs.
@@ -67,4 +67,4 @@ Measured with `benchmarks/metrics_benchmark.py` on 2026-11-11, on the same machi
 | Segment table by symbol | 0.16 |
 | Simulator with one rule, 1,000 resamples | 5.19 |
 
-Targets from the product specification: filters and segment changes under 100 ms. The cache meets this for repeated requests. A changed filter is a cold request, so a new filter selection takes about 5 seconds for 100k trades. The cost is the bootstrap (1,000 resamples of 100,000 trades) and the Monte Carlo paths. Reducing either, or running them in a background job, is the next performance step. It is planned with the Phase 6 performance pass.
+Targets from the product specification: filters and segment changes under 100 ms. The cache meets this for repeated requests. A changed filter is a cold request, so a new filter selection takes about 5 seconds for 100k trades. The cost is the bootstrap (1,000 resamples of 100,000 trades) and the Monte Carlo paths. Reducing either, or running them in a background job, is the next performance step. The [later performance results](RESULTS.md) use samples up to 10,000 trades.

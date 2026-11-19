@@ -16,5 +16,5 @@ Every figure shown in the dashboard, reports, and Coach answers is computed by t
 ## Consequences
 
 - Every metric needs a definition in `docs/metrics-definitions.md` and a test before the UI uses it.
-- The model's output is checked against tool results. A number that does not appear in the tool output is a failing check (planned for Phase 5).
+- The model's output is checked against tool results. The current answer verifier checks figures against same-turn tool results. See [ADR 0011](0011-number-checking-for-ai-answers.md).
 - Model quality changes only the wording and the choice of tools, so a weaker local model degrades presentation rather than accuracy.

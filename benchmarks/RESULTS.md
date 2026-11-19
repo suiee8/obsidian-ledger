@@ -1,5 +1,7 @@
 # Benchmark results
 
+These measurements describe the dated runs below. See the [benchmark guide](README.md) to measure the current checkout.
+
 ## Machine
 
 - os: Windows 11 (10.0.26300)

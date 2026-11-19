@@ -18,4 +18,4 @@ Keep `web/` and `api/` in one git repository. The web app uses pnpm 12.18.0 thro
 - `pnpm bootstrap` runs both installs. Contributors need Node 22+, pnpm, Python 3.12, and uv.
 - pnpm 11 and later block install scripts unless they are allowed. `pnpm-workspace.yaml` allows `esbuild` only.
 - The name `setup` is not used for a root script because pnpm reserves it.
-- `docker compose` (named in the product specification) is deferred. It adds a container requirement without a Phase 0 need.
+- The supported development workflow runs directly on the host. See the [setup instructions](../../README.md#get-started).
