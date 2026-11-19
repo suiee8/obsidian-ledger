@@ -26,7 +26,9 @@ import { useEffect, useRef } from "react";
 import {
   AmbientLight,
   BoxGeometry,
+  DataTexture,
   DirectionalLight,
+  FloatType,
   InstancedBufferAttribute,
   InstancedMesh,
   MathUtils,
@@ -40,12 +42,12 @@ import {
   Plane,
   PlaneGeometry,
   Raycaster,
+  RGBAFormat,
   RGFormat,
   Scene,
   ShaderMaterial,
   Vector2,
   Vector3,
-  Vector4,
   WebGLRenderer,
   WebGLRenderTarget,
 } from "three";
@@ -63,11 +65,18 @@ const IDLE_INTERVAL_MS = 1500;
 const MAX_RENDER_PIXELS = 500_000;
 const CAMERA_EASE_MS = 360;
 const RIPPLE_ATTACK_SECONDS = 0.06;
+// CSS uses 96 pixels per inch. Use viewport pixels so the radius survives resizing.
+const RIPPLE_RADIUS_PX = 5 * 96 / 2.54;
+const RIPPLE_FEATHER_PX = 38;
 
 // Calculate one height per box, then share it with all its vertices.
 const heightShader = /* glsl */ `
-  uniform vec4 uTrail[${MAX_TRAIL}];
+  uniform sampler2D uTrail;
   uniform int uCount;
+  uniform mat4 uViewProjection;
+  uniform vec2 uHalfViewport;
+  uniform vec2 uPointerPosition;
+  uniform bool uPointerActive;
 
   vec2 hash2(vec2 p) {
     p = vec2(dot(p, vec2(127.1, 311.7)), dot(p, vec2(269.5, 183.3)));
@@ -77,16 +86,29 @@ const heightShader = /* glsl */ `
   void main() {
     vec2 cell = gl_FragCoord.xy * ${SPACING} - ${GRID_RADIUS.toFixed(3)};
     vec2 worldXZ = cell + hash2(cell) * 0.2;
+    vec4 clip = uViewProjection * vec4(cell.x, ${CUBE_HEIGHT / 2}, cell.y, 1.0);
+    vec2 screenPosition = clip.xy / clip.w * uHalfViewport;
+    float pointerDistance = length(screenPosition - uPointerPosition);
     float height = 0.0;
     float totalWeight = 0.0;
-    for (int i = 0; i < uCount; i++) {
-      vec4 source = uTrail[i];
+    int sourceCount = uPointerActive && pointerDistance >= ${RIPPLE_RADIUS_PX.toFixed(3)} ? 0 : uCount;
+    for (int i = 0; i < sourceCount; i++) {
+      float column = (float(i) + 0.5) / ${MAX_TRAIL.toFixed(1)};
+      vec3 origin = texture2D(uTrail, vec2(column, 0.75)).xyz;
+      float screenDistance = length(screenPosition - origin.xy);
+      if (uPointerActive || origin.z > 0.5) screenDistance = max(screenDistance, pointerDistance);
+      if (screenDistance >= ${RIPPLE_RADIUS_PX.toFixed(3)}) continue;
+
+      vec4 source = texture2D(uTrail, vec2(column, 0.25));
       float dist = length(worldXZ - source.xy);
       float relativeDist = dist - 6.0 * source.z;
       // Beyond this distance the Gaussian contributes less than 0.002% of its peak.
       if (abs(relativeDist) > 10.0) continue;
       float windowWeight = exp(-(relativeDist * relativeDist) / 9.0);
-      float weight = windowWeight * source.w / (1.0 + dist * 0.1);
+      float edgeFade = 1.0 - smoothstep(
+        ${(RIPPLE_RADIUS_PX - RIPPLE_FEATHER_PX).toFixed(3)}, ${RIPPLE_RADIUS_PX.toFixed(3)}, screenDistance
+      );
+      float weight = windowWeight * edgeFade * source.w / (1.0 + dist * 0.1);
       height += weight * cos(1.2 * relativeDist);
       totalWeight += weight;
     }
@@ -116,7 +138,7 @@ function displaceCubes(vertexShader: string) {
       }`);
 }
 
-type Ripple = { x: number; z: number; born: number; distance: number };
+type Ripple = { x: number; z: number; born: number; distance: number; fromPointer: boolean };
 
 export default function WaveGridBackground() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -152,10 +174,13 @@ export default function WaveGridBackground() {
 
       const camera = new PerspectiveCamera(40, 1, 0.1, 500);
       const pointer = new Vector2();
+      const rippleFocus = new Vector2();
       const orbit = new Vector2();
       const raycaster = new Raycaster();
-      const plane = new Plane(new Vector3(0, 1, 0), 0);
+      const cubeTop = CUBE_HEIGHT / 2;
+      const plane = new Plane(new Vector3(0, 1, 0), -cubeTop);
       const hit = new Vector3();
+      const projectedOrigin = new Vector3();
       const trail: Ripple[] = [];
       let previous: Ripple | undefined;
       let viewportWidth = 1;
@@ -170,9 +195,16 @@ export default function WaveGridBackground() {
       const heightScene = new Scene();
       const heightCamera = new OrthographicCamera(-1, 1, 1, -1, 0, 1);
       const heightGeometry = new PlaneGeometry(2, 2);
+      // Row one stores the original wave inputs. Row two stores the screen-space origin.
+      const trailData = new Float32Array(MAX_TRAIL * 8);
+      const trailTexture = new DataTexture(trailData, MAX_TRAIL, 2, RGBAFormat, FloatType);
       const uniforms = {
-        uTrail: { value: Array.from({ length: MAX_TRAIL }, () => new Vector4()) },
+        uTrail: { value: trailTexture },
         uCount: { value: 0 },
+        uViewProjection: { value: new Matrix4() },
+        uHalfViewport: { value: new Vector2() },
+        uPointerPosition: { value: new Vector2() },
+        uPointerActive: { value: false },
       };
       const heightMaterial = new ShaderMaterial({
         uniforms,
@@ -250,11 +282,13 @@ export default function WaveGridBackground() {
         window.clearTimeout(idleTimer);
         if (document.hidden || contextLost) return;
         idleTimer = window.setTimeout(() => {
+          uniforms.uPointerActive.value = false;
           addRipple({
             x: (Math.random() - 0.5) * GRID_RADIUS,
             z: (Math.random() - 0.5) * GRID_RADIUS,
             born: performance.now(),
             distance: 0.8 + Math.random() * 0.2,
+            fromPointer: false,
           });
           schedule();
           scheduleIdle(IDLE_INTERVAL_MS);
@@ -267,6 +301,10 @@ export default function WaveGridBackground() {
         lastFrameTime = now;
         orbit.lerp(pointer, 1 - Math.exp(-elapsed / CAMERA_EASE_MS));
         positionCamera();
+        const viewProjection = uniforms.uViewProjection.value;
+        viewProjection.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
+        const halfViewport = uniforms.uHalfViewport.value;
+        uniforms.uPointerPosition.value.copy(rippleFocus).multiply(halfViewport);
 
         while (trail[0] && (now - trail[0].born) / 1000 > TRAIL_LIFETIME) trail.shift();
 
@@ -274,9 +312,20 @@ export default function WaveGridBackground() {
           const point = trail[i]!;
           const age = Math.max(0, (now - point.born) / 1000);
           const fade = MathUtils.smoothstep(age, 0, RIPPLE_ATTACK_SECONDS) * Math.exp(-age / FADE_SECONDS);
-          uniforms.uTrail.value[i]!.set(point.x, point.z, age, point.distance * fade);
+          const sampleOffset = i * 4;
+          trailData[sampleOffset] = point.x;
+          trailData[sampleOffset + 1] = point.z;
+          trailData[sampleOffset + 2] = age;
+          trailData[sampleOffset + 3] = point.distance * fade;
+
+          projectedOrigin.set(point.x, cubeTop, point.z).applyMatrix4(viewProjection);
+          const originOffset = (MAX_TRAIL + i) * 4;
+          trailData[originOffset] = projectedOrigin.x * halfViewport.x;
+          trailData[originOffset + 1] = projectedOrigin.y * halfViewport.y;
+          trailData[originOffset + 2] = point.fromPointer ? 1 : 0;
         }
         uniforms.uCount.value = trail.length;
+        if (trail.length) trailTexture.needsUpdate = true;
 
         renderer.setRenderTarget(heights);
         renderer.render(heightScene, heightCamera);
@@ -293,6 +342,7 @@ export default function WaveGridBackground() {
       function resize() {
         viewportWidth = Math.max(1, canvas.clientWidth);
         viewportHeight = Math.max(1, canvas.clientHeight);
+        uniforms.uHalfViewport.value.set(viewportWidth / 2, viewportHeight / 2);
         const vertical = MathUtils.degToRad(camera.fov) / 2;
         camera.aspect = viewportWidth / viewportHeight;
         const horizontal = Math.atan(Math.tan(vertical) * camera.aspect);
@@ -313,12 +363,14 @@ export default function WaveGridBackground() {
           (event.clientX / viewportWidth) * 2 - 1,
           1 - (event.clientY / viewportHeight) * 2,
         );
+        rippleFocus.copy(pointer);
+        uniforms.uPointerActive.value = true;
         schedule();
         raycaster.setFromCamera(pointer, camera);
         if (!raycaster.ray.intersectPlane(plane, hit) || Math.max(Math.abs(hit.x), Math.abs(hit.z)) > GRID_RADIUS) return;
         const distance = previous ? Math.hypot(hit.x - previous.x, hit.z - previous.z) : 0;
         if (previous && distance < 0.1) return;
-        previous = { x: hit.x, z: hit.z, born: performance.now(), distance };
+        previous = { x: hit.x, z: hit.z, born: performance.now(), distance, fromPointer: true };
         addRipple(previous);
         scheduleIdle(IDLE_AFTER_MS + IDLE_INTERVAL_MS);
       }
@@ -377,6 +429,7 @@ export default function WaveGridBackground() {
         heightGeometry.dispose();
         heightMaterial.dispose();
         heights.dispose();
+        trailTexture.dispose();
         renderer.dispose();
       };
     }
