@@ -52,10 +52,11 @@ import {
   WebGLRenderTarget,
 } from "three";
 
-const GRID_SIZE = 40;
-const CUBE_WIDTH = 0.8;
-const CUBE_HEIGHT = 3;
-const SPACING = CUBE_WIDTH + 0.01;
+const GRID_SIZE = 80;
+const CUBE_WIDTH = 0.4;
+const CUBE_HEIGHT = 1.5;
+const SPACING = CUBE_WIDTH + 0.005;
+const WAVE_AMPLITUDE = 0.2;
 const GRID_RADIUS = (GRID_SIZE * SPACING) / 2;
 const MAX_TRAIL = 128;
 const FADE_SECONDS = 2;
@@ -134,7 +135,7 @@ function displaceCubes(vertexShader: string) {
       if (position.y > 0.0) {
         vec2 heightBytes = texture2D(uHeights, aCell).rg;
         vWaveHeight = dot(heightBytes, vec2(65280.0, 255.0)) / 65535.0 * 2.0 - 1.0;
-        transformed.y += vWaveHeight * 0.4;
+        transformed.y += vWaveHeight * ${WAVE_AMPLITUDE};
       }`);
 }
 
