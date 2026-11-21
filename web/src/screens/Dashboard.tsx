@@ -4,7 +4,7 @@ import { useFilters } from "../state/filters";
 import { useAvailability, useDashboard } from "../lib/queries";
 import { useDebouncedValue } from "../lib/useDebouncedValue";
 import { FILTER_DEBOUNCE_MS } from "../state/filters";
-import { fmtInt, fmtMoney, fmtNumber, fmtPercent, fmtR } from "../lib/format";
+import { fmtInt, fmtMoney, fmtNumber, fmtPercent } from "../lib/format";
 import { useUi } from "../state/ui";
 import { Kpi } from "../components/Kpi";
 import { ActivityOnly } from "../components/Availability";
@@ -20,9 +20,7 @@ import type { DashboardData } from "../lib/dashboard";
 const EquityAurora = lazy(() =>
   import("../components/charts/EquityAurora").then((module) => ({ default: module.EquityAurora })),
 );
-const EdgeRadar = lazy(() =>
-  import("../components/charts/EdgeRadar").then((module) => ({ default: module.EdgeRadar })),
-);
+
 
 const DISCLAIMER = "Past performance review only. Obsidian Ledger does not give financial advice or trade signals.";
 const HIDDEN_CAVEATS = [
@@ -36,7 +34,7 @@ function DashboardSkeleton() {
   return (
     <div className="dashboard" aria-busy="true" aria-label="Loading dashboard">
       <div className="kpi-strip">
-        {Array.from({ length: 6 }, (_, index) => (
+        {Array.from({ length: 5 }, (_, index) => (
           <div key={index} className="glass kpi skeleton" />
         ))}
       </div>
@@ -94,13 +92,7 @@ function Headline({ data }: { data: DashboardData }) {
           format={(value) => fmtNumber(value, 2)}
           note="gross wins over gross losses"
         />
-        <Kpi
-          label="Expectancy"
-          value={core.expectancy_r ?? null}
-          format={(value) => fmtR(value)}
-          tone={(core.expectancy_r ?? 0) >= 0 ? "profit" : "loss"}
-          note={core.expectancy !== undefined && core.expectancy !== null ? `${fmtMoney(core.expectancy)} per trade` : undefined}
-        />
+
         <Kpi
           label="Max drawdown"
           value={drawdown.max_drawdown}
@@ -203,13 +195,8 @@ export default function Dashboard() {
             {chartsReady ? <EquityAurora equity={data.equity} /> : <ChartFallback sizeClass="chart-equity" />}
           </Suspense>
         </Panel>
-        <Panel title="P&L calendar" className="span-7 panel-hug">
+        <Panel title="P&L calendar" className="span-12 panel-hug">
           <DailyCalendar days={data.daily} />
-        </Panel>
-        <Panel title="Edge radar by setup" className="span-5">
-          <Suspense fallback={<ChartFallback sizeClass="chart-radar" />}>
-            {chartsReady ? <EdgeRadar radar={data.radar} /> : <ChartFallback sizeClass="chart-radar" />}
-          </Suspense>
         </Panel>
         <Panel title="Weekday and hour" className="span-12 panel-hug">
           <WeekdayHour cells={data.heatmap} />

@@ -823,7 +823,7 @@ code {
 
 .kpi-strip {
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 12px;
 }
 
@@ -933,10 +933,6 @@ code {
 
 .chart-r {
   height: 260px;
-}
-
-.chart-radar {
-  height: 300px;
 }
 
 .calendar {
