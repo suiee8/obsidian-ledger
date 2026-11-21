@@ -1,7 +1,7 @@
 import { useId, useState, type KeyboardEvent } from "react";
 
 import { fmtNumber } from "../lib/format";
-import { DISCIPLINE_COMPONENTS, type BehaviorReport } from "../lib/phase4";
+import { DISCIPLINE_COMPONENTS, type BehaviorReport } from "../lib/insights";
 
 const LABELS: Record<string, string> = {
   plan_adherence: "Plan adherence",

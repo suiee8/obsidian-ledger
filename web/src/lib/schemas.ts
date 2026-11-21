@@ -24,7 +24,6 @@ export const ReportSchema = z
         expectancy: nullableNumber.optional(),
         expectancy_r: nullableNumber.optional(),
         payoff_ratio: nullableNumber.optional(),
-        fee_drag: nullableNumber.optional(),
         largest_win: nullableNumber.optional(),
         largest_loss: nullableNumber.optional(),
       })
@@ -173,8 +172,6 @@ export const TradeRowSchema = z
     r_multiple: nullableNumber,
     stop_loss: nullableNumber,
     take_profit: nullableNumber,
-    mae: nullableNumber,
-    mfe: nullableNumber,
     holding_seconds: nullableNumber,
     session: z.string(),
     timeframe: z.string().nullable(),

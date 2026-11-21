@@ -6,7 +6,7 @@ import { Panel } from "../components/Panel";
 import { ActivityOnly } from "../components/Availability";
 import { DISCLAIMER, EmptyScreen, ScreenError, ScreenSkeleton } from "../components/ScreenStates";
 import { fmtInt, fmtMoney, fmtPercent } from "../lib/format";
-import { useBehaviorReport, useTimeline, type Timeline } from "../lib/phase4";
+import { useBehaviorReport, useTimeline, type Timeline } from "../lib/insights";
 import { useAvailability } from "../lib/queries";
 import { useDebouncedValue } from "../lib/useDebouncedValue";
 import { FILTER_DEBOUNCE_MS, useFilters } from "../state/filters";

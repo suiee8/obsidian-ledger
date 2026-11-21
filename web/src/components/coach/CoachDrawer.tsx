@@ -3,7 +3,7 @@ import { useEffect, useRef, useState, type KeyboardEvent, type PointerEvent, typ
 import { apiBase } from "../../lib/api";
 import { useCoachRun, type CoachRun } from "../../lib/coach";
 import type { CoachFinding, CoachReport, Evidence } from "../../lib/schemas";
-import { useSelectFinding } from "../../lib/phase4";
+import { useSelectFinding } from "../../lib/insights";
 import { useDebouncedValue } from "../../lib/useDebouncedValue";
 import { FILTER_DEBOUNCE_MS, filterParams, useFilters } from "../../state/filters";
 import { COACH_MIN_WIDTH, useUi } from "../../state/ui";

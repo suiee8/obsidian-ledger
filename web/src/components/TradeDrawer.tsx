@@ -151,10 +151,6 @@ export function TradeDrawer({ tradeKey, onClose }: TradeDrawerProps) {
         <dd>
           {fmtNumber(trade.stop_loss, 5)} / {fmtNumber(trade.take_profit, 5)}
         </dd>
-        <dt>Max adverse / favourable</dt>
-        <dd>
-          {fmtMoney(trade.mae, trade.currency)} / {fmtMoney(trade.mfe, trade.currency)}
-        </dd>
         <dt>Trade ID</dt>
         <dd className="mono">{trade.trade_id}</dd>
         <dt>Source timezone</dt>

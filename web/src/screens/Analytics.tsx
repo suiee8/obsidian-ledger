@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 
 import { BarSeries, GroupedBars } from "../components/charts/Bars";
 import { BrushScatter, type BrushRange } from "../components/charts/BrushScatter";
-import { MonteCarloFan } from "../components/charts/LineBands";
+import { EndingHistogram, MonteCarloFan } from "../components/charts/LineBands";
 import { Panel } from "../components/Panel";
 import { ActivityOnly } from "../components/Availability";
 import { useAvailability } from "../lib/queries";
@@ -14,8 +14,9 @@ import {
   useFan,
   useSegments,
   type ExploreData,
+  type MonteCarlo,
   type SegmentsData,
-} from "../lib/phase4";
+} from "../lib/insights";
 import { useDebouncedValue } from "../lib/useDebouncedValue";
 import { FILTER_DEBOUNCE_MS, hasActiveFilters, useFilters } from "../state/filters";
 import { useUi } from "../state/ui";
@@ -61,7 +62,6 @@ const NATURAL_ORDER: Record<string, readonly string[]> = {
 const money = (value: number) => fmtMoney(value);
 const dayOf = (ms: number) => new Date(ms).toISOString().slice(0, 10);
 const plain = (value: number) => fmtNumber(value, 2);
-const percent = (value: number) => fmtPercent(value);
 const MS_DAY = 86_400_000;
 
 function orderSlices(dimension: string, slices: Slice[], metric: MetricKey): Slice[] {
@@ -360,92 +360,13 @@ function Constellation({ points }: { points: ExploreData["points"] }) {
   );
 }
 
-function MaeMfe({ data }: { data: ExploreData }) {
-  const { points, mae_mfe: summary } = data;
-  const [range, setRange] = useState<BrushRange | null>(null);
-  const [clearToken, setClearToken] = useState(0);
-  const { busy, error, open } = useOpenInTrades();
-  const count = range ? countInside(points.mae, points.mfe, range) : null;
-
-  return (
-    <Panel title="MAE and MFE" className="span-6">
-      {summary.trades_with_excursions === 0 ? (
-        <p className="muted">
-          None of these trades report MAE or MFE, so there is nothing to plot. Add those columns to your file to
-          see how far trades went against you and for you.
-        </p>
-      ) : (
-        <>
-          <dl className="stat-row">
-            <div>
-              <dt>Trades with both</dt>
-              <dd>
-                {fmtInt(summary.trades_with_excursions)} of {fmtInt(summary.trades_total)}
-              </dd>
-            </div>
-            <div>
-              <dt>Winners kept (P&L ÷ MFE)</dt>
-              <dd>{fmtPercent(summary.winner_capture_ratio)}</dd>
-            </div>
-            <div>
-              <dt>Avg worst move, losers</dt>
-              <dd>{fmtNumber(summary.avg_mae_losers, 2)}</dd>
-            </div>
-            <div>
-              <dt>Avg worst move, winners</dt>
-              <dd>{fmtNumber(summary.avg_mae_winners, 2)}</dd>
-            </div>
-          </dl>
-          <BrushScatter
-            label="MAE against MFE for each trade"
-            xs={points.mae}
-            ys={points.mfe}
-            outcome={points.pnl}
-            xType="value"
-            xName="MAE, worst move against you"
-            yName="MFE, best move for you"
-            formatX={plain}
-            formatY={plain}
-            onBrush={setRange}
-            clearToken={clearToken}
-          />
-          <BrushActions
-            count={count}
-            busy={busy}
-            onOpen={() =>
-              range &&
-              open(
-                [
-                  { field: "mae", low: range.x[0], high: range.x[1] },
-                  { field: "mfe", low: range.y[0], high: range.y[1] },
-                ],
-                "your rectangle on the MAE and MFE chart",
-              )
-            }
-            onClear={() => {
-              setRange(null);
-              setClearToken((value) => value + 1);
-            }}
-          />
-          {error && (
-            <p role="alert" className="muted">
-              Could not pick those trades: {error}
-            </p>
-          )}
-          <p className="card-note">{summary.note}</p>
-        </>
-      )}
-    </Panel>
-  );
-}
-
 function Streaks({ data }: { data: ExploreData["streaks"] }) {
   const categories = useMemo(() => data.histogram.map((row) => String(row.length)), [data]);
   const wins = useMemo(() => data.histogram.map((row) => row.wins), [data]);
   const losses = useMemo(() => data.histogram.map((row) => row.losses), [data]);
   const longest = [...data.longest_wins.slice(0, 3), ...data.longest_losses.slice(0, 3)];
   return (
-    <Panel title="Streaks" className="span-6">
+    <Panel title="Streaks" className="span-12">
       {data.runs === 0 ? (
         <p className="muted">No winning or losing runs yet.</p>
       ) : (
@@ -502,36 +423,118 @@ function Streaks({ data }: { data: ExploreData["streaks"] }) {
   );
 }
 
-function FeeDrag({ data }: { data: ExploreData["fee_drag"] }) {
-  const labels = useMemo(() => data.by_symbol.map((row) => row.symbol), [data]);
-  const values = useMemo(() => data.by_symbol.map((row) => row.drag), [data]);
+type Fan = NonNullable<MonteCarlo["fan"]>;
+
+function FanResults({ mc, fan }: { mc: MonteCarlo; fan: Fan }) {
+  const start = mc.starting_equity ?? 0;
+  const ends = mc.final_percentiles;
+  const depth = mc.drawdown_percentiles;
+  const horizon = mc.horizon_trades ?? 0;
+  const hasTarget = (mc.target ?? 0) > 0;
+  const range = ends?.p25 !== undefined && ends.p75 !== undefined ? `${fmtMoney(ends.p25)} to ${fmtMoney(ends.p75)}` : null;
   return (
-    <Panel title="Fee drag" className="span-6">
+    <>
+      {ends && (
+        <p className="fan-summary">
+          Across {fmtInt(mc.paths)} resampled paths of the next {fmtInt(horizon)} trades,{" "}
+          <strong>{fmtPercent(mc.probability_profit)}</strong> finish in profit. The middle half end between{" "}
+          <strong>{range ?? "n/a"}</strong>
+          {depth ? (
+            <>
+              , and a typical path falls <strong>{fmtMoney(depth.p50)}</strong> from its peak at some point.
+            </>
+          ) : (
+            "."
+          )}
+        </p>
+      )}
+      <div className="fan-layout">
+        <figure className="fan-figure">
+          <figcaption className="section-title">Equity path</figcaption>
+          <MonteCarloFan
+            fan={fan}
+            start={start}
+            label={`Range of possible equity over the next ${horizon} trades, from ${fmtInt(mc.paths)} simulated paths`}
+          />
+        </figure>
+        {mc.final_histogram && ends && (
+          <figure className="fan-figure">
+            <figcaption className="section-title">Where paths end</figcaption>
+            <EndingHistogram
+              histogram={mc.final_histogram}
+              start={start}
+              median={ends.p50}
+              label={`How many of the ${fmtInt(mc.paths)} simulated paths finish in each range of equity`}
+            />
+          </figure>
+        )}
+      </div>
+      <h3 className="section-title">Where you could finish</h3>
       <dl className="stat-row">
         <div>
-          <dt>Total costs</dt>
-          <dd>{data.costs === null ? "Not available" : fmtMoney(data.costs)}</dd>
+          <dt>Finish in profit</dt>
+          <dd>{fmtPercent(mc.probability_profit)}</dd>
         </div>
         <div>
-          <dt>Gross P&L</dt>
-          <dd>{data.gross === null ? "Not available" : fmtMoney(data.gross)}</dd>
+          <dt>Median end</dt>
+          <dd>{fmtMoney(ends?.p50)}</dd>
+        </div>
+        {range && (
+          <div>
+            <dt>Middle 50% end</dt>
+            <dd>{range}</dd>
+          </div>
+        )}
+        <div>
+          <dt>Worst 5% end</dt>
+          <dd>{fmtMoney(ends?.p5)}</dd>
         </div>
         <div>
-          <dt>Drag</dt>
-          <dd>{fmtPercent(data.drag)}</dd>
+          <dt>Best 5% end</dt>
+          <dd>{fmtMoney(ends?.p95)}</dd>
+        </div>
+        <div>
+          <dt>Average end</dt>
+          <dd>{fmtMoney(mc.expected_final)}</dd>
         </div>
       </dl>
-      {data.by_symbol.length > 0 && (
-        <BarSeries
-          label="Fee drag by symbol, costs as a share of gross P&L"
-          labels={labels}
-          values={values}
-          format={percent}
-          signed={false}
-        />
-      )}
-      <p className="card-note">{data.rule}</p>
-    </Panel>
+      <h3 className="section-title">How rough the ride gets</h3>
+      <dl className="stat-row">
+        {depth && (
+          <>
+            <div>
+              <dt>Typical worst drawdown</dt>
+              <dd>{fmtMoney(depth.p50)}</dd>
+            </div>
+            <div>
+              <dt>Worst drawdown, 1 path in 10</dt>
+              <dd>{fmtMoney(depth.p90)}</dd>
+            </div>
+            <div>
+              <dt>Worst drawdown, 1 path in 20</dt>
+              <dd>{fmtMoney(depth.p95)}</dd>
+            </div>
+          </>
+        )}
+        <div>
+          <dt>Drawdown of {fmtMoney(mc.drawdown_threshold)} or more</dt>
+          <dd>{fmtPercent(mc.probability_drawdown_at_least_threshold)}</dd>
+        </div>
+        {hasTarget && (
+          <div>
+            <dt>Reach {fmtMoney(mc.target)}</dt>
+            <dd>{fmtPercent(mc.probability_reaching_target)}</dd>
+          </div>
+        )}
+        {mc.probability_ruin !== null && mc.probability_ruin !== undefined && (
+          <div>
+            <dt>Lose half the starting equity</dt>
+            <dd>{fmtPercent(mc.probability_ruin)}</dd>
+          </div>
+        )}
+      </dl>
+      <p className="card-note">{mc.assumption}</p>
+    </>
   );
 }
 
@@ -545,51 +548,17 @@ function FanPanel({ params }: { params: string }) {
           The simulation could not run: {query.error.message}
         </p>
       ) : !mc || !mc.fan || mc.fan.length === 0 ? (
-        <p className="muted">{query.isPending ? "Running 5,000 simulated paths…" : "No trades to simulate."}</p>
+        <p className="muted">{query.isPending ? "Running 5,000 simulated paths..." : "No trades to simulate."}</p>
       ) : (
-        <>
-          <MonteCarloFan
-            fan={mc.fan}
-            label={`Range of possible equity over the next ${mc.horizon_trades ?? 0} trades, from ${fmtInt(mc.paths)} simulated paths`}
-          />
-          <dl className="stat-row">
-            <div>
-              <dt>Paths</dt>
-              <dd>{fmtInt(mc.paths)}</dd>
-            </div>
-            <div>
-              <dt>Median end</dt>
-              <dd>{fmtMoney(mc.final_percentiles?.p50)}</dd>
-            </div>
-            <div>
-              <dt>Worst 5% end</dt>
-              <dd>{fmtMoney(mc.final_percentiles?.p5)}</dd>
-            </div>
-            <div>
-              <dt>Best 5% end</dt>
-              <dd>{fmtMoney(mc.final_percentiles?.p95)}</dd>
-            </div>
-            <div>
-              <dt>Chance of a drawdown of {fmtMoney(mc.drawdown_threshold)} or more</dt>
-              <dd>{fmtPercent(mc.probability_drawdown_at_least_threshold)}</dd>
-            </div>
-            <div>
-              <dt>Chance of reaching {fmtMoney(mc.target)}</dt>
-              <dd>{fmtPercent(mc.probability_reaching_target)}</dd>
-            </div>
-          </dl>
-          <p className="card-note">{mc.assumption}</p>
-        </>
+        <FanResults mc={mc} fan={mc.fan} />
       )}
     </Panel>
   );
 }
-
 const PREVIEW_CARDS = [
   ["Segment explorer", "Compare symbols, sessions, hours and sides with significance checks."],
   ["Trade Constellation", "Every trade as a dot; drag a box to pick trades and open them."],
-  ["MAE and MFE", "How far trades moved against you and for you before closing."],
-  ["Streaks and fee drag", "Winning and losing runs, and what costs take from gross P&L."],
+  ["Streaks", "Winning and losing runs, and how long they last."],
   ["Monte Carlo fan", "The range of equity paths your history could produce."],
 ] as const;
 
@@ -667,9 +636,7 @@ export default function Analytics() {
       <div className="bento">
         <SegmentExplorer params={params} />
         <Constellation points={data.points} />
-        <MaeMfe data={data} />
         <Streaks data={data.streaks} />
-        <FeeDrag data={data.fee_drag} />
         <FanPanel params={params} />
       </div>
       <p className="footer">{DISCLAIMER}</p>

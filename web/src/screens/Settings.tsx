@@ -13,7 +13,7 @@ import {
   useTemplates,
   useWipe,
   type SettingsData,
-} from "../lib/phase4";
+} from "../lib/insights";
 import { useFilters } from "../state/filters";
 import { useUi } from "../state/ui";
 

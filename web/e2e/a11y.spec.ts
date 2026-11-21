@@ -37,7 +37,7 @@ const SCREENS: Screen[] = [
       await page.goto("/");
       await page.getByRole("button", { name: "Analytics", exact: true }).click();
       await expect(page.locator(".chart-scatter canvas").first()).toBeVisible();
-      await expect(page.getByRole("region", { name: "Monte Carlo fan" }).locator("canvas")).toBeVisible();
+      await expect(page.getByRole("region", { name: "Monte Carlo fan" }).locator("canvas").first()).toBeVisible();
     },
   },
   {

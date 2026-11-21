@@ -13,7 +13,8 @@ Array = npt.NDArray[np.float64]
 
 ELEMENT_BUDGET: Final = 2_000_000  # cap on array size per chunk, to bound memory
 MAX_PATH_LENGTH: Final = 1000
-FAN_CHECKPOINTS: Final = 20
+FAN_CHECKPOINTS: Final = 40
+FINAL_HISTOGRAM_BINS: Final = 24
 ASSUMPTION: Final = (
     "Trades are treated as independent and resampled with replacement. "
     "Clustered trades (for example, one bad day) make these intervals too narrow."
@@ -95,6 +96,7 @@ def monte_carlo(
     chunk = max(1, min(paths, ELEMENT_BUDGET // (horizon + 1)))
     checkpoints = np.unique(np.linspace(1, horizon, FAN_CHECKPOINTS).round().astype(int))
     finals: list[Array] = []
+    worsts: list[Array] = []
     fan: list[Array] = []
     drawdown_hits = 0
     target_hits = 0
@@ -107,6 +109,7 @@ def monte_carlo(
         peak = np.maximum.accumulate(cumulative, axis=1)
         worst = (cumulative - peak).min(axis=1)
         finals.append(cumulative[:, -1])
+        worsts.append(-worst)
         fan.append(cumulative[:, checkpoints])
         drawdown_hits += int((worst <= -drawdown_threshold).sum())
         target_hits += int((cumulative[:, -1] >= target).sum())
@@ -133,6 +136,9 @@ def monte_carlo(
             strict=True,
         )
     ]
+    # Depth of the worst fall from a running peak on each path, as a positive amount.
+    depth = np.concatenate(worsts)
+    counts, edges = np.histogram(final + base, bins=FINAL_HISTOGRAM_BINS)
     return {
         "paths": paths,
         "horizon_trades": horizon,
@@ -143,10 +149,24 @@ def monte_carlo(
         "probability_drawdown_at_least_threshold": drawdown_hits / paths,
         "probability_reaching_target": target_hits / paths,
         "probability_ruin": ruin_hits / paths if start_equity else None,
+        "probability_profit": float((final > 0).mean()),
+        "starting_equity": start_equity,
+        "expected_final": float(final.mean() + base),
         "final_percentiles": {
             "p5": float(np.percentile(final + base, 5)),
+            "p25": float(np.percentile(final + base, 25)),
             "p50": float(np.percentile(final + base, 50)),
+            "p75": float(np.percentile(final + base, 75)),
             "p95": float(np.percentile(final + base, 95)),
+        },
+        "drawdown_percentiles": {
+            "p50": float(np.percentile(depth, 50)),
+            "p90": float(np.percentile(depth, 90)),
+            "p95": float(np.percentile(depth, 95)),
+        },
+        "final_histogram": {
+            "edges": [float(edge) for edge in edges],
+            "counts": [int(count) for count in counts],
         },
         "fan": fan_table,
     }

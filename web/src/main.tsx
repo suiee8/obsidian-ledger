@@ -19,6 +19,8 @@ const queryClient = new QueryClient({
     queries: {
       retry: 1,
       refetchOnWindowFocus: false,
+      // Switching screens and back inside this window reuses what is already loaded.
+      staleTime: 30_000,
     },
   },
 });

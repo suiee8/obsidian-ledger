@@ -23,7 +23,7 @@ async function tabTo(page: Page, target: Locator, limit = 90) {
 }
 
 test.describe("Analytics", () => {
-  test("explores segments, the constellation, streaks, fee drag, and the Monte Carlo fan", async ({
+  test("explores segments, the constellation, streaks, and the Monte Carlo fan", async ({
     page,
     request,
   }) => {
@@ -41,12 +41,11 @@ test.describe("Analytics", () => {
     await expect(page.locator(".chart-scatter canvas").first()).toBeVisible();
     const streaks = page.getByRole("region", { name: "Streaks", exact: true });
     await expect(streaks.getByText("Longest winning run")).toBeVisible();
-    const fees = page.getByRole("region", { name: "Fee drag", exact: true });
-    await expect(fees.getByText("Total costs", { exact: true })).toBeVisible();
 
     const fan = page.getByRole("region", { name: "Monte Carlo fan" });
-    await expect(fan.locator("canvas")).toBeVisible();
-    await expect(fan.getByText("Chance of reaching")).toBeVisible();
+    await expect(fan.locator("canvas")).toHaveCount(2);
+    await expect(fan.getByText("Finish in profit", { exact: true })).toBeVisible();
+    await expect(fan.getByText("Typical worst drawdown", { exact: true })).toBeVisible();
   });
 
   test("a rectangle on the constellation opens exactly those trades in the Trades table", async ({

@@ -32,8 +32,6 @@ const TRADE = {
   r_multiple: null,
   stop_loss: null,
   take_profit: null,
-  mae: null,
-  mfe: null,
   holding_seconds: 5707,
   session: "london",
   timeframe: null,

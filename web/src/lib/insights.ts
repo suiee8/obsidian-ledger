@@ -5,12 +5,11 @@ import { FILTER_DEBOUNCE_MS, filtersBody, useFilters } from "../state/filters";
 import { jsonBody, requestJson } from "./api";
 import { useDebouncedValue } from "./useDebouncedValue";
 
-// Schemas and query hooks for Analytics, Behavior, Simulator, and Settings.
+// Schemas and query hooks for the Analytics, Behavior, Simulator, and Settings screens.
 
 const num = z.number().nullable();
 const query = (params: string) => (params ? `&${params}` : "");
 
-// ----- Analytics -----
 
 const RunSchema = z.object({
   kind: z.string(),
@@ -27,21 +26,9 @@ export const ExploreSchema = z.object({
     t: z.array(z.number()),
     pnl: z.array(z.number()),
     r: z.array(num),
-    mae: z.array(num),
-    mfe: z.array(num),
     hold: z.array(z.number()),
     symbol: z.array(z.number()),
     symbols: z.array(z.string()),
-  }),
-  mae_mfe: z.object({
-    trades_with_excursions: z.number(),
-    trades_total: z.number(),
-    winner_capture_ratio: num,
-    winner_capture_n: z.number(),
-    avg_mae_winners: num,
-    avg_mae_losers: num,
-    avg_mfe_losers: num,
-    note: z.string(),
   }),
   streaks: z.object({
     runs: z.number(),
@@ -49,22 +36,7 @@ export const ExploreSchema = z.object({
     longest_losses: z.array(RunSchema),
     histogram: z.array(z.object({ length: z.number(), wins: z.number(), losses: z.number() })),
   }),
-  fee_drag: z.object({
-    costs: num,
-    gross: num,
-    drag: num,
-    rule: z.string().optional(),
-    by_symbol: z.array(
-      z.object({
-        symbol: z.string(),
-        trades: z.number(),
-        costs: z.number(),
-        gross: z.number(),
-        net: z.number(),
-        drag: num,
-      }),
-    ),
-  }),
+
 });
 export type ExploreData = z.infer<typeof ExploreSchema>;
 
@@ -99,7 +71,20 @@ const MonteCarloSchema = z.object({
   probability_drawdown_at_least_threshold: num.optional(),
   probability_reaching_target: num.optional(),
   probability_ruin: num.optional(),
-  final_percentiles: z.object({ p5: z.number(), p50: z.number(), p95: z.number() }).optional(),
+  probability_profit: num.optional(),
+  starting_equity: num.optional(),
+  expected_final: z.number().optional(),
+  final_percentiles: z
+    .object({
+      p5: z.number(),
+      p25: z.number().optional(),
+      p50: z.number(),
+      p75: z.number().optional(),
+      p95: z.number(),
+    })
+    .optional(),
+  drawdown_percentiles: z.object({ p50: z.number(), p90: z.number(), p95: z.number() }).optional(),
+  final_histogram: z.object({ edges: z.array(z.number()), counts: z.array(z.number()) }).optional(),
   fan: z
     .array(
       z.object({

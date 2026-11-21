@@ -10,7 +10,7 @@ import {
   useSimulation,
   type RulesState,
   type Simulation,
-} from "../lib/phase4";
+} from "../lib/insights";
 import { useFilterOptions } from "../lib/queries";
 import { useDebouncedValue } from "../lib/useDebouncedValue";
 

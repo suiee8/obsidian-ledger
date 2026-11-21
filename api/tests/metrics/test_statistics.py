@@ -75,6 +75,35 @@ def test_monte_carlo_fan_is_ordered() -> None:
         assert row["p5"] <= row["p25"] <= row["p50"] <= row["p75"] <= row["p95"]
 
 
+def test_monte_carlo_distribution_summary() -> None:
+    rng = np.random.default_rng(1)
+    result = monte_carlo(
+        rng.normal(5, 20, 80),
+        paths=400,
+        seed=4,
+        start_equity=1000.0,
+        drawdown_threshold=100.0,
+        target=0.0,
+    )
+    ends = result["final_percentiles"]
+    assert ends["p5"] <= ends["p25"] <= ends["p50"] <= ends["p75"] <= ends["p95"]
+    depth = result["drawdown_percentiles"]
+    assert 0 <= depth["p50"] <= depth["p90"] <= depth["p95"]
+    histogram = result["final_histogram"]
+    assert len(histogram["edges"]) == len(histogram["counts"]) + 1
+    assert sum(histogram["counts"]) == 400
+    assert 0.0 <= result["probability_profit"] <= 1.0
+    assert result["starting_equity"] == 1000.0
+
+
+def test_monte_carlo_all_winning_always_profits() -> None:
+    result = monte_carlo(
+        np.full(20, 10.0), paths=50, seed=3, start_equity=None, drawdown_threshold=1.0, target=0.0
+    )
+    assert result["probability_profit"] == 1.0
+    assert result["drawdown_percentiles"]["p95"] == 0.0
+
+
 def _frame(rows: list[tuple[float, float, datetime, datetime, str]]) -> pl.DataFrame:
     """Rows of (pnl, qty, entry, exit, symbol) with the columns the metrics read."""
     return pl.DataFrame(
