@@ -84,6 +84,9 @@ test("the dashboard renders headline numbers and the equity chart", async ({ pag
 
   await expect(page.locator(".kpi-strip")).toBeVisible();
   await expect(page.getByText("Net P&L", { exact: true })).toBeVisible();
+  for (const filter of ["account", "symbol", "side"]) {
+    await expect(page.getByLabel(`Add ${filter} filter`).locator('option[value=""]')).toHaveText(filter);
+  }
   await expect(page.locator(".chart-equity canvas")).toBeVisible();
 });
 

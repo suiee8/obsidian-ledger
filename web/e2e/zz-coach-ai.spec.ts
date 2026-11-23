@@ -131,7 +131,7 @@ test("with a mock model, the summary appears and the chat answers, cites trades,
   await expect(summary).toContainText("mock-coach");
 
   await ask(page, "What is my biggest leak?");
-  await expect(page.locator(".agent-presence")).toHaveAttribute("data-state", "streaming");
+  await expect(drawer.getByRole("listitem").filter({ hasText: "What is my biggest leak?" })).toHaveAttribute("aria-busy", "true");
   const answers = drawer.getByRole("list", { name: "Questions and answers" });
   await expect(answers.getByText(/Revenge-style re-entries/).first()).toBeVisible();
   await expect(answers.getByText("Tool results used: 1")).toBeVisible();

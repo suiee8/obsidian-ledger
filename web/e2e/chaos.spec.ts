@@ -22,18 +22,18 @@ test("killing the API shows Offline, keeps the last data on screen, and recovers
   const errors = trackPageErrors(page);
   await page.goto("/");
   await expect(page.locator(".kpi-strip")).toBeVisible();
-  await expect(badge(page)).toContainText("online");
+  await expect(badge(page)).toHaveCount(0);
 
   await page.route(API_PATTERN, (route) => route.abort("connectionrefused"));
-  // Refocusing and rechecking is how a user notices. Clicking the badge probes the API.
-  await badge(page).click();
+  // Refocusing probes the API when the healthy status is hidden.
+  await page.evaluate(() => window.dispatchEvent(new Event("focus")));
   await expect(badge(page)).toContainText("offline");
   await expect(badge(page)).toHaveAttribute("aria-label", /displayed data may be stale/);
   await expect(page.locator(".kpi-strip")).toBeVisible();
 
   await page.unroute(API_PATTERN);
   await badge(page).click();
-  await expect(badge(page)).toContainText("online", { timeout: 15_000 });
+  await expect(badge(page)).toHaveCount(0);
   expect(errors).toEqual([]);
 });
 
@@ -47,13 +47,13 @@ test("stalled API calls time out into Offline instead of hanging the screen", as
     await new Promise((resolve) => setTimeout(resolve, 8_000));
     await route.abort("timedout").catch(() => undefined);
   });
-  await badge(page).click();
+  await page.evaluate(() => window.dispatchEvent(new Event("focus")));
   await expect(badge(page)).toContainText("offline", { timeout: 10_000 });
   await expect(page.locator(".kpi-strip")).toBeVisible();
 
   await page.unroute(/\/health(\/ready)?$/);
   await badge(page).click();
-  await expect(badge(page)).toContainText("online", { timeout: 15_000 });
+  await expect(badge(page)).toHaveCount(0);
   expect(errors).toEqual([]);
 });
 
@@ -72,7 +72,7 @@ test("a degraded readiness check shows Degraded, not Offline", async ({ page }) 
 
   await page.unroute("**/health/ready");
   await badge(page).click();
-  await expect(badge(page)).toContainText("online");
+  await expect(badge(page)).toHaveCount(0);
   expect(errors).toEqual([]);
 });
 

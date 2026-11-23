@@ -195,10 +195,10 @@ export default function Dashboard() {
             {chartsReady ? <EquityAurora equity={data.equity} /> : <ChartFallback sizeClass="chart-equity" />}
           </Suspense>
         </Panel>
-        <Panel title="P&L calendar" className="span-12 panel-hug">
+        <Panel title="P&L calendar" className="span-6 panel-hug">
           <DailyCalendar days={data.daily} />
         </Panel>
-        <Panel title="Weekday and hour" className="span-12 panel-hug">
+        <Panel title="Weekday and hour" className="span-6 panel-hug">
           <WeekdayHour cells={data.heatmap} />
         </Panel>
       </div>

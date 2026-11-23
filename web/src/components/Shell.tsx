@@ -1,6 +1,5 @@
 import { lazy, Suspense, useEffect, useState, type MouseEvent, type ReactNode } from "react";
 
-import { AgentPresence, type AgentActivity } from "./AgentPresence";
 import { CursorEffects } from "./CursorEffects";
 import { FlipBrand, LiquidFilter, SocialFooter } from "./ShellEffects";
 import { LiquidButton } from "./ui/liquid-button";
@@ -21,7 +20,6 @@ const SapphireAurora = lazy(() => import("../shader/SapphireAurora"));
 type ShellProps = {
   route: Route;
   busy: boolean;
-  agentState: AgentActivity;
   onNavigate: (route: Route) => void;
   coachOpen: boolean;
   onToggleCoach: () => void;
@@ -74,7 +72,6 @@ function animateShellClick(event: MouseEvent<HTMLElement>) {
 export function Shell({
   route,
   busy,
-  agentState,
   onNavigate,
   coachOpen,
   onToggleCoach,
@@ -105,7 +102,6 @@ export function Shell({
         <div className="topbar-center">{filters}</div>
         <div className="topbar-end">
           {status}
-          <AgentPresence state={agentState} />
           <button
             type="button"
             className={`coach-toggle${coachOpen ? " is-open" : ""}`}

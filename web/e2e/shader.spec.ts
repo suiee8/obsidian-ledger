@@ -1,9 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 
-import { importSample } from "./helpers";
-
 const aurora = (page: Page) => page.locator(".aurora-layer");
-const orb = (page: Page) => page.locator(".agent-presence");
 
 test("the shader canvas is present but hidden from assistive technology", async ({ page }) => {
   await page.goto("/");
@@ -32,7 +29,7 @@ test("keeps cumulative layout shift below 0.05", async ({ page }) => {
     observer.observe({ type: "layout-shift", buffered: true });
   });
   await page.goto("/");
-  await expect(orb(page)).toBeVisible();
+  await expect(page.getByRole("button", { name: "Coach", exact: true })).toBeVisible();
   await page.waitForTimeout(1200);
   const layoutShift = await page.evaluate(
     () => (window as Window & { __ledgerLayoutShift?: number }).__ledgerLayoutShift ?? 0,
@@ -75,23 +72,8 @@ test("the shader pauses in a hidden tab and resumes when visible", async ({ page
   await expect(layer).toHaveAttribute("data-paused", "false");
 });
 
-test("the presence orb reflects idle, thinking, error, and offline states", async ({ page, request }) => {
+test("the top bar omits the agent dot and healthy badge", async ({ page }) => {
   await page.goto("/");
-  await expect(orb(page)).toHaveAttribute("data-state", "idle");
-
-  await importSample(request);
-  await page.route("**/api/coach/stream**", () => undefined);
-  await page.getByRole("button", { name: "Coach", exact: true }).click();
-  await expect(orb(page)).toHaveAttribute("data-state", "thinking");
-
-  await page.getByRole("button", { name: "Coach", exact: true }).click();
-  await page.unroute("**/api/coach/stream**");
-  await page.route("**/api/coach/stream**", (route) => route.abort());
-  await page.getByRole("button", { name: "Coach", exact: true }).click();
-  await expect(orb(page)).toHaveAttribute("data-state", "error");
-
-  await page.unroute("**/api/coach/stream**");
-  await page.route("**/health", (route) => route.abort());
-  await page.reload();
-  await expect(orb(page)).toHaveAttribute("data-state", "offline");
+  await expect(page.locator(".agent-presence")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Local API online", exact: true })).toHaveCount(0);
 });

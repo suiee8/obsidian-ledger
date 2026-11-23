@@ -232,7 +232,7 @@ html[data-ledger-cursor="active"] :not(:is(
 .shell > .main {
   border-radius: 0;
   background: var(--palette-background);
-  padding: var(--frame-content-inset);
+  padding: var(--space-3) var(--frame-content-inset);
   margin-right: var(--frame-coach-width);
 }
 

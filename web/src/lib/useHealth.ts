@@ -59,6 +59,12 @@ export function useHealth(): { state: HealthState; refresh: () => void } {
     [],
   );
 
+  useEffect(() => {
+    const recheck = () => setNonce((value) => value + 1);
+    window.addEventListener("focus", recheck);
+    return () => window.removeEventListener("focus", recheck);
+  }, []);
+
   return {
     state,
     refresh: () => setNonce((value) => value + 1),

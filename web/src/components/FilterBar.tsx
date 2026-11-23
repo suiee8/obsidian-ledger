@@ -44,7 +44,7 @@ export function FilterBar({ options }: FilterBarProps) {
               value=""
               onChange={(event) => addValue(key, event.target.value)}
             >
-              <option value="">{`+ ${LIST_LABELS[key]}`}</option>
+              <option value="">{LIST_LABELS[key]}</option>
               {available.map((item) => (
                 <option key={item} value={item}>
                   {item}
