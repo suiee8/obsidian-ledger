@@ -1,0 +1,15 @@
+# Glyph field baseline
+
+Step 0 stopped because two background layers respond to the pointer. The foreground cursor trail is listed separately because the request also calls it out as a possible source of ambiguity.
+
+| Layer | Drawing, region, and stacking | Pointer mapping and disable controls | Color source |
+| --- | --- | --- | --- |
+| [WaveGridBackground](../web/src/components/WaveGridBackground.tsx#L146) | A lit WebGL cube grid with cursor and idle ripples. Shell lazy-loads it in main. Its fixed canvas is clipped to the rounded main region at z-index 0, behind foreground content. [Layer CSS](../web/src/components/shell-effects.css#L483) | The main pointer listener normalizes viewport coordinates and raycasts to the cube tops. Touch events are ignored. Reduced motion hides the canvas, and `data-shader="off"` disables it. The render scheduler skips hidden tabs and handles context loss. [Pointer handler](../web/src/components/WaveGridBackground.tsx#L363) | The shader mixes lit cube shading with white crests using `vec3(1.0)`. White is a shader constant, and there is no glyph-ready CSS color token read by this layer. |
+| [SapphireAurora](../web/src/shader/SapphireAurora.tsx#L199) | A WebGL aurora and line detail with ambient motion and an additional pointer shift. Shell lazy-loads its fixed canvas in the rounded main ambient wrapper at z-index −1, beneath the hero and wave grid. [Pointer shift](../web/src/shader/fragment.glsl#L39) | A window pointer listener normalizes viewport coordinates and updates the eased shader uniform. `data-shader="off"` or unavailable WebGL uses the fallback. The controller pauses in hidden tabs and can step down to a static frame. The component initializes reduced motion and save-data as false, and the pointer listener does not filter touch. [Listener and controller setup](../web/src/shader/SapphireAurora.tsx#L207) | Reads multiple CSS tokens, including `--palette-background`, the royal blues, `--palette-ice`, and `--palette-white`. A root attribute observer refreshes the colors. [Token reader](../web/src/shader/SapphireAurora.tsx#L41) |
+| [CursorEffects](../web/src/components/CursorEffects.tsx#L13) | A short cursor-following scribble on a fixed viewport canvas at z-index 9997, above the page and beneath the custom cursor and pulse. The canvas is portaled into the body. [Layer CSS](../web/src/components/shell-effects.css#L70) | Uses viewport coordinates directly. It requires a fine pointer and accepts mouse input only. Reduced motion disables it, and blur or native-control hover clears cursor feedback. [Pointer handler](../web/src/components/CursorEffects.tsx#L147) | Reads the `--white-24` CSS token when mounted. |
+
+The current app has no “Pause effects” control. The background replacement, performance comparison, bundle measurement, and e2e verification are pending selection of the target layer.
+
+## Baseline checks
+
+`pnpm check` passed with 59 web tests and 409 API tests passing, 1 API test skipped, and zero lint or type-check errors. No dev server was running. No e2e specs were run.
