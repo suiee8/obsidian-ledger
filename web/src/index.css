@@ -3404,40 +3404,127 @@ textarea:hover {
   box-shadow: inset 3px 0 0 var(--palette-white);
 }
 
-/* Coach */
+/* Coach workspace */
 .coach-drawer {
-  background: color-mix(in srgb, var(--palette-surface1) 97%, transparent);
-  border-left: 1px solid var(--white-12);
-  box-shadow: var(--elev-4);
+  --coach-base: color-mix(in srgb, var(--palette-white) 15%, var(--shell-black));
+  --coach-raised: color-mix(in srgb, var(--palette-white) 20%, var(--shell-black));
+  --coach-inset: color-mix(in srgb, var(--palette-white) 9%, var(--shell-black));
+  background: var(--coach-base);
+  border: 1px solid var(--white-24);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  padding: 0 var(--space-4) var(--space-4);
+  gap: var(--space-3);
+  grid-template-columns: minmax(0, 1fr);
+  scroll-padding-block: 176px var(--space-5);
+}
+
+.coach-drawer :is(.coach-panel, .coach-body, .coach-section) {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.coach-chrome {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  margin-inline: calc(-1 * var(--space-4));
+  padding: var(--space-3) var(--space-4);
+  background: var(--coach-raised);
+  border-bottom: 1px solid var(--white-24);
+  display: grid;
+  gap: var(--space-2);
 }
 
 .coach-head {
-  background: var(--gradient-hero);
-  border-bottom: 1px solid var(--white-12);
+  position: static;
+  flex-wrap: wrap;
+  align-items: center;
+  padding: 0;
+  background: none;
+  border: 0;
 }
 
-.coach-head :where(h2, h3, p, span, button, label) {
-  color: var(--on-blue);
+.coach-head .eyebrow {
+  color: var(--palette-muted);
+  margin-bottom: var(--space-1);
+}
+
+.coach-head h2 {
+  text-transform: none;
+  color: var(--palette-ink);
+}
+
+.coach-actions {
+  justify-content: flex-start;
+}
+
+.coach-actions .btn {
+  background: var(--coach-inset);
+  border-color: var(--white-24);
+}
+
+.coach-chrome .coach-pulse {
+  margin: 0;
+  border-radius: var(--radius-sm);
+}
+
+.coach-chrome .coach-pulse[data-busy="false"] {
+  display: none;
+}
+
+.coach-chrome .coach-tabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  padding: var(--space-1);
+  background: var(--coach-inset);
+  border: 1px solid var(--white-12);
+  border-radius: var(--radius-sm);
+}
+
+.coach-chrome .coach-tabs [role="tab"] {
+  border: 0;
+  border-radius: calc(var(--radius-sm) - var(--space-1));
+  justify-content: center;
+  min-height: 34px;
+}
+
+.coach-chrome .coach-tabs [role="tab"][aria-selected="true"] {
+  background: var(--palette-white);
+  color: var(--shell-black);
+}
+
+.coach-drawer :is(.coach-verdict, .coach-finding, .coach-state, .coach-ai) {
+  background: var(--coach-inset);
+  border-color: var(--white-24);
+}
+
+.coach-drawer .ask-form {
+  background: var(--coach-base);
+  border-top: 1px solid var(--white-24);
+}
+
+.coach-drawer .ask-form textarea {
+  background: var(--coach-inset);
+  border-color: var(--white-24);
+}
+
+.ask-question,
+.ask-answer {
+  background: var(--coach-inset);
+  color: var(--palette-ink);
+  border: 1px solid var(--white-24);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
 }
 
 .ask-question {
-  background: var(--gradient-royal);
-  color: var(--on-blue);
-  border-radius: var(--radius-md);
-  padding: var(--space-3);
-}
-
-.ask-answer {
-  background: color-mix(in srgb, var(--palette-surface2) 96%, transparent);
-  border: 1px solid var(--white-6);
-  border-radius: var(--radius-md);
-  padding: var(--space-3);
+  background: var(--coach-raised);
 }
 
 .ask-turn[aria-busy="true"] .ask-answer {
   background:
     linear-gradient(100deg, transparent 30%, var(--white-6) 50%, transparent 70%) 0 0 / 220% 100%,
-    color-mix(in srgb, var(--palette-surface2) 96%, transparent);
+    var(--coach-inset);
   animation: skeleton-sweep 2.2s linear infinite;
 }
 

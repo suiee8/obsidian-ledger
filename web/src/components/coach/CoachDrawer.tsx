@@ -364,72 +364,74 @@ export function CoachDrawer({ onAgentSignal }: { onAgentSignal?: AgentSignal }) 
 
   return (
     <aside
-      className="coach-drawer glass"
+      className="coach-drawer"
       role="complementary"
       aria-label="Coach"
       style={{ width }}
       data-phase={run.phase}
     >
       <Resizer />
+      <div className="coach-chrome">
+        <header className="coach-head">
+          <div>
+            <p className="eyebrow">Coach</p>
+            <h2>Review of your trades</h2>
+          </div>
+          <div className="coach-actions">
+            <button type="button" className="btn btn-quiet" onClick={run.rerun} disabled={run.phase === "running"}>
+              Run again
+            </button>
+            {reportId && (
+              <>
+                <a className="btn btn-quiet" href={`${apiBase()}/api/coach/reports/${reportId}/export?format=md`} download>
+                  Markdown
+                </a>
+                <a
+                  className="btn btn-quiet"
+                  href={`${apiBase()}/api/coach/reports/${reportId}/export?format=html`}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Print view
+                </a>
+              </>
+            )}
+            <button type="button" className="btn btn-quiet" onClick={() => setOpen(false)}>
+              Close
+            </button>
+          </div>
+        </header>
+        <div className={`pulse-bar coach-pulse`} data-busy={run.phase === "running" ? "true" : "false"} aria-hidden="true" />
+        <div className="coach-tabs" role="tablist" aria-label="Coach views" onKeyDown={onTabKey}>
+          <button
+            type="button"
+            role="tab"
+            id="coach-tab-report"
+            aria-selected={tab === "report"}
+            aria-controls="coach-panel-report"
+            tabIndex={tab === "report" ? 0 : -1}
+            onClick={() => setTab("report")}
+          >
+            Report
+          </button>
+          <button
+            type="button"
+            role="tab"
+            id="coach-tab-ask"
+            aria-selected={tab === "ask"}
+            aria-controls="coach-panel-ask"
+            tabIndex={tab === "ask" ? 0 : -1}
+            onClick={() => setTab("ask")}
+          >
+            Ask the Coach
+          </button>
+        </div>
+      </div>
       {selectFinding.isError && (
         <p role="alert" className="muted">
           Could not open those trades: {selectFinding.error.message}
         </p>
       )}
-      <header className="coach-head">
-        <div>
-          <p className="eyebrow">Coach</p>
-          <h2>Review of your trades</h2>
-        </div>
-        <div className="coach-actions">
-          <button type="button" className="btn btn-quiet" onClick={run.rerun} disabled={run.phase === "running"}>
-            Run again
-          </button>
-          {reportId && (
-            <>
-              <a className="btn btn-quiet" href={`${apiBase()}/api/coach/reports/${reportId}/export?format=md`} download>
-                Markdown
-              </a>
-              <a
-                className="btn btn-quiet"
-                href={`${apiBase()}/api/coach/reports/${reportId}/export?format=html`}
-                target="_blank"
-                rel="noreferrer"
-              >
-                Print view
-              </a>
-            </>
-          )}
-          <button type="button" className="btn btn-quiet" onClick={() => setOpen(false)}>
-            Close
-          </button>
-        </div>
-      </header>
-      <div className={`pulse-bar coach-pulse`} data-busy={run.phase === "running" ? "true" : "false"} aria-hidden="true" />
-      <div className="coach-tabs" role="tablist" aria-label="Coach views" onKeyDown={onTabKey}>
-        <button
-          type="button"
-          role="tab"
-          id="coach-tab-report"
-          aria-selected={tab === "report"}
-          aria-controls="coach-panel-report"
-          tabIndex={tab === "report" ? 0 : -1}
-          onClick={() => setTab("report")}
-        >
-          Report
-        </button>
-        <button
-          type="button"
-          role="tab"
-          id="coach-tab-ask"
-          aria-selected={tab === "ask"}
-          aria-controls="coach-panel-ask"
-          tabIndex={tab === "ask" ? 0 : -1}
-          onClick={() => setTab("ask")}
-        >
-          Ask the Coach
-        </button>
-      </div>
       <div
         id="coach-panel-ask"
         role="tabpanel"
