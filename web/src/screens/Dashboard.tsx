@@ -171,6 +171,7 @@ export default function Dashboard() {
 
   const low = data.report.sample.low_confidence;
   const caveats = data.report.caveats.filter((note) => !HIDDEN_CAVEATS.some((pattern) => pattern.test(note)));
+  const latestEquity = data.equity.points.at(-1);
   return (
     <div className="dashboard">
       <header className="hero">
@@ -190,15 +191,29 @@ export default function Dashboard() {
         </ul>
       )}
       <div className="bento">
-        <Panel title="Equity" className="span-12 panel-fill">
-          <Suspense fallback={<ChartFallback sizeClass="chart-equity" />}>
-            {chartsReady ? <EquityAurora equity={data.equity} /> : <ChartFallback sizeClass="chart-equity" />}
-          </Suspense>
+        <Panel title="Equity" className="span-12 dashboard-chart-panel">
+          {latestEquity ? (
+            <>
+              <dl className="equity-key">
+                <div>
+                  <dt><span className="equity-key-line" aria-hidden="true" /> Latest equity</dt>
+                  <dd>{fmtMoney(latestEquity.equity)}</dd>
+                </div>
+                <div>
+                  <dt><span className="equity-key-line equity-key-drawdown" aria-hidden="true" /> Drawdown from peak</dt>
+                  <dd>{fmtMoney(latestEquity.drawdown)}</dd>
+                </div>
+              </dl>
+              <Suspense fallback={<ChartFallback sizeClass="chart-equity" />}>
+                {chartsReady ? <EquityAurora equity={data.equity} /> : <ChartFallback sizeClass="chart-equity" />}
+              </Suspense>
+            </>
+          ) : <p className="muted">No equity data in this selection.</p>}
         </Panel>
-        <Panel title="P&L calendar" className="span-6 panel-hug">
+        <Panel title="P&L calendar" className="span-6 dashboard-chart-panel">
           <DailyCalendar days={data.daily} />
         </Panel>
-        <Panel title="Weekday and hour" className="span-6 panel-hug">
+        <Panel title="Weekday and hour" className="span-6 dashboard-chart-panel">
           <WeekdayHour cells={data.heatmap} />
         </Panel>
       </div>

@@ -11,6 +11,13 @@ interface EquityAuroraProps {
   equity: DashboardData["equity"];
 }
 
+const axisMoney = new Intl.NumberFormat("en-US", {
+  style: "currency",
+  currency: "USD",
+  notation: "compact",
+  maximumFractionDigits: 1,
+});
+
 /**
  * Equity curve as a glowing line with a gradient fill, and drawdown as an inverted ribbon in
  * its own band beneath it.
@@ -23,34 +30,38 @@ export function EquityAurora({ equity }: EquityAuroraProps) {
     const drawdownData = equity.points.map((point, index) => [times[index], point.drawdown]);
     return {
       animation: !prefersReducedMotion(),
+      useUTC: true,
       grid: [
-        { left: 56, right: 16, top: 16, height: "58%" },
-        { left: 56, right: 16, top: "70%", bottom: 28 },
+        { left: 52, right: 16, top: 12, height: "53%" },
+        { left: 52, right: 16, top: "66%", bottom: 24 },
       ],
       xAxis: [
         { type: "time", gridIndex: 0, axisLabel: { show: false }, axisLine: { show: false }, splitLine: { show: false } },
-        { type: "time", gridIndex: 1, axisLabel: { color: palette.dim }, axisLine: { lineStyle: { color: palette.line } }, splitLine: { show: false } },
+        { type: "time", gridIndex: 1, axisLabel: { color: palette.ink, hideOverlap: true }, axisLine: { lineStyle: { color: palette.line } }, splitLine: { show: false } },
       ],
       yAxis: [
         {
           type: "value",
           gridIndex: 0,
-          axisLabel: { color: palette.dim, formatter: (value: number) => fmtMoney(value).replace(/\.00$/, "") },
+          axisLabel: { color: palette.ink, formatter: (value: number) => axisMoney.format(value) },
           splitLine: { lineStyle: { color: palette.white, opacity: 0.06 } },
         },
         {
           type: "value",
           gridIndex: 1,
-          axisLabel: { color: palette.dim, formatter: (value: number) => fmtMoney(value).replace(/\.00$/, "") },
-          splitLine: { show: false },
+          splitNumber: 2,
+          axisLabel: { color: palette.ink, formatter: (value: number) => axisMoney.format(value) },
+          splitLine: { lineStyle: { color: palette.white, opacity: 0.06 } },
         },
       ],
+      axisPointer: { link: [{ xAxisIndex: [0, 1] }] },
       tooltip: {
         trigger: "axis",
-        backgroundColor: `${palette.surface}F2`,
+        confine: true,
+        backgroundColor: palette.surface,
         borderColor: palette.line,
         textStyle: { color: palette.ink },
-        extraCssText: "backdrop-filter: blur(12px); border-radius: 14px; box-shadow: 0 12px 32px rgba(0, 0, 0, 0.3);",
+        extraCssText: "border-radius: 10px;",
         valueFormatter: (value: unknown) => fmtMoney(Number(value)),
       },
       series: [
@@ -61,7 +72,7 @@ export function EquityAurora({ equity }: EquityAuroraProps) {
           yAxisIndex: 0,
           data: equityData,
           showSymbol: false,
-          lineStyle: { color: palette.royalSoft, width: 2, shadowBlur: 12, shadowColor: palette.royal },
+          lineStyle: { color: palette.royalSoft, width: 2 },
           emphasis: { focus: "series", lineStyle: { color: palette.white, width: 2.5 } },
           areaStyle: {
             color: {

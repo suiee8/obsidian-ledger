@@ -53,9 +53,9 @@ const PAYLOAD = {
     downsampled: false,
     source_points: 2,
   },
-  daily: [{ day: "2026-01-06", pnl: 22, trades: 1 }],
+  daily: [{ day: "2026-01-06", pnl: 22, trades: 1 }, { day: "2026-01-08", pnl: 0, trades: 1 }],
   r_histogram: { bins: [], n: 0, clipped: 0, mean: null, median: null },
-  heatmap: [],
+  heatmap: [{ weekday: 0, hour: 9, trades: 1, pnl: 0, expectancy: 0 }],
   radar: { axes: ["win_rate"], setups: [] },
   findings: { edges: [], leaks: [], slices_tested: 0, caveat: "Leads to test." },
 };
@@ -100,6 +100,11 @@ describe("Dashboard", () => {
     for (const notice of PAYLOAD.report.caveats.slice(1)) {
       expect(screen.queryByText(notice)).toBeNull();
     }
+    expect(screen.getByText("Latest equity").nextElementSibling?.textContent).toBe("+$283.00");
+    expect(screen.getByRole("img", { name: /8 Jan 2026.*\$0.00 from 1 trade/ }).classList.contains("is-flat")).toBe(true);
+    expect(screen.getByRole("img", { name: /7 Jan 2026.*no trades/ }).classList.contains("is-empty")).toBe(true);
+    expect(screen.getByRole("columnheader", { name: "09:00 UTC" })).toBeTruthy();
+    expect(screen.getByRole("cell", { name: /Mon 09:00 UTC: 1 trade, \$0\.00/ }).classList.contains("is-flat")).toBe(true);
   });
 
   it("explains an API failure instead of showing empty panels", async () => {
