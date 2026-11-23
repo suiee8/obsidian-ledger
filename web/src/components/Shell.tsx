@@ -15,7 +15,7 @@ import {
   IconTrades,
 } from "./icons";
 
-const WaveGridBackground = lazy(() => import("./WaveGridBackground"));
+const GlyphFieldBackground = lazy(() => import("./GlyphFieldBackground"));
 const SapphireAurora = lazy(() => import("../shader/SapphireAurora"));
 
 type ShellProps = {
@@ -138,9 +138,11 @@ export function Shell({
             </Suspense>
           </div>
         )}
-        <Suspense fallback={null}>
-          <WaveGridBackground />
-        </Suspense>
+        {shaderReady && (
+          <Suspense fallback={null}>
+            <GlyphFieldBackground />
+          </Suspense>
+        )}
         {children}
       </main>
       <div className="frame-scroll" aria-hidden="true">
