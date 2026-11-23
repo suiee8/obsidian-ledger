@@ -210,7 +210,7 @@ export default function Simulator() {
   const skipped = Object.entries(result?.skipped_by_reason ?? {});
 
   return (
-    <div className="dashboard">
+    <div className="dashboard simulator-layout">
       <header>
         <h1 className="screen-title">Simulator</h1>
         <p className="lede">
@@ -219,7 +219,7 @@ export default function Simulator() {
         </p>
       </header>
       <div className="bento">
-        <Panel title="What-if rules" className="span-4">
+        <Panel title="What-if rules" className="span-5 panel-hug">
           <form className="p4-form" onSubmit={(event) => event.preventDefault()}>
             <NumberRule
               label="Daily loss cap"
@@ -271,7 +271,7 @@ export default function Simulator() {
             </button>
           </form>
         </Panel>
-        <div className="span-8 stack">
+        <div className="span-7 stack">
           <Overfit result={result} />
           <Panel title="Before and after" className="span-12">
             {!active ? (

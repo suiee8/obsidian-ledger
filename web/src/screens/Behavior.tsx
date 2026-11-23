@@ -22,7 +22,9 @@ function DayTimeline({
   flag,
   name,
   threshold,
+  className = "span-6",
 }: {
+  className?: string;
   title: string;
   rule: string;
   summary: string;
@@ -36,7 +38,7 @@ function DayTimeline({
   const values = useMemo(() => days.map(pick), [days, pick]);
   const flagged = useMemo(() => days.map(flag), [days, flag]);
   return (
-    <Panel title={title} className="span-12">
+    <Panel title={title} className={className}>
       <p className="card-note">{rule}</p>
       <DayBars
         label={`${title}: ${name} for each trading day. ${summary}`}
@@ -70,36 +72,38 @@ function PostLoss({ groups }: { groups: NonNullable<Timeline["post_loss"]> }) {
         Average P&L per trade, split by what happened just before the trade was entered. The number of trades in
         each group is in brackets.
       </p>
-      <BarSeries
-        label="Average P&L per trade after a win, after a calm loss, after a revenge-style entry, and on tilt"
-        labels={labels}
-        values={values}
-        format={money}
-        signed
-      />
-      <div className="table-wrap" tabIndex={0} role="region" aria-label="Post-loss performance table">
-        <table>
-          <thead>
-            <tr>
-              <th scope="col">Entered</th>
-              <th scope="col">Trades</th>
-              <th scope="col">Win rate</th>
-              <th scope="col">Per trade</th>
-              <th scope="col">Net P&L</th>
-            </tr>
-          </thead>
-          <tbody>
-            {groups.map((group) => (
-              <tr key={group.key}>
-                <th scope="row">{group.label}</th>
-                <td>{fmtInt(group.trades)}</td>
-                <td>{fmtPercent(group.win_rate)}</td>
-                <td>{fmtMoney(group.expectancy)}</td>
-                <td>{fmtMoney(group.net_pnl)}</td>
+      <div className="analysis-split">
+        <BarSeries
+          label="Average P&L per trade after a win, after a calm loss, after a revenge-style entry, and on tilt"
+          labels={labels}
+          values={values}
+          format={money}
+          signed
+        />
+        <div className="table-wrap" tabIndex={0} role="region" aria-label="Post-loss performance table">
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">Entered</th>
+                <th scope="col">Trades</th>
+                <th scope="col">Win rate</th>
+                <th scope="col">Per trade</th>
+                <th scope="col">Net P&L</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {groups.map((group) => (
+                <tr key={group.key}>
+                  <th scope="row">{group.label}</th>
+                  <td>{fmtInt(group.trades)}</td>
+                  <td>{fmtPercent(group.win_rate)}</td>
+                  <td>{fmtMoney(group.expectancy)}</td>
+                  <td>{fmtMoney(group.net_pnl)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
       <p className="card-note">
         A trade can be in both the revenge-style and tilt groups. Groups under 30 trades are too small to trust.
@@ -146,7 +150,7 @@ export default function Behavior() {
   }
   const { totals, thresholds, rules } = data;
   return (
-    <div className="dashboard">
+    <div className="dashboard behavior-layout">
       <header>
         <h1 className="screen-title">Behavior</h1>
         <p className="lede">
@@ -157,17 +161,16 @@ export default function Behavior() {
         <Panel title="Discipline Score" className="span-5">
           <DisciplineBreakdown discipline={scored.discipline} />
         </Panel>
-        <div className="span-7 stack">
-          <DayTimeline
-            title="Revenge timeline"
-            rule={rules.revenge}
-            summary={`${fmtInt(totals.revenge_trades)} revenge-style trades across ${fmtInt(totals.days)} days.`}
-            days={data.days}
-            pick={revengeCount}
-            flag={revengeFlag}
-            name="Revenge-style trades"
-          />
-        </div>
+        <DayTimeline
+          title="Revenge timeline"
+          className="span-7"
+          rule={rules.revenge}
+          summary={`${fmtInt(totals.revenge_trades)} revenge-style trades across ${fmtInt(totals.days)} days.`}
+          days={data.days}
+          pick={revengeCount}
+          flag={revengeFlag}
+          name="Revenge-style trades"
+        />
         <DayTimeline
           title="Tilt timeline"
           rule={rules.tilt}

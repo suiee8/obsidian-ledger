@@ -119,50 +119,52 @@ function SegmentExplorer({ params }: { params: string }) {
         <p className="muted">No trades to group in this selection.</p>
       ) : (
         <>
-          <BarSeries
-            label={`${config.label} by ${dimensionLabel}`}
-            labels={labels}
-            values={values}
-            format={config.format}
-            signed={config.signed}
-          />
-          <div className="table-wrap" tabIndex={0} role="region" aria-label={`${dimensionLabel} segments table`}>
-            <table>
-              <thead>
-                <tr>
-                  <th scope="col">{dimensionLabel}</th>
-                  <th scope="col">Trades</th>
-                  <th scope="col">Win rate</th>
-                  <th scope="col">Net P&L</th>
-                  <th scope="col">Per trade</th>
-                  <th scope="col">95% interval per trade</th>
-                  <th scope="col">q-value</th>
-                  <th scope="col">Verdict</th>
-                </tr>
-              </thead>
-              <tbody>
-                {slices.map((slice) => (
-                  <tr key={slice.value}>
-                    <th scope="row">{slice.value}</th>
-                    <td>{fmtInt(slice.n)}</td>
-                    <td>{fmtPercent(slice.win_rate)}</td>
-                    <td>{fmtMoney(slice.net_pnl)}</td>
-                    <td>{fmtMoney(slice.expectancy)}</td>
-                    <td>
-                      {slice.expectancy_ci95
-                        ? `${fmtMoney(slice.expectancy_ci95[0])} to ${fmtMoney(slice.expectancy_ci95[1])}`
-                        : "not enough trades"}
-                    </td>
-                    <td>{slice.q_value === null ? "—" : fmtNumber(slice.q_value, 3)}</td>
-                    <td>
-                      <span className={`chip${slice.verdict === "low confidence" ? " chip-warn" : ""}`}>
-                        {slice.verdict}
-                      </span>
-                    </td>
+          <div className="analysis-split">
+            <BarSeries
+              label={`${config.label} by ${dimensionLabel}`}
+              labels={labels}
+              values={values}
+              format={config.format}
+              signed={config.signed}
+            />
+            <div className="table-wrap" tabIndex={0} role="region" aria-label={`${dimensionLabel} segments table`}>
+              <table>
+                <thead>
+                  <tr>
+                    <th scope="col">{dimensionLabel}</th>
+                    <th scope="col">Trades</th>
+                    <th scope="col">Win rate</th>
+                    <th scope="col">Net P&L</th>
+                    <th scope="col">Per trade</th>
+                    <th scope="col">95% interval per trade</th>
+                    <th scope="col">q-value</th>
+                    <th scope="col">Verdict</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {slices.map((slice) => (
+                    <tr key={slice.value}>
+                      <th scope="row">{slice.value}</th>
+                      <td>{fmtInt(slice.n)}</td>
+                      <td>{fmtPercent(slice.win_rate)}</td>
+                      <td>{fmtMoney(slice.net_pnl)}</td>
+                      <td>{fmtMoney(slice.expectancy)}</td>
+                      <td>
+                        {slice.expectancy_ci95
+                          ? `${fmtMoney(slice.expectancy_ci95[0])} to ${fmtMoney(slice.expectancy_ci95[1])}`
+                          : "not enough trades"}
+                      </td>
+                      <td>{slice.q_value === null ? "—" : fmtNumber(slice.q_value, 3)}</td>
+                      <td>
+                        <span className={`chip${slice.verdict === "low confidence" ? " chip-warn" : ""}`}>
+                          {slice.verdict}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
           <p className="card-note">
             {fmtInt(query.data?.slices_tested ?? 0)} groups were tested together. Groups under 30 trades are
@@ -626,7 +628,7 @@ export default function Analytics() {
   }
   if (data.points.n === 0) return <AnalyticsEmpty />;
   return (
-    <div className="dashboard">
+    <div className="dashboard analytics-layout">
       <header>
         <h1 className="screen-title">Analytics</h1>
         <p className="lede">

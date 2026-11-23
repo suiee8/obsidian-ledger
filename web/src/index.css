@@ -3505,3 +3505,73 @@ textarea:hover {
     transform: none;
   }
 }
+
+/* Keep related results in view together when they have room to sit side by side. */
+.analytics-layout,
+.behavior-layout,
+.simulator-layout {
+  container-type: inline-size;
+}
+
+.analysis-split {
+  display: grid;
+  align-items: start;
+  gap: var(--space-3);
+  min-width: 0;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.analytics-layout .chart-scatter {
+  height: 320px;
+}
+
+.analytics-layout .chart-fan {
+  height: 280px;
+}
+
+.behavior-layout .chart-timeline {
+  height: 170px;
+}
+
+.simulator-layout .p4-form {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  gap: var(--space-2);
+}
+
+.simulator-layout .check-group-compact {
+  grid-column: 1 / -1;
+}
+
+.simulator-layout .check-group-compact .check-list {
+  grid-template-columns: repeat(auto-fit, minmax(48px, 1fr));
+}
+
+@container (min-width: 960px) {
+  .analysis-split {
+    grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+  }
+
+  .analysis-split .table-wrap {
+    margin: 0;
+  }
+}
+
+@container (max-width: 850px) {
+  :is(.behavior-layout, .simulator-layout) > .bento > * {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 639px) {
+  .analytics-layout .chart-scatter,
+  .analytics-layout .chart-fan {
+    height: 260px;
+  }
+}
+
+@container (max-width: 245px) {
+  .simulator-layout .p4-form {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
