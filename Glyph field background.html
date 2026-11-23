@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Glyph field background</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500&family=Geist:wght@400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #ffffff;
+    --ink: 23, 23, 23;
+    --text: #171717;
+    --muted: #6f6f7a;
+    box-sizing: border-box;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0e0e10; --ink: 235, 235, 240; --text: #f2f2f4; --muted: #9a9aa6;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0e0e10; --ink: 235, 235, 240; --text: #f2f2f4; --muted: #9a9aa6;
+  }
+  html, body { height: 100%; margin: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: "Geist", system-ui, sans-serif;
+    overflow: hidden;
+  }
+  canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+  main {
+    position: relative;
+    height: 100%;
+    display: grid;
+    place-items: center;
+    text-align: center;
+    padding: 24px;
+    pointer-events: none;
+  }
+  h1 {
+    margin: 0 0 14px;
+    font-weight: 400;
+    font-size: clamp(40px, 8vw, 68px);
+    line-height: 1.02;
+    letter-spacing: -0.055em;
+  }
+  p { margin: 0; color: var(--muted); font-size: 15px; line-height: 1.6; }
+</style>
+</head>
+<body>
+<canvas id="field" aria-hidden="true"></canvas>
+<main>
+  <div>
+    <h1>Move your cursor.</h1>
+    <p>The field wakes up wherever you point.</p>
+  </div>
+</main>
+
+<script>
+/* ---------- tune everything here ---------- */
+const CONFIG = {
+  glyphs: ['+', '=', '*'],   // characters that cycle through the field
+  cell: 24,                  // grid spacing in px
+  fontSize: 15,              // glyph size in px
+  baseAlpha: 0.10,           // resting opacity of glyphs (the faint grid)
+  hoverAlpha: 0.85,          // extra opacity at the cursor's centre
+  radius: 190,               // size of the cursor's influence in px
+  follow: 0.12,              // how smoothly the glow trails the cursor (0-1)
+  speed: 0.45,               // ambient drift speed of the glyph changes
+  push: 5                    // px glyphs are nudged away from the cursor
+};
+
+(function () {
+  const canvas = document.getElementById('field');
+  const ctx = canvas.getContext('2d');
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
+  const mouse = { x: -9999, y: -9999, sx: -9999, sy: -9999, active: false };
+  let w = 0, h = 0, dpr = 1, cols = 0, rows = 0;
+
+  function resize() {
+    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    w = window.innerWidth; h = window.innerHeight;
+    canvas.width = w * dpr; canvas.height = h * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    cols = Math.ceil(w / CONFIG.cell) + 1;
+    rows = Math.ceil(h / CONFIG.cell) + 1;
+    ctx.font = '400 ' + CONFIG.fontSize + 'px "Geist Mono", ui-monospace, Menlo, monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+  }
+
+  function onMove(e) {
+    mouse.x = e.clientX; mouse.y = e.clientY;
+    if (!mouse.active) { mouse.sx = mouse.x; mouse.sy = mouse.y; mouse.active = true; }
+  }
+  function onLeave() { mouse.active = false; mouse.x = mouse.y = -9999; }
+
+  window.addEventListener('pointermove', onMove, { passive: true });
+  window.addEventListener('pointerdown', onMove, { passive: true });
+  window.addEventListener('pointerleave', onLeave);
+  document.addEventListener('mouseleave', onLeave);
+  window.addEventListener('resize', resize);
+
+  function ink() {
+    return getComputedStyle(document.documentElement).getPropertyValue('--ink').trim() || '23, 23, 23';
+  }
+  let rgb = ink();
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { rgb = ink(); });
+
+  const G = CONFIG.glyphs, N = G.length;
+
+  function draw(ms) {
+    const t = ms * 0.001 * CONFIG.speed;
+    // ease the glow toward the real pointer
+    if (mouse.active) {
+      mouse.sx += (mouse.x - mouse.sx) * CONFIG.follow;
+      mouse.sy += (mouse.y - mouse.sy) * CONFIG.follow;
+    }
+    ctx.clearRect(0, 0, w, h);
+    const R2 = CONFIG.radius * CONFIG.radius;
+
+    for (let j = 0; j < rows; j++) {
+      for (let i = 0; i < cols; i++) {
+        let x = i * CONFIG.cell, y = j * CONFIG.cell;
+
+        // proximity to the cursor: 1 at centre, 0 outside the radius
+        let k = 0, dx = 0, dy = 0;
+        if (mouse.active) {
+          dx = x - mouse.sx; dy = y - mouse.sy;
+          const d2 = dx * dx + dy * dy;
+          k = Math.exp(-d2 / R2 * 2.2);
+        }
+
+        // travelling waves decide which glyph shows; the cursor speeds them up locally
+        let n = Math.sin(i * 0.31 + t * 2.1)
+              + Math.cos(j * 0.27 - t * 1.7)
+              + Math.sin((i + j) * 0.14 + t * 1.1)
+              + k * 1.6 * Math.sin(t * 6 + i * 0.5 - j * 0.5);
+        const idx = ((Math.floor((n + 3.2) * 0.9) % N) + N) % N;
+
+        // nudge glyphs outward from the cursor for a gentle ripple
+        if (k > 0.001) {
+          const len = Math.sqrt(dx * dx + dy * dy) || 1;
+          x += (dx / len) * CONFIG.push * k;
+          y += (dy / len) * CONFIG.push * k;
+        }
+
+        const a = CONFIG.baseAlpha + CONFIG.hoverAlpha * k;
+        ctx.fillStyle = 'rgba(' + rgb + ',' + a.toFixed(3) + ')';
+        ctx.fillText(G[idx], x, y);
+      }
+    }
+    if (!reduce.matches) requestAnimationFrame(draw);
+  }
+
+  resize();
+  if (reduce.matches) {
+    // static, still reacts to the pointer without continuous animation
+    draw(0);
+    window.addEventListener('pointermove', () => { mouse.sx = mouse.x; mouse.sy = mouse.y; draw(0); }, { passive: true });
+  } else {
+    requestAnimationFrame(draw);
+  }
+})();
+</script>
+</body>
+</html>
