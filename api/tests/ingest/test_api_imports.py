@@ -459,22 +459,17 @@ def test_easy_template_imports_without_questions_and_is_idempotent(client: TestC
     imported = _commit(client, first["preview_id"], easy_import="auto")
     assert imported.status_code == 200, imported.text
     assert imported.json()["inserted"] == 3
-    assert imported.json()["issues"] == []
+    assert [(issue["code"], issue["severity"]) for issue in imported.json()["issues"]] == [
+        ("missing_risk", "info")
+    ]
     latest = _preview(client, template.name, template.read_bytes())
     again = _commit(client, latest["preview_id"], easy_import="auto").json()
     assert (again["inserted"], again["already_present"]) == (0, 3)
     first_trade = next(
         row for row in client.get("/api/trades").json() if row["trade_id"] == "example-001"
     )
-    assert first_trade["fees"] == -0.4
-    assert first_trade["planned_risk"] == 4
-    assert first_trade["r_multiple"] == pytest.approx(2.025)
-    assert first_trade["setup"] == "Opening range"
-    assert first_trade["notes"] == "Exited at the target"
-    assert first_trade["emotion"] == "calm"
-    assert first_trade["plan_followed"] is True
     assert first_trade["account"] == "Paper"
-    assert first_trade["currency"] == "USD"
+    assert first_trade["net_pnl"] == pytest.approx(8.50)
 
 
 def test_easy_required_column_confidence_starts_at_eighty_percent() -> None:

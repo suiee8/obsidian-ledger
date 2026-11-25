@@ -24,7 +24,7 @@ The work starts on `feat/easy-import` from `891fabe`. No dev launcher was runnin
 - Time offsets in a file take precedence over the default timezone. The default is UTC until changed in Settings. Plain buys and sells are matched per instrument. If the file has no symbol, the importer tries its filename and falls back to `UNKNOWN`. Importing does not set starting equity.
 - Re-import retains the selected source in the current browser session. It goes through the same duplicate checks as any new import. Previously saved trades are skipped, and identical rows within a single file are kept and explained in Details.
 - Questions remain for unresolved columns, ambiguous date order, uncertain row shape, and partially readable files that need consent. The usual review screen, the assumption and warning checklist, and the manual Dashboard step are gone from the normal path.
-- The template uses the 20 headers already in `samples/synthetic_preview.csv`. The [column guide](import-format.md) also documents `stop_loss` and `tags` when supplied by another export.
+- The [template and column guide](import-format.md) use the first 10 columns from `samples/synthetic_preview.csv`. Both trade prices are included so the importer can calculate P&L.
 
 ## Updated browser expectations
 

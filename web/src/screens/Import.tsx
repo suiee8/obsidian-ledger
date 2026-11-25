@@ -178,7 +178,7 @@ function ImportDialog({ title, onClose, children, drawer = false }: { title: str
 function ColumnGuide({ onClose }: { onClose: () => void }) {
   return (
     <ImportDialog title="Column guide" onClose={onClose}>
-      <p>Use symbol, side, entry and exit times, and quantity. Include both prices or net P&L.</p>
+      <p>Fill in the symbol, side, quantity, entry and exit times, and both prices.</p>
       <div className="table-wrap" role="region" aria-label="Import column guide" tabIndex={0}>
         <table>
           <thead><tr><th scope="col">Column</th><th scope="col">Meaning</th><th scope="col">Accepted values</th><th scope="col">Example</th></tr></thead>

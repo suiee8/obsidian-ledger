@@ -1,4 +1,4 @@
-trade_id,account,symbol,asset_class,side,entry_time,exit_time,qty,entry_price,exit_price,fees,planned_risk,r_multiple,net_pnl,currency,setup,session,emotion,plan_followed,notes
-example-001,Paper,AAPL,stock,long,2026-01-06T14:35:00Z,2026-01-06T15:10:00Z,10,188.20,189.05,0.40,4.00,,8.10,USD,Opening range,New York,calm,true,Exited at the target
-example-002,Paper,MSFT,stock,short,2026-01-07T15:20:00Z,2026-01-07T16:00:00Z,5,412.60,413.40,0.30,3.00,,-4.30,USD,Pullback,New York,impatient,false,Stopped out
-example-003,Paper,NVDA,stock,long,2026-01-08T14:45:00Z,2026-01-08T15:15:00Z,8,137.40,138.20,0.40,3.20,,6.00,USD,Breakout,New York,focused,true,Followed the plan
+trade_id,account,symbol,asset_class,side,entry_time,exit_time,qty,entry_price,exit_price
+example-001,Paper,AAPL,stock,long,2026-01-06T14:35:00Z,2026-01-06T15:10:00Z,10,188.20,189.05
+example-002,Paper,MSFT,stock,short,2026-01-07T15:20:00Z,2026-01-07T16:00:00Z,5,412.60,413.40
+example-003,Paper,NVDA,stock,long,2026-01-08T14:45:00Z,2026-01-08T15:15:00Z,8,137.40,138.20
