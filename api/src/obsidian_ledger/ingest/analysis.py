@@ -118,6 +118,7 @@ class Column:
     confidence: str | None  # high | medium | low
     source: str  # adapter | template | synonym | user | none
     reasons: tuple[str, ...] = ()
+    match_score: float | None = None
 
 
 @dataclass(frozen=True)
@@ -495,6 +496,9 @@ def analyze(
     for index, match in assign_fields(headers, taken_columns, taken_fields).items():
         columns[index].field = match.field
         columns[index].confidence = match.confidence
+        columns[index].match_score = (
+            1.0 if headers[index].strip().lower() == match.field else match.score / 3
+        )
         columns[index].source = "synonym"
         columns[index].reasons = (f"header matched {match.field}",)
         taken_columns.add(index)
@@ -575,6 +579,7 @@ def analyze(
             column.confidence = "high" if score >= 0.9 else "medium"
             column.source = "content"
             column.reasons = (reason,)
+            column.match_score = score
             content_scores[column.index] = score
             taken_columns.add(column.index)
             taken_fields.add(role)

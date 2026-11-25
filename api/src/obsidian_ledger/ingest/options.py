@@ -19,6 +19,7 @@ class ImportOptions(BaseModel):
     symbol_aliases: dict[str, str] = Field(default_factory=dict)
     shape: Shape | None = None
     side_mode: Literal["netting"] | None = None
+    easy_import: Literal["auto", "confirm"] | None = None
     # Answers the slash-date question. "dayfirst" reads 01/06 as 1 June.
     date_format: Literal["dayfirst", "monthfirst"] | None = None
     decimal: Literal["dot", "comma"] | None = None

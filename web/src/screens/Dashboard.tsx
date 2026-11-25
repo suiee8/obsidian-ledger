@@ -13,6 +13,7 @@ import { DisciplineRing } from "../components/DisciplineRing";
 import { Illustration } from "../components/Illustration";
 import { DailyCalendar } from "../components/charts/DailyCalendar";
 import { WeekdayHour } from "../components/charts/WeekdayHour";
+import { useImportSession } from "../lib/import-session";
 import type { DashboardData } from "../lib/dashboard";
 
 // The ECharts-based charts load in their own chunk after the KPI strip and layout paint, which keeps
@@ -127,6 +128,7 @@ function Headline({ data }: { data: DashboardData }) {
 }
 
 export default function Dashboard() {
+  const justImported = useImportSession((state) => state.files.length > 0);
   const [chartsReady, setChartsReady] = useState(false);
   const liveParams = useFilters((state) => state.toParams());
   const params = useDebouncedValue(liveParams, FILTER_DEBOUNCE_MS);
@@ -163,7 +165,7 @@ export default function Dashboard() {
     return <DashboardSkeleton />;
   }
   if (availability.data && !availability.data.available) {
-    return <ActivityOnly data={availability.data} />;
+    return <ActivityOnly data={availability.data} compact={justImported} />;
   }
   if (data.report.sample.trades === 0 && data.equity.points.length === 0) {
     return <EmptyDashboard />;

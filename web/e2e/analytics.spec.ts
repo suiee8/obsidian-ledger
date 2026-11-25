@@ -184,7 +184,7 @@ test.describe("Settings", () => {
   test("starting equity can be set and cleared", async ({ page, request }) => {
     await importSample(request);
     await openScreen(page, "Settings", "Settings");
-    const panel = page.getByRole("region", { name: "Starting equity" });
+    const panel = page.getByRole("region", { name: "Improve your analysis" });
     await panel.getByLabel("Starting equity").fill("25000");
     await panel.getByRole("button", { name: "Save" }).click();
     await expect(panel.getByText("Set to 25,000.00.")).toBeVisible();

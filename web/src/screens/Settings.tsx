@@ -85,7 +85,7 @@ function StartingEquity({ settings }: { settings: SettingsData }) {
   const value = Number(draft);
   const valid = draft !== "" && Number.isFinite(value) && value > 0;
   return (
-    <Panel title="Starting equity" className="span-6">
+    <Panel title="Improve your analysis" className="span-6">
       <p className="card-note">
         Unlocks percentages of equity, Sharpe, Sortino, Calmar, and risk of ruin. Changing it recalculates every
         screen.
@@ -133,6 +133,17 @@ function StartingEquity({ settings }: { settings: SettingsData }) {
           Could not save: {save.error.message}
         </p>
       )}
+      <label className="field">
+        <span>Default timezone for imports</span>
+        <select value={settings.import_timezone} disabled={save.isPending}
+          onChange={(event) => save.mutate({ import_timezone: event.target.value })}>
+          {Array.from(new Set([settings.import_timezone, "UTC", Intl.DateTimeFormat().resolvedOptions().timeZone,
+            "America/New_York", "Europe/London", "Asia/Kolkata", "Asia/Singapore"])).map((zone) => (
+            <option key={zone} value={zone}>{zone.replaceAll("_", " ")}</option>
+          ))}
+        </select>
+      </label>
+      <p className="card-note">Times with an offset keep their offset. Plain buys and sells are combined per instrument.</p>
     </Panel>
   );
 }

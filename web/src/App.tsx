@@ -6,6 +6,7 @@ import { FilterBar } from "./components/FilterBar";
 import { FilterSlot } from "./components/FilterSheet";
 import { HealthBadge } from "./components/HealthBadge";
 import { Shell } from "./components/Shell";
+import { useImportSession } from "./lib/import-session";
 import { useFilterOptions } from "./lib/queries";
 import { useHealth } from "./lib/useHealth";
 import { useUi, applyColorBlind } from "./state/ui";
@@ -18,6 +19,8 @@ const SettingsScreen = lazy(() => import("./screens/Settings"));
 const TradesScreen = lazy(() => import("./screens/Trades"));
 const ImportScreen = lazy(() => import("./screens/Import"));
 
+const ImportNotice = lazy(() => import("./screens/Import").then((module) => ({ default: module.ImportNotice })));
+
 const EMPTY_OPTIONS = { accounts: [], symbols: [], setups: [], sides: [] };
 
 function ScreenFallback() {
@@ -29,6 +32,7 @@ function ScreenFallback() {
 }
 
 export function App() {
+  const hasImportNotice = useImportSession((state) => state.files.length > 0);
   const route = useUi((state) => state.route);
   const setRoute = useUi((state) => state.setRoute);
   const colorBlind = useUi((state) => state.colorBlind);
@@ -73,6 +77,7 @@ export function App() {
         }
         status={<HealthBadge state={health.state} onRecheck={health.refresh} />}
       >
+        {route === "dashboard" && hasImportNotice && <Suspense fallback={null}><ImportNotice /></Suspense>}
         <Suspense fallback={<ScreenFallback />}>{screen}</Suspense>
       </Shell>
       <CoachDrawer />

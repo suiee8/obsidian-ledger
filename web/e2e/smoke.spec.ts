@@ -24,11 +24,8 @@ test("imports the sample file from the Import screen", async ({ page }) => {
   await page.getByRole("button", { name: "Import", exact: true }).click();
   await page.locator('input[type="file"]').setInputFiles(SAMPLE_PATH);
 
-  const preview = page.locator(".import-preview");
-  await expect(preview.getByRole("heading", { name: "What we found" })).toBeVisible();
-  await expect(preview).toContainText("synthetic_preview.csv");
-  await preview.getByRole("button", { name: "Import", exact: true }).click();
-  await expect(page.getByRole("heading", { name: /Imported synthetic_preview\.csv/ })).toBeVisible();
+  await expect(page.locator(".import-status")).toContainText("from synthetic_preview.csv.");
+  await expect(page.getByRole("heading", { name: "Overview" })).toBeVisible();
 });
 
 test("MEXC import shows capabilities and unavailable performance accessibly", async ({ page }) => {
@@ -44,28 +41,27 @@ test("MEXC import shows capabilities and unavailable performance accessibly", as
   await page.getByRole("button", { name: "Import", exact: true }).click();
   await page.locator('input[type="file"]').setInputFiles(MEXC_PATH);
 
-  const preview = page.getByRole("region", { name: "What we found" });
-  await expect(preview).toContainText("944 rows");
-  await expect(preview).toContainText("P&L: not found");
-  await expect(preview).toContainText("Price: not found");
-  await expect(preview).toContainText("Hour-only timestamps");
-  await expect(preview).toContainText("truncated");
-  await expect(preview).toContainText("Exact duplicate rows");
+  const notice = page.locator(".import-status");
+  await expect(notice).toContainText("Imported 476 trades from mexc_futures_order_history_normalized.csv.");
+  await expect(notice).toContainText("Profit numbers need prices or P&L.");
+  await expect(notice.getByRole("link", { name: "Download template" })).toBeVisible();
+  await expect(notice.locator(".chip")).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "One thing we need" })).toHaveCount(0);
+  await notice.getByRole("button", { name: "Details" }).click();
+  const details = page.getByRole("dialog", { name: "What we found" });
+  await expect(details).toContainText("P&L: not found");
+  await expect(details).toContainText("Price: not found");
+  await expect(details).toContainText("Hour-only timestamps");
+  await expect(details).toContainText("truncated");
+  await expect(details).toContainText("Exact duplicate rows");
+  await details.getByRole("button", { name: "Close", exact: true }).click();
   mkdirSync(SCREENSHOT_OUT, { recursive: true });
   for (const width of [1440, 1024, 390]) {
     await page.setViewportSize({ width, height: 900 });
-    await page.screenshot({
-      path: resolve(SCREENSHOT_OUT, `import-mexc-${width}.png`),
-      fullPage: true,
-    });
+    await page.screenshot({ path: resolve(SCREENSHOT_OUT, `import-mexc-${width}.png`), fullPage: true });
     if (width !== 1024) await expectNoA11yViolations(page);
   }
 
-  await preview.getByRole("button", { name: "Import", exact: true }).click();
-  await expect(
-    page.getByRole("heading", { name: /Imported mexc_futures_order_history_normalized\.csv/ }),
-  ).toBeVisible();
-  await expect(page.locator("section[aria-labelledby='result-title'] dd").first()).toHaveText("476");
   await page.getByRole("button", { name: "Coach", exact: true }).click();
   await page.getByRole("button", { name: "Analytics", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Performance metrics unavailable" })).toBeVisible();

@@ -5,10 +5,11 @@ from __future__ import annotations
 import uuid
 from datetime import UTC, datetime
 from typing import Annotated, Any
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from fastapi import APIRouter, HTTPException, Path, Request
 from fastapi.responses import FileResponse
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from starlette.background import BackgroundTask
 
 from obsidian_ledger.metrics.engine import AnalysisEngine
@@ -42,6 +43,17 @@ class SettingsIn(BaseModel):
 
     starting_equity: float | None = Field(default=None, gt=0, le=1e12)
     privacy: PrivacyIn | None = None
+    import_timezone: str | None = Field(default=None, max_length=64)
+
+    @field_validator("import_timezone")
+    @classmethod
+    def _valid_import_timezone(cls, value: str | None) -> str | None:
+        if value is not None:
+            try:
+                ZoneInfo(value)
+            except (ZoneInfoNotFoundError, ValueError) as exc:
+                raise ValueError("Choose a known timezone.") from exc
+        return value
 
 
 class TemplateRename(BaseModel):
@@ -74,6 +86,7 @@ def _settings_out(store: Store) -> dict[str, Any]:
     return {
         "starting_equity": float(raw) if raw is not None else None,
         "privacy": _privacy(store),
+        "import_timezone": store.get_setting("import_timezone") or "UTC",
         "llm": {"provider": "cloud", "note": LLM_NOTE},
         "data": {
             "trades": store.count_trades(),
@@ -97,6 +110,8 @@ def put_settings(request: Request, body: SettingsIn) -> dict[str, Any]:
             store.delete_setting(STARTING_EQUITY_KEY)
         else:
             store.set_setting(STARTING_EQUITY_KEY, repr(float(body.starting_equity)))
+    if body.import_timezone is not None:
+        store.set_setting("import_timezone", body.import_timezone)
     if body.privacy is not None:
         privacy = body.privacy
         if privacy.aggregates_only:

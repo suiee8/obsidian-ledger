@@ -9,6 +9,9 @@ from typing import Any
 import pytest
 from fastapi.testclient import TestClient
 
+from obsidian_ledger.ingest.analysis import analyze
+from obsidian_ledger.ingest.easy import confidence_fields
+from obsidian_ledger.ingest.options import ImportOptions
 from obsidian_ledger.main import create_app
 from obsidian_ledger.settings import Settings
 
@@ -446,3 +449,144 @@ def test_preview_expires_after_commit(client: TestClient) -> None:
     preview = _preview(client, "ibkr_executions.csv")
     assert _commit(client, preview["preview_id"]).status_code == 200
     assert _commit(client, preview["preview_id"]).status_code == 404
+
+
+def test_easy_template_imports_without_questions_and_is_idempotent(client: TestClient) -> None:
+    template = SAMPLES.parent / "web/public/templates/obsidian-ledger-template.csv"
+    first = _preview(client, template.name, template.read_bytes())
+    assert first["questions"] == []
+    assert first["warnings"] == []
+    imported = _commit(client, first["preview_id"], easy_import="auto")
+    assert imported.status_code == 200, imported.text
+    assert imported.json()["inserted"] == 3
+    assert imported.json()["issues"] == []
+    latest = _preview(client, template.name, template.read_bytes())
+    again = _commit(client, latest["preview_id"], easy_import="auto").json()
+    assert (again["inserted"], again["already_present"]) == (0, 3)
+    first_trade = next(
+        row for row in client.get("/api/trades").json() if row["trade_id"] == "example-001"
+    )
+    assert first_trade["fees"] == -0.4
+    assert first_trade["planned_risk"] == 4
+    assert first_trade["r_multiple"] == pytest.approx(2.025)
+    assert first_trade["setup"] == "Opening range"
+    assert first_trade["notes"] == "Exited at the target"
+    assert first_trade["emotion"] == "calm"
+    assert first_trade["plan_followed"] is True
+    assert first_trade["account"] == "Paper"
+    assert first_trade["currency"] == "USD"
+
+
+def test_easy_required_column_confidence_starts_at_eighty_percent() -> None:
+    template = SAMPLES.parent / "web/public/templates/obsidian-ledger-template.csv"
+    analysis = analyze(template, ImportOptions())
+    quantity = next(column for column in analysis.columns if column.field == "qty")
+    quantity.source = "synonym"
+    quantity.match_score = 0.79
+    assert confidence_fields(analysis) == ["qty"]
+    quantity.match_score = 0.80
+    assert confidence_fields(analysis) == []
+
+
+def test_easy_defaults_infer_symbol_and_preserve_file_offsets(client: TestClient) -> None:
+    data = (
+        b"side,entry_time,exit_time,qty,entry_price,exit_price\n"
+        b"long,2026-01-06T14:35:00+05:30,2026-01-06T15:10:00+05:30,10,188.20,189.05\n"
+    )
+    preview = _preview(client, "AAPL_trades.csv", data)
+    imported = _commit(client, preview["preview_id"], easy_import="auto")
+    assert imported.status_code == 200, imported.text
+    assert {item["key"]: item["value"] for item in imported.json()["assumptions"]}[
+        "default_symbol"
+    ] == "AAPL"
+    [trade] = client.get("/api/trades").json()
+    assert trade["symbol"] == "AAPL"
+    assert trade["entry_time"].startswith("2026-01-06T09:05:00")
+    assert client.get("/api/settings").json()["starting_equity"] is None
+
+
+def test_easy_defaults_to_unknown_and_utc_when_the_file_has_no_clues(client: TestClient) -> None:
+    data = (
+        b"side,entry_time,exit_time,qty,net_pnl\n"
+        b"long,2026-01-06 14:35:00,2026-01-06 15:10:00,10,8.10\n"
+    )
+    preview = _preview(client, "portfolio-export.csv", data)
+    imported = _commit(client, preview["preview_id"], easy_import="auto")
+    assert imported.status_code == 200, imported.text
+    assumptions = {item["key"]: item["value"] for item in imported.json()["assumptions"]}
+    assert assumptions["default_symbol"] == "UNKNOWN"
+    assert assumptions["timezone"] == "UTC"
+    [trade] = client.get("/api/trades").json()
+    assert trade["symbol"] == "UNKNOWN"
+    assert trade["entry_time"].startswith("2026-01-06T14:35:00")
+
+
+@pytest.mark.parametrize(
+    ("valid", "expected"),
+    [(19, None), (18, "confirm_valid_rows"), (10, "confirm_valid_rows"), (9, "too_few_valid_rows")],
+)
+def test_easy_row_gates_run_before_writing(
+    client: TestClient, valid: int, expected: str | None
+) -> None:
+    header = "trade_id,symbol,side,entry_time,exit_time,qty,net_pnl\n"
+    rows = [
+        f"trade-{i},AAPL,long,2026-01-06T10:00:00Z,2026-01-06T11:00:00Z,"
+        f"{5 if i < valid else 'bad'},10"
+        for i in range(20)
+    ]
+    preview = _preview(client, "validation.csv", (header + "\n".join(rows) + "\n").encode())
+    imported = _commit(client, preview["preview_id"], easy_import="auto")
+    if expected is None:
+        assert imported.status_code == 200, imported.text
+        assert imported.json()["inserted"] == valid
+    else:
+        assert imported.json()["error"]["code"] == expected, imported.text
+        assert client.get("/api/imports").json() == []
+        if expected == "confirm_valid_rows":
+            confirmed = _commit(client, preview["preview_id"], easy_import="confirm")
+            assert confirmed.status_code == 200, confirmed.text
+            assert confirmed.json()["inserted"] == valid
+
+
+def test_easy_rejects_tied_required_columns(client: TestClient) -> None:
+    data = (
+        b"symbol,side,entry_time,exit_time,qty,quantity,net_pnl\n"
+        b"AAPL,long,2026-01-06T10:00:00Z,2026-01-06T11:00:00Z,5,10,20\n"
+    )
+    preview = _preview(client, "tied.csv", data)
+    result = _commit(client, preview["preview_id"], easy_import="auto")
+    assert result.json()["error"]["details"]["fields"] == ["qty"], result.text
+    assert client.get("/api/imports").json() == []
+
+
+def test_easy_orders_net_plain_buys_and_sells_and_keeps_duplicates(client: TestClient) -> None:
+    data = (
+        b"UID,Timestamp,Symbol,Side,Leverage,Order Type,"
+        b"Order Quantity,Filled Quantity,Order Value\n"
+        b"10000001,2026-01-06 10:00:00,AAPL,buy,1,LIMIT,2,2,200\n"
+        b"10000001,2026-01-06 10:00:00,AAPL,buy,1,LIMIT,2,2,200\n"
+        b"10000001,2026-01-06 11:00:00,AAPL,sell,1,LIMIT,4,4,440\n"
+    )
+    preview = _preview(client, "mexc.csv", data)
+    assert "side_mode" in [question["id"] for question in preview["questions"]]
+    imported = _commit(client, preview["preview_id"], easy_import="auto")
+    assert imported.status_code == 200, imported.text
+    outcomes = {item["key"]: item["value"] for item in imported.json()["assumptions"]}
+    assert outcomes["buy_sell"] == "netting"
+    assert outcomes["duplicate_rows"] == "1"
+    assert imported.json()["inserted"] == 2
+
+
+def test_easy_uses_saved_timezone_for_times_without_an_offset(client: TestClient) -> None:
+    assert client.put("/api/settings", json={"import_timezone": "Asia/Kolkata"}).status_code == 200
+    data = (
+        b"symbol,side,entry_time,exit_time,qty,entry_price,exit_price,stop_loss,tags\n"
+        b"AAPL,long,2026-01-06 14:35:00,2026-01-06 15:10:00,10,188.20,189.05,187.80,breakout\n"
+    )
+    preview = _preview(client, "trade-rows.csv", data)
+    imported = _commit(client, preview["preview_id"], easy_import="auto")
+    assert imported.status_code == 200, imported.text
+    [trade] = client.get("/api/trades").json()
+    assert trade["entry_time"].startswith("2026-01-06T09:05:00")
+    assert trade["planned_risk"] == pytest.approx(4)
+    assert trade["tags"] == "breakout"

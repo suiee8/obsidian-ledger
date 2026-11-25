@@ -41,15 +41,19 @@ function useAbortSuperseded(
   }, [client, queryName, ...deps]);
 }
 
-export function useDashboard(params: string) {
-  useAbortSuperseded("dashboard", (key) => key[1] === params, [params]);
-  return useQuery({
+export function dashboardQuery(params: string) {
+  return {
     queryKey: ["dashboard", params],
-    queryFn: ({ signal }) =>
+    queryFn: ({ signal }: { signal: AbortSignal }) =>
       requestJson(`/api/dashboard${params ? `?${params}` : ""}`, DashboardSchema, { signal }),
     placeholderData: keepPreviousData,
     staleTime: 15_000,
-  });
+  };
+}
+
+export function useDashboard(params: string) {
+  useAbortSuperseded("dashboard", (key) => key[1] === params, [params]);
+  return useQuery(dashboardQuery(params));
 }
 
 export function useAvailability(params: string) {
@@ -171,7 +175,7 @@ export function useCommitImport() {
   return useMutation({
     mutationFn: ({ previewId, options }: { previewId: string; options: Record<string, unknown> }) =>
       requestJson(`/api/imports/${previewId}/commit`, CommitSchema, jsonBody(options)),
-    onSuccess: () => {
+    onSuccess: (_result, { options }) => {
       void client.invalidateQueries({ queryKey: ["dashboard"] });
       void client.invalidateQueries({ queryKey: ["trades-page"] });
       void client.invalidateQueries({ queryKey: ["filter-options"] });
@@ -182,8 +186,8 @@ export function useCommitImport() {
       void client.invalidateQueries({ queryKey: ["behavior-report"] });
       void client.invalidateQueries({ queryKey: ["timeline"] });
       void client.invalidateQueries({ queryKey: ["simulate"] });
-      // The Coach runs on the new data and streams its steps in the drawer.
-      useUi.getState().requestCoachRun();
+      const ui = useUi.getState();
+      if (!options.easy_import || ui.coachOpen) ui.requestCoachRun();
     },
   });
 }

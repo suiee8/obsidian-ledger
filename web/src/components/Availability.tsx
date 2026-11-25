@@ -46,7 +46,7 @@ function Table({
   );
 }
 
-export function ActivityOnly({ data }: { data: AvailabilityData }) {
+export function ActivityOnly({ data, compact = false }: { data: AvailabilityData; compact?: boolean }) {
   if (data.available || !data.activity) return null;
   const activity = data.activity;
   const seconds = activity.average_holding_seconds;
@@ -59,7 +59,7 @@ export function ActivityOnly({ data }: { data: AvailabilityData }) {
 
   return (
     <div className="dashboard">
-      <section className="glass panel unavailable-state" aria-labelledby="availability-title">
+      {compact ? <header><h1 className="screen-title">Overview</h1></header> : <section className="glass panel unavailable-state" aria-labelledby="availability-title">
         <Illustration kind="unavailable" />
         <p className="eyebrow">Not available</p>
         <h1 id="availability-title" className="panel-title">
@@ -70,7 +70,7 @@ export function ActivityOnly({ data }: { data: AvailabilityData }) {
           Import a realized P&amp;L column and entry/exit prices. Missing financial values are not
           treated as zero.
         </p>
-      </section>
+      </section>}
       <div className="bento">
         <Panel title="Activity available" className="span-12">
           <dl className="detail-grid">

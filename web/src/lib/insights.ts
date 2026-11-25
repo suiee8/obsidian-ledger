@@ -257,6 +257,7 @@ export type Simulation = z.infer<typeof SimulationSchema>;
 // ----- Settings -----
 
 export const SettingsSchema = z.object({
+  import_timezone: z.string().default("UTC"),
   starting_equity: num,
   privacy: z.object({
     aggregates_only: z.boolean(),
@@ -408,6 +409,7 @@ export function useSaveSettings() {
   return useMutation({
     mutationFn: (patch: {
       starting_equity?: number | null;
+      import_timezone?: string;
       privacy?: { aggregates_only: boolean; include_notes: boolean; include_trade_rows: boolean };
     }) => requestJson("/api/settings", SettingsSchema, { ...jsonBody(patch), method: "PUT" }),
     onSuccess: (data, patch) => {

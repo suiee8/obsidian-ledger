@@ -23,13 +23,11 @@ async function importThroughTheScreen(page: Page, file: string) {
   await page.goto("/");
   await page.getByRole("button", { name: "Import", exact: true }).click();
   await page.locator('input[type="file"]').setInputFiles(file);
-  const preview = page.locator(".import-preview");
-  await expect(preview).toBeVisible();
-  await preview.getByRole("button", { name: "Import", exact: true }).click();
-  await expect(page.getByRole("heading", { name: /Imported/ })).toBeVisible();
+  await expect(page.locator(".import-status")).toContainText("Imported");
+  await page.getByRole("button", { name: "Coach", exact: true }).click();
 }
 
-test("importing a file starts the Coach, streams its steps, and shows the report", async ({ page }) => {
+test("opening the Coach after import streams its steps and shows the report", async ({ page }) => {
   await importThroughTheScreen(page, PLANTED);
 
   const coach = page.getByRole("complementary", { name: "Coach" });

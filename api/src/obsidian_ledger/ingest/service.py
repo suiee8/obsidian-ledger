@@ -10,6 +10,7 @@ from typing import Any
 
 from obsidian_ledger.atomic import atomic_path
 from obsidian_ledger.ingest.analysis import Analysis, analyze
+from obsidian_ledger.ingest.easy import check_rows, confidence_fields, defaults, record_assumptions
 from obsidian_ledger.ingest.errors import IngestError
 from obsidian_ledger.ingest.export import rejected_csv
 from obsidian_ledger.ingest.fileio import validate_extension_and_content
@@ -180,15 +181,47 @@ class ImportService:
         filename = str(meta["filename"])
         sha256 = str(meta["sha256"])
 
+        if options.easy_import:
+            timezone = self.store.get_setting("import_timezone") or "UTC"
+            options = options.model_copy(update={"timezone": options.timezone or timezone})
         analysis = self._analyze(staged, options)
+        if options.easy_import:
+            chosen = defaults(analysis, options, filename)
+            if chosen != options:
+                options = chosen
+                analysis = self._analyze(staged, options)
         if analysis.blocking:
+            details: dict[str, Any] = {"questions": [q.__dict__ for q in analysis.blocking]}
+            if options.easy_import:
+                caps = analysis.capabilities
+                details["fields"] = [
+                    field
+                    for field, found in (
+                        (
+                            "exit_time" if analysis.shape == "round_trip" else "fill_time",
+                            caps["has_time"],
+                        ),
+                        ("side", caps["has_direction"]),
+                        ("qty", caps["has_quantity"] or caps["has_notional"]),
+                    )
+                    if not found
+                ]
             raise IngestError(
                 "needs_answers",
                 "Answer the blocking questions before importing.",
-                details={"questions": [q.__dict__ for q in analysis.blocking]},
+                details=details,
             )
 
+        if options.easy_import == "auto" and (fields := confidence_fields(analysis)):
+            raise IngestError(
+                "needs_column_confirmation",
+                "Check the highlighted columns before importing.",
+                details={"fields": fields},
+            )
         outcome = run_import(analysis, options)
+        if options.easy_import:
+            check_rows(outcome, automatic=options.easy_import == "auto")
+            record_assumptions(analysis, options)
         issues = build_issues(outcome)
         import_id = uuid.uuid4().hex
 
